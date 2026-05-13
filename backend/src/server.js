@@ -25,10 +25,15 @@ fastify.register(require('./routes/consultas'));
 // ----------------------------------------------------
 const start = async () => {
   try {
-    await fastify.listen({ port: 3000 });
-    console.log('✅ Motor de Regras rodando e CORS liberado em: http://localhost:3000');
+    // Pega a porta dinâmica do Render ou usa a 3000 localmente
+    const port = process.env.PORT || 3000;
+    
+    // O host '0.0.0.0' é a chave mágica da documentação!
+    await app.listen({ port: port, host: '0.0.0.0' });
+    
+    app.log.info(`Servidor rodando forte na porta ${port}`);
   } catch (err) {
-    fastify.log.error(err);
+    app.log.error(err);
     process.exit(1);
   }
 };
