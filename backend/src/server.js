@@ -28,12 +28,12 @@ const start = async () => {
     // Pega a porta dinâmica do Render ou usa a 3000 localmente
     const port = process.env.PORT || 3000;
     
-    // O host '0.0.0.0' é a chave mágica da documentação!
-    await app.listen({ port: port, host: '0.0.0.0' });
+    // CORREÇÃO: Trocamos "app" por "fastify" nestas 3 linhas abaixo!
+    await fastify.listen({ port: port, host: '0.0.0.0' });
     
-    app.log.info(`Servidor rodando forte na porta ${port}`);
+    fastify.log.info(`Servidor rodando forte na porta ${port}`);
   } catch (err) {
-    app.log.error(err);
+    fastify.log.error(err);
     process.exit(1);
   }
 };
