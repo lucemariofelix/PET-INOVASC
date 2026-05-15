@@ -40,4 +40,4 @@ Pensando em escalabilidade e acesso remoto por qualquer dispositivo da UBS:
 - A **Interface (Frontend)** é servida pelo Vercel.
 
 ---
-*Desenvolvido por Lucemario Felix para modernização da saúde pública comunitária.*
+*Desenvolvido por Lucemario Felix e alunos do programa PET-INOVASC para modernização da saúde pública comunitária.*
