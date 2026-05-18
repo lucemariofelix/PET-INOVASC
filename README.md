@@ -39,5 +39,28 @@ Pensando em escalabilidade e acesso remoto por qualquer dispositivo da UBS:
 - A **API (Backend)** é processada no Render.
 - A **Interface (Frontend)** é servida pelo Vercel.
 
+## 🚀 Como Rodar o Projeto Localmente
+
+Este guia é para desenvolvedores e alunos que desejam configurar e executar o ambiente Node.js do sistema SGR-UBS em suas próprias máquinas.
+
+### 📋 Pré-requisitos
+
+Antes de começar, você precisará ter as seguintes ferramentas instaladas no seu computador:
+* [Node.js](https://nodejs.org/) (Recomendamos a versão LTS - v18 ou superior)
+* [Git](https://git-scm.com/)
+* [Yarn](https://yarnpkg.com/) (Gerenciador de pacotes oficial do projeto)
+
+> **Nota para instalação do Yarn:** Caso você já tenha o Node.js instalado, abra o terminal e rode o comando `npm install --global yarn` para habilitar o Yarn globalmente.
+
+---
+
+### 🛠️ Passo a Passo da Instalação
+
+**1. Clone o repositório**
+Abra o seu terminal, escolha a pasta onde deseja salvar o projeto e rode:
+```bash
+git clone [https://github.com/seu-usuario/seu-repositorio.git](https://github.com/seu-usuario/seu-repositorio.git)
+cd seu-repositorio
+
 ---
 *Desenvolvido por Lucemario Felix e alunos do programa PET-INOVASC para modernização da saúde pública comunitária.*
