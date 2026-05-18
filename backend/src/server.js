@@ -18,6 +18,7 @@ fastify.register(cors, {
 // ----------------------------------------------------
 fastify.register(require('./routes/pacientes'));
 fastify.register(require('./routes/consultas'));
+fastify.register(require('./routes/auth'));
 
 
 // ----------------------------------------------------
@@ -25,13 +26,8 @@ fastify.register(require('./routes/consultas'));
 // ----------------------------------------------------
 const start = async () => {
   try {
-    // Pega a porta dinâmica do Render ou usa a 3000 localmente
-    const port = process.env.PORT || 3000;
-    
-    // CORREÇÃO: Trocamos "app" por "fastify" nestas 3 linhas abaixo!
-    await fastify.listen({ port: port, host: '0.0.0.0' });
-    
-    fastify.log.info(`Servidor rodando forte na porta ${port}`);
+    await fastify.listen({ port: 3000 });
+    console.log('✅ Motor de Regras rodando e CORS liberado em: http://localhost:3000');
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

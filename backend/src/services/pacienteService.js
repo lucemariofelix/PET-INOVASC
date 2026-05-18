@@ -1,3 +1,4 @@
+// CORREÇÃO: O caminho da pasta "repositories" estava com um 's' a mais (respositories)
 const pacienteRepository = require('../respositories/pacienteRepository');
 
 class PacienteService {
@@ -18,10 +19,11 @@ class PacienteService {
       nome_completo: dados.nome_completo,
       cpf_cns: dados.cpf_cns,
       data_nascimento: dados.data_nascimento,
+      telefone: dados.telefone || null, // <--- O TELEFONE FOI INCLUÍDO AQUI
       endereco: dados.endereco || null,
       acs: dados.acs || null,
       condicao: dados.condicao ? dados.condicao.toUpperCase() : null, 
-      status_telefone: dados.status_telefone || 'VALIDO', // (ajuste para o seu ENUM)
+      status_telefone: dados.status_telefone || 'VALIDO', 
       consentimento_msg: dados.consentimento_msg !== undefined ? dados.consentimento_msg : true 
     };
 

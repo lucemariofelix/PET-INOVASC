@@ -1,11 +1,9 @@
 {
 	"name": "backend",
 	"version": "1.0.0",
-	"license": "MIT",
 	"main": "src/server.js",
 	"scripts": {
-		"dev": "node --watch src/server.js",
-		"start": "node src/server.js"
+		"dev": "nodemon src/server.js"
 	},
 	"dependencies": {
 		"@fastify/cors": "^11.2.0",

@@ -49,6 +49,11 @@ class ConsultaService {
     return await consultaRepository.criar(consultaParaSalvar);
   }
 
+  // NOVO: Busca todas sem aplicar regra de atraso
+  async obterTodasConsultas(authHeader) {
+    return await consultaRepository.listarTodas(authHeader);
+  }
+
 }
 
 module.exports = new ConsultaService();

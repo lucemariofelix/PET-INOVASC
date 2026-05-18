@@ -21,6 +21,24 @@ class ConsultaController {
     }
   }
 
+  async listarTodas(request, reply) {
+    try {
+      const authHeader = request.headers.authorization; 
+      const consultas = await consultaService.obterTodasConsultas(authHeader);
+      
+      return reply.send({ total: consultas.length, consultas });
+    } catch (error) {
+      request.log.error(error);
+      
+      // NOVO: Se o código do erro for de token vencido no Supabase
+      if (error.code === 'PGRST303') {
+        return reply.status(401).send({ erro: 'Sessão expirada. Por favor, faça login novamente.' });
+      }
+
+      return reply.status(500).send({ erro: 'Falha ao buscar consultas.' });
+    }
+  }
+
   async criar(request, reply) {
     try {
       const dadosBody = request.body;

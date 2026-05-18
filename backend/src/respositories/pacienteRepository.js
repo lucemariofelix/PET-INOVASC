@@ -1,4 +1,4 @@
-const supabase = require('../config/supabase');
+const { getSupabaseUsuario } = require('../config/supabase');
 
 class PacienteRepository {
   
@@ -15,11 +15,13 @@ class PacienteRepository {
   }
 
   // Função que busca todos
-  async listarTodos() {
-    const { data, error } = await supabase
+  async listarTodos(authHeader) {
+    const supabaseClient = getSupabaseUsuario(authHeader);
+
+    const { data, error } = await supabaseClient
       .from('pacientes')
       .select('*')
-      .order('created_at', { ascending: false }); // Já traz os mais recentes primeiro
+      .order('nome_completo', { ascending: true }); // Já traz os mais recentes primeiro
 
     if (error) throw error;
     
