@@ -143,267 +143,279 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-300">
-      {/* CABEÇALHO E CONTROLES (Filtros + Busca) */}
-      <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-slate-50">
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-slate-800">
-            Motor de Busca Ativa
-          </h2>
-          <p className="text-slate-500 text-xs sm:text-sm mt-1">
-            Acompanhamento e rastreio de agendamentos.
-          </p>
-        </div>
+    // Note que removemos o bg-white e as bordas daqui. Usamos space-y-6 para separar os blocos.
+    <div className="space-y-6 animate-in fade-in duration-300">
+      
+      {/* 1. CABEÇALHO DA PÁGINA (Apenas Título) */}
+      <div>
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">
+          Motor de Busca Ativa
+        </h2>
+        <p className="text-slate-500 text-sm sm:text-base mt-1">
+          Acompanhamento, rastreio de agendamentos e visão geral da unidade.
+        </p>
+      </div>
 
-        <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto">
-          {/* CAMPO DE BUSCA */}
-          <div className="relative w-full md:w-64 shrink-0">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <FaSearch className="text-slate-400 text-sm" />
+      {/* 2. PAINEL DE MÉTRICAS GLOBAIS */}
+      {!loading && consultas.length > 0 && (
+        <PainelMetricas consultas={consultas} />
+      )}
+
+      {/* 3. BLOCO DA TABELA (Tabela + Barra de Ferramentas colada nela) */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        
+        {/* BARRA DE FERRAMENTAS DA TABELA */}
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-50">
+          
+          <h3 className="text-lg font-bold text-slate-700 hidden xl:block">
+            Diretório de Acompanhamento
+          </h3>
+
+          <div className="flex flex-col md:flex-row gap-3 w-full xl:w-auto ml-auto">
+            {/* CAMPO DE BUSCA */}
+            <div className="relative w-full md:w-72 shrink-0">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaSearch className="text-slate-400 text-sm" />
+              </div>
+              <input
+                type="text"
+                placeholder="Buscar por nome ou doc..."
+                value={termoBusca}
+                onChange={(e) => setTermoBusca(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition text-sm shadow-sm"
+              />
             </div>
-            <input
-              type="text"
-              placeholder="Buscar por nome ou doc..."
-              value={termoBusca}
-              onChange={(e) => setTermoBusca(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition text-sm shadow-sm"
-            />
-          </div>
 
-          {/* BOTÕES DE FILTRO */}
-          <div className="flex flex-wrap gap-2 w-full md:w-auto bg-slate-200/50 p-1 rounded-lg">
-            <button
-              onClick={() => setFiltro("TODAS")}
-              className={`flex-1 sm:flex-none px-3 py-2 sm:py-1.5 rounded-md text-sm font-semibold transition ${filtro === "TODAS" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-            >
-              Todas
-            </button>
-            <button
-              onClick={() => setFiltro("ATRASADAS")}
-              className={`flex-1 sm:flex-none px-3 py-2 sm:py-1.5 rounded-md text-sm font-semibold transition ${filtro === "ATRASADAS" ? "bg-red-50 text-red-700 shadow-sm" : "text-slate-500 hover:text-red-700"}`}
-            >
-              Atrasadas
-            </button>
-            <button
-              onClick={() => setFiltro("NO_PRAZO")}
-              className={`flex-1 sm:flex-none px-3 py-2 sm:py-1.5 rounded-md text-sm font-semibold transition ${filtro === "NO_PRAZO" ? "bg-green-50 text-green-700 shadow-sm" : "text-slate-500 hover:text-green-700"}`}
-            >
-              No Prazo
-            </button>
+            {/* BOTÕES DE FILTRO */}
+            <div className="flex flex-wrap gap-1 bg-slate-200/50 p-1 rounded-lg">
+              <button
+                onClick={() => setFiltro("TODAS")}
+                className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-semibold transition ${filtro === "TODAS" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                Todas
+              </button>
+              <button
+                onClick={() => setFiltro("ATRASADAS")}
+                className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-semibold transition ${filtro === "ATRASADAS" ? "bg-red-50 text-red-700 shadow-sm" : "text-slate-500 hover:text-red-700"}`}
+              >
+                Atrasadas
+              </button>
+              <button
+                onClick={() => setFiltro("NO_PRAZO")}
+                className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-semibold transition ${filtro === "NO_PRAZO" ? "bg-green-50 text-green-700 shadow-sm" : "text-slate-500 hover:text-green-700"}`}
+              >
+                No Prazo
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ÁREA DE CONTEÚDO */}
-      <div className="p-4 sm:p-6 pb-0">
-        {consultas.length > 0 && <PainelMetricas consultas={consultas} />}
-      </div>
-      <div className="p-2 sm:p-0 min-h-[400px]">
-        {loading ? (
-          <div className="py-20 flex flex-col items-center justify-center">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sky-700 mb-4"></div>
-            <p className="text-slate-500">Buscando dados no servidor...</p>
-          </div>
-        ) : itensAtuais.length === 0 ? (
-          <div className="py-20 text-center">
-            <p className="text-slate-500 text-lg">
-              Nenhum registro encontrado para a busca/filtro atual.
-            </p>
-            {termoBusca && (
-              <button
-                onClick={() => setTermoBusca("")}
-                className="mt-4 text-sky-600 hover:text-sky-800 text-sm font-medium underline"
-              >
-                Limpar busca
-              </button>
-            )}
-          </div>
-        ) : (
-          <>
-            {/* VISUALIZAÇÃO DESKTOP (Tabela) */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-slate-50 text-slate-500 uppercase font-semibold text-xs border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-4">Paciente</th>
-                    <th className="px-6 py-4">Agente (ACS)</th>
-                    <th className="px-6 py-4">Condição</th>
-                    <th className="px-6 py-4">Profissional</th>
-                    <th className="px-6 py-4 text-center">Tempo</th>
-                    <th className="px-6 py-4 text-center">Status</th>
-                    <th className="px-6 py-4 text-center">Ação</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {/* ATENÇÃO: Agora renderizamos itensAtuais em vez de consultasFiltradas */}
-                  {itensAtuais.map((consulta, index) => {
-                    const paciente = consulta.pacientes;
-                    const badge = getBadgeInfo(consulta);
-                    return (
-                      <tr
-                        key={`desk-${index}`}
-                        className="hover:bg-slate-50 transition-colors group"
-                      >
-                        <td className="px-6 py-4">
-                          <p className="font-bold text-slate-800">
+        {/* ÁREA DE CONTEÚDO DA TABELA */}
+        <div className="p-2 sm:p-0 min-h-[400px]">
+          {loading ? (
+            <div className="py-20 flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sky-700 mb-4"></div>
+              <p className="text-slate-500">Buscando dados no servidor...</p>
+            </div>
+          ) : itensAtuais.length === 0 ? (
+            <div className="py-20 text-center">
+              <p className="text-slate-500 text-lg">
+                Nenhum registro encontrado para a busca/filtro atual.
+              </p>
+              {termoBusca && (
+                <button
+                  onClick={() => setTermoBusca("")}
+                  className="mt-4 text-sky-600 hover:text-sky-800 text-sm font-medium underline"
+                >
+                  Limpar busca
+                </button>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* VISUALIZAÇÃO DESKTOP (Tabela) */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full text-left text-sm whitespace-nowrap">
+                  <thead className="bg-slate-50 text-slate-500 uppercase font-semibold text-xs border-b border-slate-200">
+                    <tr>
+                      <th className="px-6 py-4">Paciente</th>
+                      <th className="px-6 py-4">Agente (ACS)</th>
+                      <th className="px-6 py-4">Condição</th>
+                      <th className="px-6 py-4">Profissional</th>
+                      <th className="px-6 py-4 text-center">Tempo</th>
+                      <th className="px-6 py-4 text-center">Status</th>
+                      <th className="px-6 py-4 text-center">Ação</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {itensAtuais.map((consulta, index) => {
+                      const paciente = consulta.pacientes;
+                      const badge = getBadgeInfo(consulta);
+                      return (
+                        <tr
+                          key={`desk-${index}`}
+                          className="hover:bg-slate-50 transition-colors group"
+                        >
+                          <td className="px-6 py-4">
+                            <p className="font-bold text-slate-800">
+                              {paciente?.nome_completo}
+                            </p>
+                            <p className="text-xs text-slate-400">
+                              {paciente?.telefone || "Sem contato"}
+                            </p>
+                          </td>
+                          <td className="px-6 py-4 text-slate-600">
+                            {paciente?.acs || "Não inf."}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-medium truncate max-w-[150px] inline-block">
+                              {paciente?.condicao || "NENHUM"}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-slate-600 font-medium">
+                            {consulta.tipo_profissional}
+                          </td>
+                          <td className="px-6 py-4 text-center font-bold text-slate-700">
+                            {badge.textoDias}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span
+                              className={`px-3 py-1 rounded-md text-xs font-bold border ${badge.color}`}
+                            >
+                              {badge.label}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              onClick={() => solicitarDisparo(consulta)}
+                              className="bg-slate-800 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2 mx-auto w-full max-w-[120px]"
+                            >
+                              Disparar Msg
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* VISUALIZAÇÃO MOBILE (Cards) */}
+              <div className="block lg:hidden grid grid-cols-1 gap-4 p-2">
+                {itensAtuais.map((consulta, index) => {
+                  const paciente = consulta.pacientes;
+                  const badge = getBadgeInfo(consulta);
+                  return (
+                    <div
+                      key={`mob-${index}`}
+                      className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-4"
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <h3 className="font-bold text-slate-800 leading-tight">
                             {paciente?.nome_completo}
-                          </p>
-                          <p className="text-xs text-slate-400">
+                          </h3>
+                          <p className="text-xs text-slate-500 mt-1">
                             {paciente?.telefone || "Sem contato"}
                           </p>
-                        </td>
-                        <td className="px-6 py-4 text-slate-600">
-                          {paciente?.acs || "Não inf."}
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-medium truncate max-w-[150px] inline-block">
+                        </div>
+                        <span
+                          className={`px-2 py-1.5 rounded-md text-[10px] font-bold border shrink-0 ${badge.color}`}
+                        >
+                          {badge.label}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+                            Agente / ACS
+                          </span>
+                          <span className="text-slate-700 line-clamp-1">
+                            {paciente?.acs || "Não inf."}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+                            Condição
+                          </span>
+                          <span className="text-slate-700 line-clamp-1">
                             {paciente?.condicao || "NENHUM"}
                           </span>
-                        </td>
-                        <td className="px-6 py-4 text-slate-600 font-medium">
-                          {consulta.tipo_profissional}
-                        </td>
-                        <td className="px-6 py-4 text-center font-bold text-slate-700">
-                          {badge.textoDias}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span
-                            className={`px-3 py-1 rounded-md text-xs font-bold border ${badge.color}`}
-                          >
-                            {badge.label}
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+                            Profissional
                           </span>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <button
-                            onClick={() => solicitarDisparo(consulta)}
-                            className="bg-slate-800 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2 mx-auto w-full max-w-[120px]"
-                          >
-                            Disparar Msg
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* VISUALIZAÇÃO MOBILE (Cards) */}
-            <div className="block lg:hidden grid grid-cols-1 gap-4 p-2">
-              {/* ATENÇÃO: Agora renderizamos itensAtuais em vez de consultasFiltradas */}
-              {itensAtuais.map((consulta, index) => {
-                const paciente = consulta.pacientes;
-                const badge = getBadgeInfo(consulta);
-                return (
-                  <div
-                    key={`mob-${index}`}
-                    className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-4"
-                  >
-                    <div className="flex justify-between items-start gap-2">
-                      <div>
-                        <h3 className="font-bold text-slate-800 leading-tight">
-                          {paciente?.nome_completo}
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-1">
-                          {paciente?.telefone || "Sem contato"}
-                        </p>
+                          <span className="text-slate-700 font-medium">
+                            {consulta.tipo_profissional}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+                            Tempo
+                          </span>
+                          <span className="text-slate-700 font-bold">
+                            {badge.textoDias}
+                          </span>
+                        </div>
                       </div>
-                      <span
-                        className={`px-2 py-1.5 rounded-md text-[10px] font-bold border shrink-0 ${badge.color}`}
+
+                      <button
+                        onClick={() => solicitarDisparo(consulta)}
+                        className="w-full bg-slate-800 hover:bg-emerald-600 text-white py-3 rounded-lg text-sm font-semibold shadow-sm transition-colors cursor-pointer"
                       >
-                        {badge.label}
-                      </span>
+                        Disparar Mensagem
+                      </button>
                     </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
 
-                    <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm">
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
-                          Agente / ACS
-                        </span>
-                        <span className="text-slate-700 line-clamp-1">
-                          {paciente?.acs || "Não inf."}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
-                          Condição
-                        </span>
-                        <span className="text-slate-700 line-clamp-1">
-                          {paciente?.condicao || "NENHUM"}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
-                          Profissional
-                        </span>
-                        <span className="text-slate-700 font-medium">
-                          {consulta.tipo_profissional}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
-                          Tempo
-                        </span>
-                        <span className="text-slate-700 font-bold">
-                          {badge.textoDias}
-                        </span>
-                      </div>
-                    </div>
+        {/* RODAPÉ: CONTROLES DE PAGINAÇÃO */}
+        {!loading && consultasFiltradas.length > 0 && (
+          <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <span className="text-sm text-slate-600 text-center sm:text-left">
+              Mostrando{" "}
+              <span className="font-semibold text-slate-800">
+                {indicePrimeiroItem + 1}
+              </span>{" "}
+              a{" "}
+              <span className="font-semibold text-slate-800">
+                {Math.min(indiceUltimoItem, consultasFiltradas.length)}
+              </span>{" "}
+              de{" "}
+              <span className="font-semibold text-slate-800">
+                {consultasFiltradas.length}
+              </span>{" "}
+              resultados
+            </span>
 
-                    <button
-                      onClick={() => solicitarDisparo(consulta)}
-                      className="w-full bg-slate-800 hover:bg-emerald-600 text-white py-3 rounded-lg text-sm font-semibold shadow-sm transition-colors cursor-pointer"
-                    >
-                      Disparar Mensagem
-                    </button>
-                  </div>
-                );
-              })}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={irParaPaginaAnterior}
+                disabled={paginaAtual === 1}
+                className="p-2 border border-slate-300 rounded-md bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <FaChevronLeft className="text-sm" />
+              </button>
+              <span className="text-sm font-medium text-slate-700 px-2">
+                Página {paginaAtual} de {totalPaginas}
+              </span>
+              <button
+                onClick={irParaProximaPagina}
+                disabled={paginaAtual === totalPaginas}
+                className="p-2 border border-slate-300 rounded-md bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <FaChevronRight className="text-sm" />
+              </button>
             </div>
-          </>
+          </div>
         )}
       </div>
-
-      {/* RODAPÉ: CONTROLES DE PAGINAÇÃO */}
-      {!loading && consultasFiltradas.length > 0 && (
-        <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="text-sm text-slate-600 text-center sm:text-left">
-            Mostrando{" "}
-            <span className="font-semibold text-slate-800">
-              {indicePrimeiroItem + 1}
-            </span>{" "}
-            a{" "}
-            <span className="font-semibold text-slate-800">
-              {Math.min(indiceUltimoItem, consultasFiltradas.length)}
-            </span>{" "}
-            de{" "}
-            <span className="font-semibold text-slate-800">
-              {consultasFiltradas.length}
-            </span>{" "}
-            resultados
-          </span>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={irParaPaginaAnterior}
-              disabled={paginaAtual === 1}
-              className="p-2 border border-slate-300 rounded-md bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <FaChevronLeft className="text-sm" />
-            </button>
-            <span className="text-sm font-medium text-slate-700 px-2">
-              Página {paginaAtual} de {totalPaginas}
-            </span>
-            <button
-              onClick={irParaProximaPagina}
-              disabled={paginaAtual === totalPaginas}
-              className="p-2 border border-slate-300 rounded-md bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <FaChevronRight className="text-sm" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* RENDERIZAÇÃO DOS MODAIS */}
       <ModalConfirmacao
