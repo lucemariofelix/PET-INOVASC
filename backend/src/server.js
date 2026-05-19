@@ -7,9 +7,8 @@ const fastify = Fastify({ logger: true });
 // ----------------------------------------------------
 // REGISTRO DE PLUGINS DE SEGURANÇA
 // ----------------------------------------------------
-// Isso avisa ao navegador que o nosso frontend React tem permissão para acessar os dados
 fastify.register(cors, { 
-  origin: '*', // Em desenvolvimento, permitimos qualquer origem. Em produção, colocaremos a URL real do site.
+  origin: '*', // Permite que o Vercel ou localhost conversem com essa API
   methods: ['GET', 'POST', 'PUT', 'DELETE']
 });
 
@@ -26,8 +25,13 @@ fastify.register(require('./routes/auth'));
 // ----------------------------------------------------
 const start = async () => {
   try {
-    await fastify.listen({ port: 3000 });
-    console.log('✅ Motor de Regras rodando e CORS liberado em: http://localhost:3000');
+    // 1. Pega a porta que o Render mandar, ou usa 3000 se estiver no seu PC
+    const porta = process.env.PORT || 3000;
+    
+    // 2. Abre para a internet com o 0.0.0.0
+    await fastify.listen({ port: porta, host: '0.0.0.0' });
+    
+    console.log(`✅ Motor de Regras rodando na porta ${porta} e host 0.0.0.0`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
