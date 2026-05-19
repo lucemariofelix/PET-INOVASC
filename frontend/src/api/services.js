@@ -14,16 +14,17 @@ export const api = {
     const res = await fetch(`${API_URL}/consultas/atrasadas`, { 
       headers: getAuthHeaders() // Mostrando o crachá
     });
+    
     if (!res.ok) {
-      // NOVO: Se o backend devolver 401 (Sessão Expirada), força o logout
-      if (res.status === 401) {
-        localStorage.removeItem('sgr_token');
-        localStorage.removeItem('sgr_usuario');
-        window.location.reload(); // Recarrega a página, ativando a trava do App.jsx
+      // MARRETADA PESADA: Se for erro de autenticação (401 ou 403)
+      if (res.status === 401 || res.status === 403) {
+        localStorage.clear(); // Limpa TUDO, sem risco de errar o nome da chave
+        window.location.href = '/'; // Chuta o usuário para a rota raiz (Login)
+        return; // Impede o código de continuar rodando e gerar o erro no console
       }
       
       const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || 'Erro ao buscar consultas');
+      throw new Error(errorData.erro || 'Erro na requisição');
     }
     
     return res.json();
