@@ -18,6 +18,7 @@ fastify.register(cors, {
 fastify.register(require('./routes/pacientes'));
 fastify.register(require('./routes/consultas'));
 fastify.register(require('./routes/auth'));
+fastify.register(require('./routes/webhooks'));
 
 
 // ----------------------------------------------------
