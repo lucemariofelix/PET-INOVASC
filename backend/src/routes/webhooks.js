@@ -1,6 +1,10 @@
 const webhookController = require('../controllers/webhookController');
 
-module.exports = async function (fastify, opts) {
-  // Rota PÚBLICA para a Evolution API enviar os eventos
+async function rotasWebhooks(fastify, options) {
+  
+  // Rota PÚBLICA para a Evolution API enviar os eventos de mensagem lida/entregue
   fastify.post('/webhooks/evolution', webhookController.receberStatusEvolution);
-};
+
+}
+
+module.exports = rotasWebhooks;
