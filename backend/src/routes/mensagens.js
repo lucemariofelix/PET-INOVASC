@@ -1,6 +1,10 @@
 const mensagemController = require('../controllers/mensagemController');
 
-module.exports = async function (fastify, opts) {
-  // Rota para o React solicitar o envio (o ideal seria exigir o JWT aqui, igual fizemos nas consultas)
+async function rotasMensagens(fastify, options) {
+  
+  // Rota para o React solicitar o disparo da notificação via Evolution API
   fastify.post('/mensagens/enviar', mensagemController.enviarMensagem);
-};
+
+}
+
+module.exports = rotasMensagens;
