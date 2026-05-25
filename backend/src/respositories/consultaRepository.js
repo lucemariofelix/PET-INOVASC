@@ -1,5 +1,5 @@
 // IMPORTANTE: Agora importamos a função getSupabaseUsuario
-const { getSupabaseUsuario } = require('../config/supabase');
+const { getSupabaseUsuario, supabase } = require('../config/supabase');
 
 class ConsultaRepository {
   
