@@ -6,24 +6,30 @@ import Dashboard from './pages/Dashboard';
 import ListaPacientes from './pages/ListaPacientes';
 import CadastroPaciente from './pages/CadastroPaciente';
 import AgendarConsulta from './pages/AgendarConsulta';
-import Login from './pages/Login'; // <-- IMPORTAÇÃO DA TELA DE LOGIN
+import Login from './pages/Login'; 
 
 export default function App() {
   // ESTADOS DO SISTEMA
   const [activeTab, setActiveTab] = useState('dashboard');
   
-  // NOVO: Estado de Autenticação
+  // Estados de Autenticação
   const [usuario, setUsuario] = useState(null); 
+  // NOVO: Estado para segurar a tela enquanto lê o LocalStorage
+  const [verificando, setVerificando] = useState(true);
 
-  // NOVO: Verifica se existe sessão ativa (token) ao abrir o navegador
+  // Verifica se existe sessão ativa (token) ao abrir o navegador
   useEffect(() => {
     const usuarioSalvo = localStorage.getItem('sgr_usuario');
+    
     if (usuarioSalvo) {
       setUsuario(JSON.parse(usuarioSalvo));
     }
+    
+    // Independente de ter achado o usuário ou não, a verificação terminou!
+    setVerificando(false);
   }, []);
 
-  // NOVO: Função para sair do sistema (limpa o cache e volta pra tela de login)
+  // Função para sair do sistema (limpa o cache e volta pra tela de login)
   const handleLogout = () => {
     localStorage.removeItem('sgr_token');
     localStorage.removeItem('sgr_usuario');
@@ -31,7 +37,18 @@ export default function App() {
     setActiveTab('dashboard'); // Reseta a aba para a próxima vez que logar
   };
 
-  // O "SEGURANÇA DA PORTA": Se não tem usuário no estado, renderiza APENAS o Login
+  // BARREIRA 1: A TELA DE CARREGAMENTO (Evita o piscar)
+  // Enquanto o useEffect não der a resposta final, mostra um spinner de carregamento elegante
+  if (verificando) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-sky-600 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  // BARREIRA 2: O "SEGURANÇA DA PORTA" 
+  // Se a verificação terminou e não tem usuário, renderiza APENAS o Login
   if (!usuario) {
     return <Login onLoginSucesso={(dadosUser) => setUsuario(dadosUser)} />;
   }
