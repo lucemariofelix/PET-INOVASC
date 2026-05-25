@@ -2,7 +2,7 @@ const { getSupabaseUsuario, supabase } = require('../config/supabase');
 
 class ConsultaRepository {
   
-  // Lista todas as consultas com o cliente contextualizado
+  // Lista todas as consultas com o cliente contextualizado e o histórico do paciente
   async listarTodas(authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
 
@@ -14,12 +14,17 @@ class ConsultaRepository {
         data_proxima_consulta,
         status_consulta,
         pacientes (
+          id,
           nome_completo,
           acs,
           condicao,
           status_telefone,
           consentimento_msg,
-          telefone
+          telefone,
+          historico_mensagens (
+            data_envio,
+            status
+          )
         )
       `)
       .order('created_at', { ascending: false });
@@ -28,7 +33,7 @@ class ConsultaRepository {
     return data;
   }
 
-  // Busca consultas atrasadas utilizando o cliente contextualizado
+  // Busca consultas atrasadas incluindo o histórico de mensagens do paciente
   async buscarAtrasadas(dataFormatada, authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
     
@@ -40,12 +45,17 @@ class ConsultaRepository {
         data_proxima_consulta,
         status_consulta,
         pacientes (
+          id,
           nome_completo,
           acs,
           condicao,
           status_telefone,
           consentimento_msg,
-          telefone
+          telefone,
+          historico_mensagens (
+            data_envio,
+            status
+          )
         )
       `)
       .lte('data_ultima_consulta', dataFormatada);
@@ -56,7 +66,6 @@ class ConsultaRepository {
 
   // Cria uma nova consulta utilizando as credenciais seguras do usuário logado
   async criar(dadosConsulta, authHeader) {
-    // CORREÇÃO: Substituído o cliente "supabase" global anônimo pelo cliente dinâmico autenticado
     const supabaseClient = getSupabaseUsuario(authHeader);
 
     const { data, error } = await supabaseClient
