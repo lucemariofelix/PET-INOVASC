@@ -2,15 +2,15 @@ const consultaRepository = require('../respositories/consultaRepository');
 
 class ConsultaService {
   
-  async obterConsultasAtrasadas() {
+  async obterConsultasAtrasadas(authHeader) {
     // 1. Regra de Negócio: Calcula a data exata de 150 dias atrás
     const diasAtraso = 150;
     const dataLimite = new Date();
     dataLimite.setDate(dataLimite.getDate() - diasAtraso);
     const dataFormatada = dataLimite.toISOString();
 
-    // 2. Manda o repositório buscar no banco usando a data calculada
-    const consultas = await consultaRepository.buscarAtrasadas(dataFormatada);
+    // 2. Manda o repositório buscar no banco usando a data calculada e o token de autenticação
+    const consultas = await consultaRepository.buscarAtrasadas(dataFormatada, authHeader);
 
     // 3. Devolve os dados brutos e o contexto para o Controller
     return {
@@ -20,7 +20,7 @@ class ConsultaService {
     };
   }
 
-  async agendarConsulta(dados) {
+  async agendarConsulta(dados, authHeader) {
     // 1. Validações Críticas
     if (!dados.paciente_id) {
       throw new Error('O ID do paciente é obrigatório para agendar uma consulta.');
@@ -41,15 +41,15 @@ class ConsultaService {
       data_proxima_consulta: dados.data_proxima_consulta,
       // Se mandar a data da última, salva. Se não mandar, fica nulo.
       data_ultima_consulta: dados.data_ultima_consulta || null, 
-      // Status padrão inicial. Ajuste para a palavra exata do seu ENUM! (ex: 'AGENDADA', 'agendada')
+      // Status padrão inicial.
       status_consulta: dados.status_consulta || 'AGENDADA' 
     };
 
-    // 3. Envia para o Repositório
-    return await consultaRepository.criar(consultaParaSalvar);
+    // 3. Envia para o Repositório passando o token de autenticação para validar o RLS
+    return await consultaRepository.criar(consultaParaSalvar, authHeader);
   }
 
-  // NOVO: Busca todas sem aplicar regra de atraso
+  // Busca todas sem aplicar regra de atraso
   async obterTodasConsultas(authHeader) {
     return await consultaRepository.listarTodas(authHeader);
   }
