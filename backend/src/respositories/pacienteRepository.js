@@ -1,4 +1,4 @@
-const { getSupabaseUsuario } = require('../config/supabase');
+const { getSupabaseUsuario, supabase } = require('../config/supabase');
 
 class PacienteRepository {
   
