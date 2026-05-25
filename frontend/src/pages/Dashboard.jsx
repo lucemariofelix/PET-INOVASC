@@ -118,6 +118,9 @@ export default function Dashboard() {
 
     try {
       await api.dispararWhatsApp({
+        // A PEÇA QUE FALTAVA PARA O HISTÓRICO:
+        paciente_id: paciente.id, 
+        
         telefone: paciente.telefone,
         nome: paciente.nome_completo,
         profissional: consulta.tipo_profissional,
@@ -130,7 +133,7 @@ export default function Dashboard() {
         isOpen: true,
         tipo: "sucesso",
         titulo: "Mensagem Enviada!",
-        mensagem: "O disparo foi encaminhado para a Evolution API com sucesso.",
+        mensagem: "O disparo foi encaminhado e salvo no histórico com sucesso.",
       });
     } catch (err) {
       setAlerta({
