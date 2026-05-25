@@ -1,11 +1,9 @@
-// IMPORTANTE: Agora importamos a função getSupabaseUsuario
 const { getSupabaseUsuario, supabase } = require('../config/supabase');
 
 class ConsultaRepository {
   
-  // Modificado: Agora recebe o authHeader
+  // Lista todas as consultas com o cliente contextualizado
   async listarTodas(authHeader) {
-    // Obtém o cliente do Supabase contextualizado com o usuário logado
     const supabaseClient = getSupabaseUsuario(authHeader);
 
     const { data, error } = await supabaseClient
@@ -30,21 +28,38 @@ class ConsultaRepository {
     return data;
   }
 
-  // Faça o mesmo para a função buscarAtrasadas se o Dashboard mobile/filtros usar ela
+  // Busca consultas atrasadas utilizando o cliente contextualizado
   async buscarAtrasadas(dataFormatada, authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
+    
     const { data, error } = await supabaseClient
       .from('consultas')
-      .select(`...`) // seu select existente
+      .select(`
+        tipo_profissional,
+        data_ultima_consulta,
+        data_proxima_consulta,
+        status_consulta,
+        pacientes (
+          nome_completo,
+          acs,
+          condicao,
+          status_telefone,
+          consentimento_msg,
+          telefone
+        )
+      `)
       .lte('data_ultima_consulta', dataFormatada);
 
     if (error) throw error;
     return data;
   }
 
-  async criar(dadosConsulta) {
-    // Rotas de inserção/POST também podem usar o mesmo padrão se o RLS exigir para INSERT
-    const { data, error } = await supabase
+  // Cria uma nova consulta utilizando as credenciais seguras do usuário logado
+  async criar(dadosConsulta, authHeader) {
+    // CORREÇÃO: Substituído o cliente "supabase" global anônimo pelo cliente dinâmico autenticado
+    const supabaseClient = getSupabaseUsuario(authHeader);
+
+    const { data, error } = await supabaseClient
       .from('consultas')
       .insert([dadosConsulta])
       .select();
