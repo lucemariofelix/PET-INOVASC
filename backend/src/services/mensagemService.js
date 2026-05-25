@@ -1,6 +1,10 @@
+// IMPORTAÇÃO: Precisamos chamar o repositório de dados para salvar no banco
+const mensagemRepository = require('../repositories/mensagemRepository');
+
 class MensagemService {
-  async dispararMensagem({ telefone, nome, profissional, status_consulta, data_referencia }) {
-    // 1. A Trava de Segurança que faltava!
+  // MODIFICAÇÃO: Agora recebe o paciente_id e o segundo parâmetro authHeader
+  async dispararMensagem({ paciente_id, telefone, nome, profissional, status_consulta, data_referencia }, authHeader) {
+    // 1. A Trava de Segurança
     if (!telefone) {
       throw new Error('Este paciente não possui um número de telefone cadastrado.');
     }
@@ -24,6 +28,15 @@ class MensagemService {
 
     if (!evolutionUrl || !apikey || !instanceName) {
       console.log("Simulação de Envio:", { telefoneFormatado, texto });
+      
+      // SALVA NO BANCO MESMO NA SIMULAÇÃO: Excelente para validar o funcionamento
+      await mensagemRepository.salvarHistorico({
+        telefone_destino: telefoneFormatado,
+        texto_enviado: texto,
+        status: 'SIMULADO',
+        paciente_id: paciente_id || null
+      }, authHeader);
+
       return { aviso: "Mensagem simulada. Configure as variáveis." };
     }
 
@@ -40,6 +53,14 @@ class MensagemService {
     if (!response.ok) {
       throw new Error(data.response?.message || 'Falha ao enviar via Evolution');
     }
+
+    // MODIFICAÇÃO: Se o envio deu certo na API externa, salvamos o histórico de verdade no Supabase
+    await mensagemRepository.salvarHistorico({
+      telefone_destino: telefoneFormatado,
+      texto_enviado: texto,
+      status: 'ENVIADO',
+      paciente_id: paciente_id || null
+    }, authHeader);
 
     return data;
   }
