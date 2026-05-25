@@ -254,19 +254,44 @@ export default function Dashboard() {
                     {itensAtuais.map((consulta, index) => {
                       const paciente = consulta.pacientes;
                       const badge = getBadgeInfo(consulta);
+                      
+                      // LÓGICA DE HISTÓRICO APLICADA AQUI (Desktop)
+                      const mensagens = paciente?.historico_mensagens || [];
+                      const ultimaMensagem = mensagens.length > 0 
+                        ? mensagens.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio))[0] 
+                        : null;
+
                       return (
                         <tr
                           key={`desk-${index}`}
                           className="hover:bg-slate-50 transition-colors group"
                         >
+                          {/* COLUNA DO PACIENTE ATUALIZADA (Desktop) */}
                           <td className="px-6 py-4">
-                            <p className="font-bold text-slate-800">
+                            <p className="font-bold text-slate-800 leading-tight">
                               {paciente?.nome_completo}
                             </p>
-                            <p className="text-xs text-slate-400">
-                              {paciente?.telefone || "Sem contato"}
-                            </p>
+                            
+                            <div className="flex flex-col gap-0.5 mt-1">
+                              <p className="text-xs text-slate-400">
+                                {paciente?.telefone || "Sem contato"}
+                              </p>
+                              
+                              {/* INDICADOR VISUAL DE MENSAGEM */}
+                              {ultimaMensagem ? (
+                                <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1.5 p-1 bg-emerald-50 rounded w-fit mt-0.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                  Avisado ({new Date(ultimaMensagem.data_envio).toLocaleDateString('pt-BR')})
+                                </span>
+                              ) : (
+                                <span className="text-[11px] font-medium text-amber-600 flex items-center gap-1.5 p-1 bg-amber-50 rounded w-fit mt-0.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                                  Aguardando disparo
+                                </span>
+                              )}
+                            </div>
                           </td>
+                          
                           <td className="px-6 py-4 text-slate-600">
                             {paciente?.acs || "Não inf."}
                           </td>
@@ -308,12 +333,20 @@ export default function Dashboard() {
                 {itensAtuais.map((consulta, index) => {
                   const paciente = consulta.pacientes;
                   const badge = getBadgeInfo(consulta);
+                  
+                  // LÓGICA DE HISTÓRICO APLICADA AQUI (Mobile)
+                  const mensagens = paciente?.historico_mensagens || [];
+                  const ultimaMensagem = mensagens.length > 0 
+                    ? mensagens.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio))[0] 
+                    : null;
+
                   return (
                     <div
                       key={`mob-${index}`}
                       className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-4"
                     >
                       <div className="flex justify-between items-start gap-2">
+                        {/* SEÇÃO DO NOME/TELEFONE ATUALIZADA (Mobile) */}
                         <div>
                           <h3 className="font-bold text-slate-800 leading-tight">
                             {paciente?.nome_completo}
@@ -321,9 +354,23 @@ export default function Dashboard() {
                           <p className="text-xs text-slate-500 mt-1">
                             {paciente?.telefone || "Sem contato"}
                           </p>
+                          
+                          {/* INDICADOR VISUAL DE MENSAGEM */}
+                          {ultimaMensagem ? (
+                            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2">
+                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                               Notificado em {new Date(ultimaMensagem.data_envio).toLocaleDateString('pt-BR')}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2">
+                               <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                               Aguardando disparo
+                            </span>
+                          )}
                         </div>
+                        
                         <span
-                          className={`px-2 py-1.5 rounded-md text-[10px] font-bold border shrink-0 ${badge.color}`}
+                          className={`px-2 py-1.5 rounded-md text-[10px] font-bold border shrink-0 mt-1 ${badge.color}`}
                         >
                           {badge.label}
                         </span>
