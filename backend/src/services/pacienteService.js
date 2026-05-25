@@ -1,5 +1,5 @@
 // CORREÇÃO APLICADA: Caminho ajustado para 'repositories'
-const pacienteRepository = require('../repositories/pacienteRepository');
+const pacienteRepository = require('../respositories/pacienteRepository');
 
 class PacienteService {
   
