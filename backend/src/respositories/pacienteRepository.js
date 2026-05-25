@@ -2,9 +2,13 @@ const { getSupabaseUsuario, supabase } = require('../config/supabase');
 
 class PacienteRepository {
   
-  // Função que insere no banco
-  async criar(dadosPaciente) {
-    const { data, error } = await supabase
+  // MODIFICADO: Agora recebe o authHeader como segundo parâmetro
+  async criar(dadosPaciente, authHeader) {
+    // OBTÉM o cliente do Supabase contextualizado com o usuário logado
+    const supabaseClient = getSupabaseUsuario(authHeader);
+
+    // ALTERADO: Utiliza "supabaseClient" em vez do "supabase" global anônimo
+    const { data, error } = await supabaseClient
       .from('pacientes')
       .insert([dadosPaciente])
       .select(); // Pede para o Supabase devolver a linha inserida (com ID, created_at, etc)
@@ -14,14 +18,14 @@ class PacienteRepository {
     return data[0]; 
   }
 
-  // Função que busca todos
+  // Função que busca todos (mantida igual, pois já estava correta)
   async listarTodos(authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
 
     const { data, error } = await supabaseClient
       .from('pacientes')
       .select('*')
-      .order('nome_completo', { ascending: true }); // Já traz os mais recentes primeiro
+      .order('nome_completo', { ascending: true });
 
     if (error) throw error;
     
