@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { FaCalendarPlus } from 'react-icons/fa';
 import { api } from '../api/services';
 import { formatarDocumento } from '../utils/formatters';
+// 1. IMPORTAMOS O SEU NOVO MODAL (Ajuste o caminho se necessário)
+import ModalConfirmacao from '../components/ModalConfirmacao'; 
 
 export default function AgendarConsulta({ onSuccess }) {
   // Estados para carregar a lista de pacientes no motor de busca
@@ -17,6 +19,9 @@ export default function AgendarConsulta({ onSuccess }) {
   const [buscaTermo, setBuscaTermo] = useState('');
   const [pacienteSelecionadoNome, setPacienteSelecionadoNome] = useState('');
   const [mostrarListaBusca, setMostrarListaBusca] = useState(false);
+
+  // 2. NOVO ESTADO: Controle do Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Busca a lista de pacientes assim que a tela abre
   useEffect(() => {
@@ -52,9 +57,19 @@ export default function AgendarConsulta({ onSuccess }) {
     setBuscaTermo('');
   };
 
-  const handleSubmitConsulta = async (e) => {
+  // 3. AÇÃO DO BOTÃO DO FORMULÁRIO: Apenas valida e abre o modal
+  const handleSubmitConsulta = (e) => {
     e.preventDefault();
     if (!consultaPacienteId) return alert("Por favor, pesquise e selecione um paciente primeiro.");
+    
+    // Mostra o modal na tela em vez de salvar direto
+    setIsModalOpen(true);
+  };
+
+  // 4. AÇÃO DO MODAL: Realmente dispara a API
+  const confirmarAgendamento = async () => {
+    // Fecha o modal imediatamente para dar a sensação de sistema rápido
+    setIsModalOpen(false);
 
     const payload = { 
       paciente_id: consultaPacienteId, 
@@ -66,7 +81,7 @@ export default function AgendarConsulta({ onSuccess }) {
 
     try {
       await api.criarConsulta(payload);
-      alert('Consulta agendada com sucesso!');
+      alert('Consulta agendada com sucesso!'); // Mantido o alerta de sucesso
       
       // Limpa os campos
       deselecionarPaciente();
@@ -90,6 +105,8 @@ export default function AgendarConsulta({ onSuccess }) {
       <p className="text-slate-500 text-sm mb-8">Vincule um atendimento futuro ou passado ao histórico de um paciente.</p>
       
       <form onSubmit={handleSubmitConsulta} className="space-y-5">
+        {/* ... (Seu código dos inputs se mantém exatamente igual) ... */}
+        
         <div className="space-y-1 relative">
           <label className="text-sm font-semibold text-slate-700">Pesquisar Paciente *</label>
           {!consultaPacienteId ? (
@@ -157,6 +174,15 @@ export default function AgendarConsulta({ onSuccess }) {
           </button>
         </div>
       </form>
+
+      {/* 5. A INSTÂNCIA DO MODAL VEM AQUI, NO FINAL DO COMPONENTE */}
+      <ModalConfirmacao 
+        isOpen={isModalOpen}
+        titulo="Confirmar Agendamento"
+        mensagem="Tem certeza que deseja registrar essa consulta no sistema para o paciente selecionado?"
+        onConfirm={confirmarAgendamento}
+        onCancel={() => setIsModalOpen(false)}
+      />
     </div>
   );
 }
