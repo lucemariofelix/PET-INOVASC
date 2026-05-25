@@ -1,41 +1,39 @@
-const pacienteService = require('../services/pacienteService');
+// CORREÇÃO APLICADA: Caminho ajustado para 'repositories'
+const pacienteRepository = require('../repositories/pacienteRepository');
 
-class PacienteController {
+class PacienteService {
   
-  // Método atrelado ao POST
-  async criar(request, reply) {
-    try {
-      const dadosBody = request.body; 
-      const authHeader = request.headers.authorization; // <-- PEGANDO O TOKEN
-      
-      // Passa o token como segundo parâmetro
-      const paciente = await pacienteService.cadastrarPaciente(dadosBody, authHeader);
-      
-      return reply.status(201).send({ 
-        mensagem: 'Paciente cadastrado com sucesso!', 
-        paciente 
-      });
-    } catch (error) {
-      request.log.error(error); 
-      const statusCode = error.message.includes('obrigatório') ? 400 : 500;
-      return reply.status(statusCode).send({ erro: error.message });
+  // Recebe o authHeader
+  async cadastrarPaciente(dados, authHeader) {
+    if (!dados.nome_completo) {
+      throw new Error('O nome completo do paciente é obrigatório.');
     }
+    
+    if (!dados.cpf_cns) {
+      throw new Error('O CPF ou Cartão do SUS (cpf_cns) é obrigatório.');
+    }
+
+    const pacienteParaSalvar = {
+      nome_completo: dados.nome_completo,
+      cpf_cns: dados.cpf_cns,
+      data_nascimento: dados.data_nascimento,
+      telefone: dados.telefone || null,
+      endereco: dados.endereco || null,
+      acs: dados.acs || null,
+      condicao: dados.condicao ? dados.condicao.toUpperCase() : null, 
+      status_telefone: dados.status_telefone || 'VALIDO', 
+      consentimento_msg: dados.consentimento_msg !== undefined ? dados.consentimento_msg : true 
+    };
+
+    // Repassa o authHeader para o repositório
+    const pacienteSalvo = await pacienteRepository.criar(pacienteParaSalvar, authHeader);
+    return pacienteSalvo;
   }
 
-  // Método atrelado ao GET
-  async listar(request, reply) {
-    try {
-      const authHeader = request.headers.authorization; // <-- PEGANDO O TOKEN
-      
-      // Passa o token para o service
-      const pacientes = await pacienteService.listarPacientes(authHeader);
-      
-      return reply.send({ total: pacientes.length, pacientes });
-    } catch (error) {
-      request.log.error(error);
-      return reply.status(500).send({ erro: 'Falha ao buscar pacientes.' });
-    }
+  // Recebe e repassa o authHeader
+  async listarPacientes(authHeader) {
+    return await pacienteRepository.listarTodos(authHeader);
   }
 }
 
-module.exports = new PacienteController();
+module.exports = new PacienteService();
