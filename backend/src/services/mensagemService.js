@@ -1,5 +1,5 @@
 // IMPORTAÇÃO: Precisamos chamar o repositório de dados para salvar no banco
-const mensagemRepository = require('../repositories/mensagemRepository');
+const mensagemRepository = require('../respositories/mensagemRepository');
 
 class MensagemService {
   // MODIFICAÇÃO: Agora recebe o paciente_id e o segundo parâmetro authHeader
