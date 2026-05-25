@@ -42,7 +42,10 @@ class ConsultaController {
   async criar(request, reply) {
     try {
       const dadosBody = request.body;
-      const consulta = await consultaService.agendarConsulta(dadosBody);
+      const authHeader = request.headers.authorization; // <-- PEGANDO O TOKEN
+      
+      // Passando o token como segundo parâmetro
+      const consulta = await consultaService.agendarConsulta(dadosBody, authHeader);
       
       return reply.status(201).send({ 
         mensagem: 'Consulta agendada com sucesso!', 
