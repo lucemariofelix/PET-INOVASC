@@ -6,16 +6,16 @@ class PacienteController {
   async criar(request, reply) {
     try {
       const dadosBody = request.body; 
+      const authHeader = request.headers.authorization; // <-- PEGANDO O TOKEN
       
-      const paciente = await pacienteService.cadastrarPaciente(dadosBody);
+      // Passa o token como segundo parâmetro
+      const paciente = await pacienteService.cadastrarPaciente(dadosBody, authHeader);
       
-      // Controller define o status code e o formato da resposta
       return reply.status(201).send({ 
         mensagem: 'Paciente cadastrado com sucesso!', 
         paciente 
       });
     } catch (error) {
-      // request.log é a forma recomendada de logar no Fastify dentro do ciclo da requisição
       request.log.error(error); 
       const statusCode = error.message.includes('obrigatório') ? 400 : 500;
       return reply.status(statusCode).send({ erro: error.message });
@@ -25,7 +25,11 @@ class PacienteController {
   // Método atrelado ao GET
   async listar(request, reply) {
     try {
-      const pacientes = await pacienteService.listarPacientes();
+      const authHeader = request.headers.authorization; // <-- PEGANDO O TOKEN
+      
+      // Passa o token para o service
+      const pacientes = await pacienteService.listarPacientes(authHeader);
+      
       return reply.send({ total: pacientes.length, pacientes });
     } catch (error) {
       request.log.error(error);
@@ -34,5 +38,4 @@ class PacienteController {
   }
 }
 
-// Exportamos a instância da classe
 module.exports = new PacienteController();
