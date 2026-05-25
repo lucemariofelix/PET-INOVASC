@@ -49,7 +49,7 @@ export default function Dashboard() {
     setPaginaAtual(1);
   }, [termoBusca, filtro]);
 
-  // LÓGICA DE FILTRAGEM COMBINADA (Status + Busca por Texto)
+  // LÓGICA DE FILTRAGEM COMBINADA (Status + Busca Universal)
   const consultasFiltradas = consultas.filter((consulta) => {
     const badge = getBadgeInfo(consulta);
     const paciente = consulta.pacientes || {};
@@ -62,15 +62,26 @@ export default function Dashboard() {
     else if (filtro === "NO_PRAZO")
       passaFiltroStatus = badge.label === "OK" || badge.label === "LEMBRETE";
 
-    // 2. Verifica o Filtro de Busca (Nome ou Documento)
+    // 2. Verifica o Filtro de Busca Universal (Nome, Doc, ACS, Condição ou Profissional)
     let passaFiltroBusca = true;
     if (termoBusca.trim() !== "") {
       const termo = termoBusca.toLowerCase();
+      
+      // Coleta todas as informações e joga para minúsculo para comparar
       const nome = paciente.nome_completo?.toLowerCase() || "";
-      const documento =
-        paciente.documento?.toLowerCase() || paciente.cpf?.toLowerCase() || "";
+      // Ajustado para o padrão cpf_cns usado no seu banco
+      const documento = paciente.cpf_cns?.toLowerCase() || paciente.documento?.toLowerCase() || "";
+      const acs = paciente.acs?.toLowerCase() || "";
+      const condicao = paciente.condicao?.toLowerCase() || "";
+      const profissional = consulta.tipo_profissional?.toLowerCase() || "";
 
-      passaFiltroBusca = nome.includes(termo) || documento.includes(termo);
+      // Se o termo digitado bater com QUALQUER UMA dessas colunas, ele exibe na tela
+      passaFiltroBusca = 
+        nome.includes(termo) || 
+        documento.includes(termo) ||
+        acs.includes(termo) ||
+        condicao.includes(termo) ||
+        profissional.includes(termo);
     }
 
     return passaFiltroStatus && passaFiltroBusca;
@@ -202,7 +213,7 @@ export default function Dashboard() {
               </div>
               <input
                 type="text"
-                placeholder="Buscar por nome ou doc..."
+                placeholder="Buscar paciente, ACS, condição ou profissional..."
                 value={termoBusca}
                 onChange={(e) => setTermoBusca(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition text-sm shadow-sm"
