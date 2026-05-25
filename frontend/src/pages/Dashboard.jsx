@@ -118,9 +118,7 @@ export default function Dashboard() {
 
     try {
       await api.dispararWhatsApp({
-        // A PEÇA QUE FALTAVA PARA O HISTÓRICO:
         paciente_id: paciente.id, 
-        
         telefone: paciente.telefone,
         nome: paciente.nome_completo,
         profissional: consulta.tipo_profissional,
@@ -128,6 +126,28 @@ export default function Dashboard() {
         data_referencia:
           consulta.data_proxima_consulta || consulta.data_ultima_consulta,
       });
+
+      // A MÁGICA DO REACT ACONTECE AQUI:
+      // Atualizamos a memória da tela instantaneamente, sem precisar de recarregamento
+      setConsultas((consultasAtuais) =>
+        consultasAtuais.map((item) => {
+          // Se for a linha do paciente que acabamos de avisar...
+          if (item.pacientes?.id === paciente.id) {
+            return {
+              ...item,
+              pacientes: {
+                ...item.pacientes,
+                // Injetamos um histórico fresquinho no topo da lista dele
+                historico_mensagens: [
+                  { data_envio: new Date().toISOString(), status: "ENVIADO" },
+                  ...(item.pacientes.historico_mensagens || []),
+                ],
+              },
+            };
+          }
+          return item; // As outras linhas da tabela continuam intactas
+        })
+      );
 
       setAlerta({
         isOpen: true,
