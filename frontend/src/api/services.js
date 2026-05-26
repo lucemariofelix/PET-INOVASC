@@ -67,6 +67,18 @@ export const api = {
     return res.json();
   },
 
+  atualizarPaciente: async (id, payload) => {
+    const res = await fetchComAutenticacao(`/pacientes/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.erro || "Erro ao atualizar paciente");
+    }
+    return res.json();
+  },
+
   criarConsulta: async (payload) => {
     const res = await fetchComAutenticacao("/consultas", {
       method: "POST",

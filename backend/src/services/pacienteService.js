@@ -1,8 +1,7 @@
-// CORREÇÃO APLICADA: Caminho ajustado para 'repositories'
 const pacienteRepository = require("../repositories/pacienteRepository");
 
 class PacienteService {
-  // Recebe o authHeader
+  // CADASTRAR
   async cadastrarPaciente(dados, authHeader) {
     if (!dados.nome_completo) {
       throw new Error("O nome completo do paciente é obrigatório.");
@@ -25,7 +24,6 @@ class PacienteService {
         dados.consentimento_msg !== undefined ? dados.consentimento_msg : true,
     };
 
-    // Repassa o authHeader para o repositório
     const pacienteSalvo = await pacienteRepository.criar(
       pacienteParaSalvar,
       authHeader,
@@ -33,9 +31,21 @@ class PacienteService {
     return pacienteSalvo;
   }
 
-  // Recebe e repassa o authHeader
+  // LISTAR
   async listarPacientes(authHeader) {
     return await pacienteRepository.listarTodos(authHeader);
+  }
+
+  // ATUALIZAR (NOVO)
+  async atualizarPaciente(id, dados, authHeader) {
+    if (!id) {
+      throw new Error(
+        "O identificador (ID) do paciente é obrigatório para atualização.",
+      );
+    }
+
+    // Como já formatamos os dados no front-end, repassamos a carga validada
+    return await pacienteRepository.atualizar(id, dados, authHeader);
   }
 }
 
