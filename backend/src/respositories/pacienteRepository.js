@@ -18,15 +18,20 @@ class PacienteRepository {
     return data[0]; 
   }
 
-  // Função que busca todos (mantida igual, pois já estava correta)
   async listarTodos(authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
 
     const { data, error } = await supabaseClient
       .from('pacientes')
-      .select('*')
-      .order('nome_completo', { ascending: true });
-
+      .select(`
+        *,
+        consultas (
+          data_proxima_consulta,
+          tipo_profissional,
+          status_consulta
+        )
+      `)
+      .order('created_at', { ascending: false });
     if (error) throw error;
     
     return data;
