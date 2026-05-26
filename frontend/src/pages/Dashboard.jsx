@@ -312,7 +312,7 @@ export default function Dashboard() {
                               {ultimaMensagem ? (
                                 <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1.5 p-1 bg-emerald-50 rounded w-fit mt-0.5">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                  Avisado ({new Date(ultimaMensagem.data_envio).toLocaleDateString('pt-BR')})
+                                  Avisado ({new Date(ultimaMensagem.data_envio).toLocaleDateString('pt-BR', { timeZone: 'UTC' })})
                                 </span>
                               ) : (
                                 <span className="text-[11px] font-medium text-amber-600 flex items-center gap-1.5 p-1 bg-amber-50 rounded w-fit mt-0.5">
@@ -390,7 +390,7 @@ export default function Dashboard() {
                           {ultimaMensagem ? (
                             <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2">
                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                               Notificado em {new Date(ultimaMensagem.data_envio).toLocaleDateString('pt-BR')}
+                               Notificado em {new Date(ultimaMensagem.data_envio).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                             </span>
                           ) : (
                             <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2">
