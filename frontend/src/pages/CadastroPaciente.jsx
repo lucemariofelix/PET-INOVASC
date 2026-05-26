@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { FaUserPlus } from 'react-icons/fa';
 import { api } from '../api/services';
 import { formatarDocumento } from '../utils/formatters';
-// 1. CORREÇÃO: Importação apontando para o arquivo correto
 import ModalAlerta from '../components/ModalAlerta'; 
 
 export default function CadastroPaciente({ onSuccess }) {
@@ -23,11 +22,12 @@ export default function CadastroPaciente({ onSuccess }) {
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
   const [nascimento, setNascimento] = useState('');
-  // 2. CORREÇÃO: Estado do telefone adicionado
   const [telefone, setTelefone] = useState(''); 
   const [endereco, setEndereco] = useState('');
   const [acs, setAcs] = useState(listaACS[0]);
   const [condicao, setCondicao] = useState('NENHUM');
+  
+  // Estado de controle do Modal
   const [alerta, setAlerta] = useState({ isOpen: false, tipo: '', titulo: '', mensagem: '' });
 
   // Lógica da Máscara do Campo
@@ -82,6 +82,7 @@ export default function CadastroPaciente({ onSuccess }) {
       });
       
     } catch(err) {
+      // Captura o erro do backend (incluindo o aviso de CPF duplicado)
       setAlerta({
         isOpen: true,
         tipo: 'erro',
@@ -91,7 +92,7 @@ export default function CadastroPaciente({ onSuccess }) {
     }
   };
 
-  // 5. CORREÇÃO: Função para fechar o alerta e mudar de aba
+  // Função para fechar o alerta e mudar de aba
   const fecharAlerta = () => {
     setAlerta({ ...alerta, isOpen: false });
     if (alerta.tipo === 'sucesso' && onSuccess) {
@@ -139,7 +140,6 @@ export default function CadastroPaciente({ onSuccess }) {
           </div>
         </div>
         
-        {/* 3. CORREÇÃO: Input de Telefone adicionado visualmente ao lado do Endereço */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div className="space-y-1">
             <label className="text-sm font-semibold text-slate-700">Endereço Completo</label>
@@ -163,7 +163,6 @@ export default function CadastroPaciente({ onSuccess }) {
             <option value="DIABETICO">Diabético</option>
             <option value="AMBOS">Hipertenso e Diabético</option>
             <option value="GESTANTE">Gestante</option>
-            {/* 4. CORREÇÃO: Texto adicionado entre as tags option */}
             <option value="CD">CD: Crescimento e Desenvolvimento</option> 
           </select>
         </div>
@@ -175,7 +174,7 @@ export default function CadastroPaciente({ onSuccess }) {
         </div>
       </form>
 
-      {/* 5. CORREÇÃO: Modal renderizado na tela e pronto para aparecer */}
+      {/* Instância do Modal conectada ao estado */}
       <ModalAlerta 
         isOpen={alerta.isOpen}
         tipo={alerta.tipo}
