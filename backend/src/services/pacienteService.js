@@ -1,16 +1,15 @@
 // CORREÇÃO APLICADA: Caminho ajustado para 'repositories'
-const pacienteRepository = require('../respositories/pacienteRepository');
+const pacienteRepository = require("../repositories/pacienteRepository");
 
 class PacienteService {
-  
   // Recebe o authHeader
   async cadastrarPaciente(dados, authHeader) {
     if (!dados.nome_completo) {
-      throw new Error('O nome completo do paciente é obrigatório.');
+      throw new Error("O nome completo do paciente é obrigatório.");
     }
-    
+
     if (!dados.cpf_cns) {
-      throw new Error('O CPF ou Cartão do SUS (cpf_cns) é obrigatório.');
+      throw new Error("O CPF ou Cartão do SUS (cpf_cns) é obrigatório.");
     }
 
     const pacienteParaSalvar = {
@@ -20,13 +19,17 @@ class PacienteService {
       telefone: dados.telefone || null,
       endereco: dados.endereco || null,
       acs: dados.acs || null,
-      condicao: dados.condicao ? dados.condicao.toUpperCase() : null, 
-      status_telefone: dados.status_telefone || 'VALIDO', 
-      consentimento_msg: dados.consentimento_msg !== undefined ? dados.consentimento_msg : true 
+      condicao: dados.condicao ? dados.condicao.toUpperCase() : null,
+      status_telefone: dados.status_telefone || "VALIDO",
+      consentimento_msg:
+        dados.consentimento_msg !== undefined ? dados.consentimento_msg : true,
     };
 
     // Repassa o authHeader para o repositório
-    const pacienteSalvo = await pacienteRepository.criar(pacienteParaSalvar, authHeader);
+    const pacienteSalvo = await pacienteRepository.criar(
+      pacienteParaSalvar,
+      authHeader,
+    );
     return pacienteSalvo;
   }
 
