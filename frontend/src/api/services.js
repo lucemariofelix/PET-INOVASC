@@ -104,4 +104,10 @@ export const api = {
     }
     return res.json();
   }
+
+  // Adicione junto com as outras requisições da api
+  getWhatsAppStatus: async () => {
+    const response = await api.get('/whatsapp/status');
+    return response.data;
+  },
 };
