@@ -3,7 +3,7 @@ const mensagemRepository = require('../repositories/mensagemRepository');
 
 class MensagemService {
   // MODIFICAÇÃO: Agora recebe o paciente_id e o segundo parâmetro authHeader
-  async dispararMensagem({ paciente_id, telefone, nome, profissional, status_consulta, data_referencia }, authHeader) {
+  async dispararMensagem({ paciente_id, consulta_id, telefone, nome, profissional, status_consulta, data_referencia }, authHeader) {
     // 1. A Trava de Segurança
     if (!telefone) {
       throw new Error('Este paciente não possui um número de telefone cadastrado.');
@@ -43,7 +43,8 @@ class MensagemService {
         telefone_destino: telefoneFormatado,
         texto_enviado: texto,
         status: 'SIMULADO',
-        paciente_id: paciente_id || null
+        paciente_id: paciente_id || null,
+        consulta_id: consulta_id || null
       }, authHeader);
 
       return { aviso: "Mensagem simulada. Configure as variáveis." };
