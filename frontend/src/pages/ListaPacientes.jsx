@@ -39,6 +39,19 @@ export default function ListaPacientes() {
   const irParaProximaPagina = () => { if (paginaAtual < totalPaginas) setPaginaAtual(paginaAtual + 1); };
   const irParaPaginaAnterior = () => { if (paginaAtual > 1) setPaginaAtual(paginaAtual - 1); };
 
+  // Função para encontrar a próxima consulta pendente do paciente
+  const obterProximaConsulta = (consultas) => {
+    if (!consultas || consultas.length === 0) return null;
+    
+    // Filtra apenas as que estão com status AGENDADA
+    const agendadas = consultas.filter(c => c.status_consulta === 'AGENDADA' && c.data_proxima_consulta);
+    
+    if (agendadas.length === 0) return null;
+    
+    // Ordena para garantir que vamos pegar a data mais próxima
+    return agendadas.sort((a, b) => new Date(a.data_proxima_consulta) - new Date(b.data_proxima_consulta))[0];
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-300">
       <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
@@ -66,6 +79,7 @@ export default function ListaPacientes() {
                   <th className="px-6 py-4">Paciente / Documento</th>
                   <th className="px-6 py-4">Agente (ACS)</th>
                   <th className="px-6 py-4">Condição Clínica</th>
+                  <th className="px-6 py-4">Próxima Consulta</th>
                   <th className="px-6 py-4 text-center">Status Contato</th>
                 </tr>
               </thead>
@@ -76,18 +90,43 @@ export default function ListaPacientes() {
                       <p className="font-bold text-slate-800">{pac.nome_completo}</p>
                       <p className="text-xs text-slate-400">Doc: {formatarDocumento(pac.cpf_cns)}</p>
                     </td>
+                    
                     <td className="px-6 py-4 text-slate-600">
                       {pac.acs ? pac.acs : <span className="text-slate-400 italic">Não Informado</span>}
                     </td>
+                    
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         pac.condicao === 'HIPERTENSO' ? 'bg-blue-100 text-blue-700' :
                         pac.condicao === 'DIABETICO' ? 'bg-purple-100 text-purple-700' :
-                        pac.condicao === 'AMBOS' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
+                        pac.condicao === 'AMBOS' ? 'bg-red-100 text-red-700' : 
+                        pac.condicao === 'GESTANTE' ? 'bg-pink-100 text-pink-700' :
+                        pac.condicao === 'CD' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
                       }`}>
                         {pac.condicao || 'NENHUMA'}
                       </span>
                     </td>
+                    
+                    {/* NOVA COLUNA: Próxima Consulta */}
+                    <td className="px-6 py-4">
+                      {(() => {
+                        const proxima = obterProximaConsulta(pac.consultas);
+                        if (proxima) {
+                          return (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2 py-1 rounded w-fit border border-sky-100">
+                                {new Date(proxima.data_proxima_consulta + 'T00:00:00Z').toLocaleDateString('pt-BR')}
+                              </span>
+                              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mt-0.5">
+                                {proxima.tipo_profissional}
+                              </span>
+                            </div>
+                          );
+                        }
+                        return <span className="text-[11px] font-medium text-slate-400">Sem agendamento</span>;
+                      })()}
+                    </td>
+                    
                     <td className="px-6 py-4 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-bold border ${pac.status_telefone === 'VALIDO' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                         {pac.status_telefone || 'N/A'}
