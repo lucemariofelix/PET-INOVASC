@@ -6,7 +6,7 @@ async function rotasPacientes(fastify, options) {
   fastify.post("/pacientes", pacienteController.criar);
 
   // NOVA ROTA: Captura o ID diretamente da URL (/pacientes/123-abc...)
-  fastify.put("/pacientes/:id", pacienteController.atualizarPaciente);
+  fastify.put("/pacientes/:id", pacienteController.atualizar);
 }
 
 module.exports = rotasPacientes;
