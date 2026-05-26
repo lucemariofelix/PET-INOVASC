@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../api/services";
 import { getBadgeInfo } from "../utils/dateHelpers";
+import { formatarTelefone } from '../utils/formatters';
 import ModalConfirmacao from "../components/ModalConfirmacao";
 import ModalAlerta from "../components/ModalAlerta";
 import PainelMetricas from "../components/PainelMetricas";
@@ -300,7 +301,7 @@ export default function Dashboard() {
                             
                             <div className="flex flex-col gap-0.5 mt-1">
                               <p className="text-xs text-slate-400">
-                                {paciente?.telefone || "Sem contato"}
+                                {formatarTelefone(paciente?.telefone) || "Sem contato"}
                               </p>
                               
                               {/* INDICADOR VISUAL DE MENSAGEM COM CORREÇÃO DE FUSO */}
