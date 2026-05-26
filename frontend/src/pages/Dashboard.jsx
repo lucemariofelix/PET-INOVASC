@@ -179,7 +179,7 @@ export default function Dashboard() {
       {/* 1. CABEÇALHO DA PÁGINA (Apenas Título) */}
       <div>
         <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">
-          Motor de Busca Ativa
+          Central de Monitoramento e Busca Ativa
         </h2>
         <p className="text-slate-500 text-sm sm:text-base mt-1">
           Acompanhamento, rastreio de agendamentos e visão geral da unidade.
