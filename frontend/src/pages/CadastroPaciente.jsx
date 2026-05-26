@@ -9,11 +9,14 @@ export default function CadastroPaciente({ onSuccess }) {
   // Simulação do Banco de Dados de ACS
   const listaACS = [
     "Área Descoberta",
-    "Micro 01 - Maria Souza",
-    "Micro 02 - João Pedro",
-    "Micro 03 - Ana Clara",
-    "Micro 04 - Carlos Eduardo",
-    "Micro 05 - Luciana Gomes"
+    "Lucemario",
+    "Janúsia",
+    "Maria José",
+    "Rouse",
+    "Fabíola",
+    "Alex",
+    "Zerilda",
+    "Ceiça"
   ];
 
   // Estados do Formulário
