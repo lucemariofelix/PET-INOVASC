@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import ListaPacientes from './pages/ListaPacientes';
 import CadastroPaciente from './pages/CadastroPaciente';
 import AgendarConsulta from './pages/AgendarConsulta';
+import Configuracoes from './pages/Configuracoes'; // <-- INCLUSÃO DA NOVA TELA
 import Login from './pages/Login'; 
 
 export default function App() {
@@ -14,7 +15,7 @@ export default function App() {
   
   // Estados de Autenticação
   const [usuario, setUsuario] = useState(null); 
-  // NOVO: Estado para segurar a tela enquanto lê o LocalStorage
+  // Estado para segurar a tela enquanto lê o LocalStorage
   const [verificando, setVerificando] = useState(true);
 
   // Verifica se existe sessão ativa (token) ao abrir o navegador
@@ -57,7 +58,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100 font-sans text-slate-800">
       
-      {/* O Header agora recebe o usuário e a função de logout para uso futuro */}
+      {/* O Header recebe o usuário e a função de logout */}
       <Header 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
@@ -77,6 +78,9 @@ export default function App() {
         {activeTab === 'consulta' && (
           <AgendarConsulta onSuccess={() => setActiveTab('dashboard')} />
         )}
+
+        {/* NOVA CONDICIONAL: Renderiza a tela de configurações se a aba estiver ativa */}
+        {activeTab === 'configuracoes' && <Configuracoes />}
       </main>
 
     </div>
