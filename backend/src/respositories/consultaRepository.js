@@ -9,10 +9,15 @@ class ConsultaRepository {
     const { data, error } = await supabaseClient
       .from('consultas')
       .select(`
+        id,  
         tipo_profissional,
         data_ultima_consulta,
         data_proxima_consulta,
         status_consulta,
+        historico_mensagens (
+          data_envio,
+          status
+        ),
         pacientes (
           id,
           nome_completo,
@@ -20,11 +25,7 @@ class ConsultaRepository {
           condicao,
           status_telefone,
           consentimento_msg,
-          telefone,
-          historico_mensagens (
-            data_envio,
-            status
-          )
+          telefone
         )
       `)
       .order('created_at', { ascending: false });
