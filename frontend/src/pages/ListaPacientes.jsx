@@ -115,7 +115,7 @@ export default function ListaPacientes() {
                           return (
                             <div className="flex flex-col gap-0.5">
                               <span className="text-xs font-bold text-sky-700 bg-sky-50 px-2 py-1 rounded w-fit border border-sky-100">
-                                {new Date(proxima.data_proxima_consulta + 'T00:00:00Z').toLocaleDateString('pt-BR')}
+                                {new Date(proxima.data_proxima_consulta).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                               </span>
                               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mt-0.5">
                                 {proxima.tipo_profissional}
