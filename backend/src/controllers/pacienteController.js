@@ -16,8 +16,15 @@ class PacienteController {
       });
     } catch (error) {
       request.log.error(error); 
+
+      // NOVA INTERCEPTAÇÃO: Impede cadastro de CPF/CNS duplicado (Código 23505 do PostgreSQL)
+      if (error.code === '23505' || error.message?.includes('pacientes_cpf_cns_key')) {
+        return reply.status(400).send({ 
+          erro: 'Este CPF ou CNS já está cadastrado para outro paciente no sistema.' 
+        });
+      }
       
-      // NOVA INTERCEPTAÇÃO: Violação de Segurança (RLS) ou Token Expirado
+      // INTERCEPTAÇÃO: Violação de Segurança (RLS) ou Token Expirado
       if (error.code === '42501') {
         return reply.status(401).send({ 
           erro: 'Sessão expirada ou sem permissão. Por favor, faça login novamente.' 
@@ -40,7 +47,7 @@ class PacienteController {
     } catch (error) {
       request.log.error(error);
 
-      // NOVA INTERCEPTAÇÃO: Violação de Segurança (RLS) ou Token Expirado
+      // INTERCEPTAÇÃO: Violação de Segurança (RLS) ou Token Expirado
       if (error.code === '42501') {
         return reply.status(401).send({ 
           erro: 'Sessão expirada ou sem permissão. Por favor, faça login novamente.' 
