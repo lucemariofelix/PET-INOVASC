@@ -60,6 +60,12 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
             <button onClick={() => handleTabClick('consulta')} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === 'consulta' ? 'bg-white text-sky-800 shadow-sm' : 'text-sky-100 hover:text-white'}`}>
               <FaCalendarPlus /> Agendar
             </button>
+            <button 
+              onClick={() => handleTabClick('configuracoes')} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === 'configuracoes' ? 'bg-white text-sky-800 shadow-sm' : 'text-sky-100 hover:text-white'}`}
+            >
+              <FaCog /> Configurações
+            </button>
           </nav>
 
           {usuario && (
