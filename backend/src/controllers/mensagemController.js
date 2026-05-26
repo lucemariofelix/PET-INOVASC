@@ -26,4 +26,15 @@ exports.enviarMensagem = async (request, reply) => {
 
     return reply.status(500).send({ erro: 'Falha interna ao tentar disparar ou registrar a mensagem.' });
   }
+
+  async checarStatusWhatsApp(request, reply) {
+    try {
+      // Chama o service que acabamos de criar
+      const status = await mensagemService.statusConexaoWhatsApp();
+      return reply.send(status);
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ erro: 'Falha interna ao checar WhatsApp.' });
+    }
+  }
 };
