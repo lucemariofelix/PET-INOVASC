@@ -129,7 +129,8 @@ export default function Dashboard() {
 
     try {
       await api.dispararWhatsApp({
-        paciente_id: paciente.id, 
+        paciente_id: paciente.id,
+        consulta_id: consulta.id, // O ID vital da consulta foi mantido
         telefone: paciente.telefone,
         nome: paciente.nome_completo,
         profissional: consulta.tipo_profissional,
@@ -139,24 +140,20 @@ export default function Dashboard() {
       });
 
       // A MÁGICA DO REACT ACONTECE AQUI:
-      // Atualizamos a memória da tela instantaneamente, sem precisar de recarregamento
       setConsultas((consultasAtuais) =>
         consultasAtuais.map((item) => {
-          // Se for a linha do paciente que acabamos de avisar...
-          if (item.pacientes?.id === paciente.id) {
+          // CORREÇÃO: Comparamos o ID da CONSULTA, e não do paciente
+          if (item.id === consulta.id) {
             return {
               ...item,
-              pacientes: {
-                ...item.pacientes,
-                // Injetamos um histórico fresquinho no topo da lista dele
-                historico_mensagens: [
-                  { data_envio: new Date().toISOString(), status: "ENVIADO" },
-                  ...(item.pacientes.historico_mensagens || []),
-                ],
-              },
+              // CORREÇÃO: Injetamos o histórico direto na consulta, não no paciente
+              historico_mensagens: [
+                { data_envio: new Date().toISOString(), status: "ENVIADO" },
+                ...(item.historico_mensagens || []),
+              ],
             };
           }
-          return item; // As outras linhas da tabela continuam intactas
+          return item; 
         })
       );
 
@@ -177,7 +174,6 @@ export default function Dashboard() {
   };
 
   return (
-    // Note que removemos o bg-white e as bordas daqui. Usamos space-y-6 para separar os blocos.
     <div className="space-y-6 animate-in fade-in duration-300">
       
       {/* 1. CABEÇALHO DA PÁGINA (Apenas Título) */}
@@ -286,8 +282,8 @@ export default function Dashboard() {
                       const paciente = consulta.pacientes;
                       const badge = getBadgeInfo(consulta);
                       
-                      // LÓGICA DE HISTÓRICO APLICADA AQUI (Desktop)
-                      const mensagens = paciente?.historico_mensagens || [];
+                      // CORREÇÃO: Lê o histórico direto da consulta
+                      const mensagens = consulta.historico_mensagens || [];
                       const ultimaMensagem = mensagens.length > 0 
                         ? mensagens.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio))[0] 
                         : null;
@@ -297,7 +293,6 @@ export default function Dashboard() {
                           key={`desk-${index}`}
                           className="hover:bg-slate-50 transition-colors group"
                         >
-                          {/* COLUNA DO PACIENTE ATUALIZADA (Desktop) */}
                           <td className="px-6 py-4">
                             <p className="font-bold text-slate-800 leading-tight">
                               {paciente?.nome_completo}
@@ -308,7 +303,7 @@ export default function Dashboard() {
                                 {paciente?.telefone || "Sem contato"}
                               </p>
                               
-                              {/* INDICADOR VISUAL DE MENSAGEM */}
+                              {/* INDICADOR VISUAL DE MENSAGEM COM CORREÇÃO DE FUSO */}
                               {ultimaMensagem ? (
                                 <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1.5 p-1 bg-emerald-50 rounded w-fit mt-0.5">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -365,8 +360,8 @@ export default function Dashboard() {
                   const paciente = consulta.pacientes;
                   const badge = getBadgeInfo(consulta);
                   
-                  // LÓGICA DE HISTÓRICO APLICADA AQUI (Mobile)
-                  const mensagens = paciente?.historico_mensagens || [];
+                  // CORREÇÃO: Lê o histórico direto da consulta
+                  const mensagens = consulta.historico_mensagens || [];
                   const ultimaMensagem = mensagens.length > 0 
                     ? mensagens.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio))[0] 
                     : null;
@@ -377,7 +372,6 @@ export default function Dashboard() {
                       className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col gap-4"
                     >
                       <div className="flex justify-between items-start gap-2">
-                        {/* SEÇÃO DO NOME/TELEFONE ATUALIZADA (Mobile) */}
                         <div>
                           <h3 className="font-bold text-slate-800 leading-tight">
                             {paciente?.nome_completo}
@@ -386,7 +380,7 @@ export default function Dashboard() {
                             {paciente?.telefone || "Sem contato"}
                           </p>
                           
-                          {/* INDICADOR VISUAL DE MENSAGEM */}
+                          {/* INDICADOR VISUAL DE MENSAGEM COM CORREÇÃO DE FUSO */}
                           {ultimaMensagem ? (
                             <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2">
                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
