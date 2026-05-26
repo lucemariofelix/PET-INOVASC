@@ -97,6 +97,21 @@ export default function Login({ onLoginSucesso }) {
             )}
           </button>
         </form>
+
+        <footer className="mt-8 pt-4 border-t border-slate-100 text-center space-y-1.5 animate-in fade-in duration-500 delay-300">
+          <p className="text-[11px] font-medium text-slate-400 tracking-wide uppercase">
+            Desenvolvido em parceria com o <span className="text-slate-600 font-semibold">PET-INOVASC</span>
+          </p>
+          <p className="text-xs text-slate-400">
+            Suporte e TI:{" "}
+            <a 
+              href="mailto:lucemariodev@gmail.com" 
+              className="text-sky-600 hover:text-sky-800 font-medium underline transition-colors"
+            >
+              lucemariodev@gmail.com
+            </a>
+          </p>
+        </footer>
         
         <p className="text-center text-xs text-slate-400 mt-8">
           Módulo de Gestão • PET-INOVASC
