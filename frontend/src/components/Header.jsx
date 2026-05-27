@@ -8,14 +8,13 @@ import {
   FaUserCircle,
   FaBars,
   FaTimes,
-  FaCog, // <-- Ícone importado aqui
+  FaCog,
 } from "react-icons/fa";
+import RoleGuard from "../components/RoleGuard";
 
 export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
-  // Estado para controlar o menu no celular
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Função auxiliar para trocar de aba e fechar o menu mobile automaticamente
   const handleTabClick = (tab) => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
@@ -37,7 +36,7 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
           </div>
         </div>
 
-        {/* 2. BOTÃO HAMBÚRGUER (Aparece apenas no Celular/Tablet) */}
+        {/* 2. BOTÃO HAMBÚRGUER */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           className="lg:hidden text-sky-100 hover:text-white p-2 focus:outline-none transition-colors cursor-pointer"
@@ -46,7 +45,7 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
           {isMobileMenuOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
         </button>
 
-        {/* 3. MENU DESKTOP E PERFIL (Escondido no Celular, visível em telas lg) */}
+        {/* 3. MENU DESKTOP E PERFIL */}
         <div className="hidden lg:flex items-center gap-6">
           <nav className="flex flex-wrap justify-center gap-2 bg-sky-900/50 p-1 rounded-lg">
             <button
@@ -55,31 +54,38 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
             >
               <FaHeartbeat /> Alertas
             </button>
+
             <button
               onClick={() => handleTabClick("pacientes")}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "pacientes" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
             >
               <FaList /> Pacientes
             </button>
-            <button
-              onClick={() => handleTabClick("cadastro")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "cadastro" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
-            >
-              <FaUserPlus /> Novo Paciente
-            </button>
-            <button
-              onClick={() => handleTabClick("consulta")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "consulta" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
-            >
-              <FaCalendarPlus /> Agendar
-            </button>
-            {/* BOTÃO DE CONFIGURAÇÕES (DESKTOP) */}
-            <button
-              onClick={() => handleTabClick("configuracoes")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "configuracoes" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
-            >
-              <FaCog /> Configurações
-            </button>
+
+            <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO"]}>
+              <button
+                onClick={() => handleTabClick("cadastro")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "cadastro" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
+              >
+                <FaUserPlus /> Novo Paciente
+              </button>
+
+              <button
+                onClick={() => handleTabClick("consulta")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "consulta" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
+              >
+                <FaCalendarPlus /> Agendar
+              </button>
+            </RoleGuard>
+
+            <RoleGuard rolesAllowed={["ADMIN"]}>
+              <button
+                onClick={() => handleTabClick("configuracoes")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "configuracoes" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
+              >
+                <FaCog /> Configurações
+              </button>
+            </RoleGuard>
           </nav>
 
           {usuario && (
@@ -109,7 +115,7 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
         </div>
       </div>
 
-      {/* 4. MENU MOBILE EXPANSÍVEL (Desce quando clica no hambúrguer) */}
+      {/* 4. MENU MOBILE EXPANSÍVEL */}
       {isMobileMenuOpen && (
         <div className="lg:hidden bg-sky-800 border-t border-sky-700 px-4 pt-3 pb-5 shadow-inner animate-in slide-in-from-top-2 duration-200 ease-out">
           <nav className="flex flex-col gap-2">
@@ -121,9 +127,10 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
                 className={
                   activeTab === "dashboard" ? "text-sky-700" : "text-sky-300"
                 }
-              />{" "}
+              />
               Alertas
             </button>
+
             <button
               onClick={() => handleTabClick("pacientes")}
               className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "pacientes" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
@@ -132,45 +139,51 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
                 className={
                   activeTab === "pacientes" ? "text-sky-700" : "text-sky-300"
                 }
-              />{" "}
+              />
               Pacientes
             </button>
-            <button
-              onClick={() => handleTabClick("cadastro")}
-              className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "cadastro" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
-            >
-              <FaUserPlus
-                className={
-                  activeTab === "cadastro" ? "text-sky-700" : "text-sky-300"
-                }
-              />{" "}
-              Novo Paciente
-            </button>
-            <button
-              onClick={() => handleTabClick("consulta")}
-              className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "consulta" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
-            >
-              <FaCalendarPlus
-                className={
-                  activeTab === "consulta" ? "text-sky-700" : "text-sky-300"
-                }
-              />{" "}
-              Agendar Consulta
-            </button>
-            {/* BOTÃO DE CONFIGURAÇÕES (MOBILE) */}
-            <button
-              onClick={() => handleTabClick("configuracoes")}
-              className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "configuracoes" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
-            >
-              <FaCog
-                className={
-                  activeTab === "configuracoes"
-                    ? "text-sky-700"
-                    : "text-sky-300"
-                }
-              />{" "}
-              Configurações
-            </button>
+
+            <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO"]}>
+              <button
+                onClick={() => handleTabClick("cadastro")}
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "cadastro" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
+              >
+                <FaUserPlus
+                  className={
+                    activeTab === "cadastro" ? "text-sky-700" : "text-sky-300"
+                  }
+                />
+                Novo Paciente
+              </button>
+
+              <button
+                onClick={() => handleTabClick("consulta")}
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "consulta" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
+              >
+                <FaCalendarPlus
+                  className={
+                    activeTab === "consulta" ? "text-sky-700" : "text-sky-300"
+                  }
+                />
+                Agendar Consulta
+              </button>
+            </RoleGuard>
+
+            <RoleGuard rolesAllowed={["ADMIN"]}>
+              <button
+                onClick={() => handleTabClick("configuracoes")}
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "configuracoes" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
+              >
+                <FaCog
+                  className={
+                    activeTab === "configuracoes"
+                      ? "text-sky-700"
+                      : "text-sky-300"
+                  }
+                />
+                Configurações
+              </button>
+            </RoleGuard>
           </nav>
 
           {usuario && (
