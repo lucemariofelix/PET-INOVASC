@@ -70,7 +70,11 @@ class NotificacaoService {
         );
 
         if (!respostaEvolution.ok) {
-          throw new Error("Falha na API da Evolution");
+          // Isso vai ler a resposta completa de erro que a Evolution devolveu (ex: "Unauthorized", "Instance not found", etc)
+          const detalheErro = await respostaEvolution.text();
+          throw new Error(
+            `Status ${respostaEvolution.status} - Detalhe: ${detalheErro}`,
+          );
         }
 
         // 2. Grava no histórico com as colunas exatas da tabela do Supabase
