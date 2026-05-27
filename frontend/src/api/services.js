@@ -33,7 +33,8 @@ const fetchComAutenticacao = async (endpoint, options = {}) => {
 };
 
 // 3. Suas rotas agora ficam super limpas, chamando o vigia
-export const api = {
+// MUDANÇA 1: Tiramos o "export" daqui, virou apenas "const api ="
+const api = {
   getConsultasAtrasadas: async () => {
     const res = await fetchComAutenticacao("/consultas/atrasadas");
     if (!res.ok) {
@@ -107,13 +108,13 @@ export const api = {
   // NOTIFICAÇÕES E MENSAGERIA
   // ==========================================
   dispararMensagensLote: async (payload) => {
-    const res = await fetchComAutenticacao('/notificacoes/lote', {
-      method: 'POST',
-      body: JSON.stringify(payload)
+    const res = await fetchComAutenticacao("/notificacoes/lote", {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || 'Erro ao iniciar os disparos');
+      throw new Error(errorData.erro || "Erro ao iniciar os disparos");
     }
     return res.json();
   },
@@ -130,9 +131,8 @@ export const api = {
       throw new Error(errorData.erro || "Falha na autenticação");
     }
     return res.json();
-  }, // <--- A VÍRGULA QUE ESTAVA FALTANDO FOI ADICIONADA AQUI
+  },
 
-  // NOVO: Chamada para buscar o status do WhatsApp usando o Vigia Global
   getWhatsAppStatus: async () => {
     const res = await fetchComAutenticacao("/whatsapp/status");
     if (!res.ok) {
@@ -177,18 +177,21 @@ export const api = {
 
   excluirUsuario: async (id) => {
     const res = await fetchComAutenticacao(`/usuarios/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: {
-        'Content-Type': 'application/json'
+        "Content-Type": "application/json",
       },
       // ENVIANDO UM CORPO VAZIO PARA PASSAR PELO VALIDATOR DO FASTIFY
-      body: JSON.stringify({}) 
+      body: JSON.stringify({}),
     });
-    
+
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || 'Erro ao excluir usuário');
+      throw new Error(errorData.erro || "Erro ao excluir usuário");
     }
     return res.json();
   },
 };
+
+// MUDANÇA 2: Adicionamos a exportação "Default" no final do arquivo
+export default api;
