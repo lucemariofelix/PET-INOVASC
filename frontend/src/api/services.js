@@ -103,6 +103,21 @@ export const api = {
     return res.json();
   },
 
+  // ==========================================
+  // NOTIFICAÇÕES E MENSAGERIA
+  // ==========================================
+  dispararMensagensLote: async (payload) => {
+    const res = await fetchComAutenticacao('/notificacoes/lote', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.erro || 'Erro ao iniciar os disparos');
+    }
+    return res.json();
+  },
+
   login: async (credenciais) => {
     // O login continua usando o fetch normal porque ele não tem token ainda
     const res = await fetch(`${API_URL}/auth/login`, {
@@ -166,6 +181,7 @@ export const api = {
       headers: {
         'Content-Type': 'application/json'
       },
+      // ENVIANDO UM CORPO VAZIO PARA PASSAR PELO VALIDATOR DO FASTIFY
       body: JSON.stringify({}) 
     });
     
