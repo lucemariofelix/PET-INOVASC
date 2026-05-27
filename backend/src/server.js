@@ -21,6 +21,7 @@ fastify.register(require("./routes/auth"));
 fastify.register(require("./routes/webhooks"));
 fastify.register(require("./routes/mensagens"));
 fastify.register(require("./routes/rotasUsuarios"));
+fastify.register(require("./routes/rotasNotificacoes"));
 
 // ----------------------------------------------------
 // LIGANDO O MOTOR
