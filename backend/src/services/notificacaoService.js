@@ -113,7 +113,7 @@ class NotificacaoService {
       await delay(tempoAleatorio);
     }
 
-    console.log(`[FIM] Fila de mensagens finalizada.`);
+    console.log(`[FIM] Fila das mensagens finalizada.`);
   }
 }
 
