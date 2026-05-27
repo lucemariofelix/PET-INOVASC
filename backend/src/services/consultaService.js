@@ -23,7 +23,7 @@ class ConsultaService {
   }
 
   async agendarConsulta(dados, authHeader) {
-    // 1. Validações Críticas
+    // 1. Validações Críticas Cadastrais
     if (!dados.paciente_id) {
       throw new Error(
         "O ID do paciente é obrigatório para agendar uma consulta.",
@@ -40,7 +40,20 @@ class ConsultaService {
       throw new Error("A data da consulta é obrigatória.");
     }
 
-    // 2. Formatação dos dados para o Banco
+    // 2. Validação de Regra de Negócio: Choque de Horários do Paciente
+    const conflito = await consultaRepository.verificarConflitoHorario(
+      dados.paciente_id,
+      dados.data_proxima_consulta,
+      authHeader
+    );
+
+    if (conflito) {
+      throw new Error(
+        `Choque de agenda: Este paciente já possui uma consulta marcada para este mesmo dia e horário com o perfil: ${conflito.tipo_profissional}.`
+      );
+    }
+
+    // 3. Formatação dos dados para o Banco
     const consultaParaSalvar = {
       paciente_id: dados.paciente_id,
       tipo_profissional: dados.tipo_profissional,
@@ -51,7 +64,7 @@ class ConsultaService {
       status_consulta: dados.status_consulta || "AGENDADA",
     };
 
-    // 3. Envia para o Repositório passando o token de autenticação para validar o RLS
+    // 4. Envia para o Repositório passando o token de autenticação para validar o RLS
     return await consultaRepository.criar(consultaParaSalvar, authHeader);
   }
 
