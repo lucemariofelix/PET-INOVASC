@@ -162,12 +162,16 @@ export const api = {
 
   excluirUsuario: async (id) => {
     const res = await fetchComAutenticacao(`/usuarios/${id}`, {
-      method: "DELETE",
-      body: JSON.stringify({})
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({}) 
     });
+    
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao excluir usuário");
+      throw new Error(errorData.erro || 'Erro ao excluir usuário');
     }
     return res.json();
   },
