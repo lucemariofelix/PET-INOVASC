@@ -126,4 +126,48 @@ export const api = {
     }
     return res.json();
   },
+
+  // ==========================================
+  // GESTÃO DE USUÁRIOS (EQUIPE DA UBS)
+  // ==========================================
+  getUsuarios: async () => {
+    const res = await fetchComAutenticacao("/usuarios");
+    if (!res.ok) throw new Error("Erro ao buscar usuários");
+    return res.json();
+  },
+
+  criarUsuario: async (payload) => {
+    const res = await fetchComAutenticacao("/usuarios", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.erro || "Erro ao criar usuário");
+    }
+    return res.json();
+  },
+
+  atualizarUsuario: async (id, payload) => {
+    const res = await fetchComAutenticacao(`/usuarios/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.erro || "Erro ao atualizar usuário");
+    }
+    return res.json();
+  },
+
+  excluirUsuario: async (id) => {
+    const res = await fetchComAutenticacao(`/usuarios/${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.erro || "Erro ao excluir usuário");
+    }
+    return res.json();
+  },
 };
