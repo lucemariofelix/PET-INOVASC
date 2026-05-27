@@ -26,9 +26,25 @@ export default function Notificacoes({ usuario }) {
     const carregarPacientes = async () => {
       try {
         setLoading(true);
-        // Supondo que você tenha um método getPacientes na sua API
         const dados = await api.getPacientes();
-        setPacientes(dados);
+
+        // Debug no console para você ver o formato exato que está chegando
+        console.log("Resposta da API de Pacientes:", dados);
+
+        // TRAVA DE SEGURANÇA: Verifica o formato antes de salvar no estado
+        if (Array.isArray(dados)) {
+          setPacientes(dados);
+        } else if (dados && Array.isArray(dados.data)) {
+          setPacientes(dados.data);
+        } else if (dados && Array.isArray(dados.pacientes)) {
+          setPacientes(dados.pacientes);
+        } else {
+          setPacientes([]); // Garante que será um Array (lista vazia) para não quebrar o .map
+          setFeedback({
+            tipo: "erro",
+            texto: "Formato de dados inesperado recebido do servidor.",
+          });
+        }
       } catch (error) {
         console.error("Erro ao carregar pacientes:", error);
         setFeedback({
@@ -44,7 +60,8 @@ export default function Notificacoes({ usuario }) {
 
   // Extrai listas únicas de ACS e Condições para preencher os selects do filtro
   const listaAcs = useMemo(() => {
-    const agentes = pacientes.map((p) => p.acs).filter(Boolean);
+    // A interrogação (?) protege o código se pacientes for nulo/undefined
+    const agentes = pacientes?.map((p) => p.acs).filter(Boolean) || [];
     return [...new Set(agentes)].sort();
   }, [pacientes]);
 
