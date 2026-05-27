@@ -53,6 +53,7 @@ class NotificacaoService {
 
         const payloadEvolution = {
           number: telefoneLimpo,
+          text: textoFinal,
           textMessage: { text: textoFinal },
         };
 
