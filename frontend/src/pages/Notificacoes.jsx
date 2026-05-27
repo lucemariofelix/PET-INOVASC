@@ -28,9 +28,6 @@ export default function Notificacoes({ usuario }) {
         setLoading(true);
         const dados = await api.getPacientes();
 
-        // Debug no console para você ver o formato exato que está chegando
-        console.log("Resposta da API de Pacientes:", dados);
-
         // TRAVA DE SEGURANÇA: Verifica o formato antes de salvar no estado
         if (Array.isArray(dados)) {
           setPacientes(dados);
