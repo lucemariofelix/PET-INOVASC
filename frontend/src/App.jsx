@@ -6,7 +6,8 @@ import Dashboard from './pages/Dashboard';
 import ListaPacientes from './pages/ListaPacientes';
 import CadastroPaciente from './pages/CadastroPaciente';
 import AgendarConsulta from './pages/AgendarConsulta';
-import Configuracoes from './pages/Configuracoes'; // <-- INCLUSÃO DA NOVA TELA
+import Configuracoes from './pages/Configuracoes';
+import Notificacoes from './pages/Notificacoes';
 import Login from './pages/Login'; 
 
 export default function App() {
@@ -81,6 +82,9 @@ export default function App() {
 
         {/* NOVA CONDICIONAL: Renderiza a tela de configurações se a aba estiver ativa */}
         {activeTab === 'configuracoes' && <Configuracoes />}
+
+        {/* NOVA CONDICIONAL: A tela de disparos em massa da Evolution API */}
+        {activeTab === 'notificacoes' && <Notificacoes usuario={usuario} />}
       </main>
 
     </div>
