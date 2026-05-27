@@ -1,32 +1,53 @@
-// src/middlewares/authMiddleware.js
+const { getSupabaseUsuario } = require("../config/supabase");
 
-// O Fastify permite criar funções que rodam ANTES do Controller
 exports.verificarPermissao = (rolesPermitidas) => {
   return async (request, reply) => {
     try {
-      // 1. Aqui você idealmente decodifica o JWT para pegar a função do usuário.
-      // Vou simular como se você lesse do token ou do header:
+      // 1. Verifica se o React enviou o crachá (Token)
       const authHeader = request.headers.authorization;
-      if (!authHeader) throw new Error("Token ausente");
+      if (!authHeader) {
+        return reply
+          .status(401)
+          .send({ erro: "Token de autenticação ausente." });
+      }
 
-      // EXXEMPLO: Decodifique seu JWT aqui.
-      // const decoded = jwt.verify(authHeader.replace('Bearer ', ''), process.env.JWT_SECRET);
-      // const userRole = decoded.funcao;
+      // 2. Usa o Supabase para ler o token e garantir que ele é válido e verdadeiro
+      const supabaseClient = getSupabaseUsuario(authHeader);
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseClient.auth.getUser();
 
-      // *ATENÇÃO*: Ajuste esta linha com a forma que você extrai a função do token!
-      const userRole = request.headers["x-user-role"]; // Simulando extração
+      if (authError || !user) {
+        return reply.status(401).send({ erro: "Sessão inválida ou expirada." });
+      }
 
-      // 2. Verifica se a função do cara está na lista de VIPs
-      if (!rolesPermitidas.includes(userRole)) {
+      // 3. Consulta a nossa tabela para ver a função do usuário (ADMIN, RECEPCAO, etc.)
+      const { data: perfil, error: dbError } = await supabaseClient
+        .from("perfis_usuarios")
+        .select("funcao")
+        .eq("id", user.id)
+        .single();
+
+      if (dbError || !perfil) {
+        return reply
+          .status(403)
+          .send({ erro: "Perfil não encontrado no banco de dados." });
+      }
+
+      // 4. A TRAVA PRINCIPAL: Verifica se a função do cara está na lista VIP da rota
+      if (!rolesPermitidas.includes(perfil.funcao)) {
         return reply.status(403).send({
-          erro: "Acesso Negado: Seu perfil não tem permissão para realizar esta ação.",
+          erro: `Acesso Negado. O perfil ${perfil.funcao} não tem permissão para isso.`,
         });
       }
 
-      // Se passar, a requisição continua naturalmente para o Controller!
+      // Se o código chegou até aqui, o usuário tem permissão. Pode continuar para o Controller!
     } catch (error) {
-      request.log.error(error);
-      return reply.status(401).send({ erro: "Não autorizado." });
+      request.log.error("Erro no Middleware de Autenticação:", error);
+      return reply
+        .status(500)
+        .send({ erro: "Falha interna na verificação de segurança." });
     }
   };
 };
