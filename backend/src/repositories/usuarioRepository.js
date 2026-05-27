@@ -4,7 +4,7 @@ class UsuarioRepository {
   async listarTodos(authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
     const { data, error } = await supabaseClient
-      .from("usuarios")
+      .from("perfis_usuarios")
       .select("id, nome, email, funcao, created_at")
       .order("nome"); // Traz a lista em ordem alfabética
 
@@ -26,7 +26,7 @@ class UsuarioRepository {
   async atualizar(id, dados, authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
     const { data, error } = await supabaseClient
-      .from("usuarios")
+      .from("perfis_usuarios")
       .update(dados)
       .eq("id", id)
       .select("id, nome, email, funcao");
@@ -39,7 +39,7 @@ class UsuarioRepository {
   async excluir(id, authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
     const { error } = await supabaseClient
-      .from("usuarios")
+      .from("perfis_usuarios")
       .delete()
       .eq("id", id);
 
