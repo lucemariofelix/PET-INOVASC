@@ -9,6 +9,7 @@ import {
   FaBars,
   FaTimes,
   FaCog,
+  FaBullhorn, // <-- Ícone novo para a Mensageria
 } from "react-icons/fa";
 import RoleGuard from "../components/RoleGuard";
 
@@ -75,6 +76,16 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
                 className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "consulta" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
               >
                 <FaCalendarPlus /> Agendar
+              </button>
+            </RoleGuard>
+
+            {/* ABA MENSAGERIA */}
+            <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO", "ACS"]}>
+              <button
+                onClick={() => handleTabClick("notificacoes")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "notificacoes" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
+              >
+                <FaBullhorn /> Mensageria
               </button>
             </RoleGuard>
 
@@ -166,6 +177,21 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
                   }
                 />
                 Agendar Consulta
+              </button>
+            </RoleGuard>
+
+            {/* ABA MENSAGERIA NO MOBILE */}
+            <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO", "ACS"]}>
+              <button
+                onClick={() => handleTabClick("notificacoes")}
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "notificacoes" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
+              >
+                <FaBullhorn
+                  className={
+                    activeTab === "notificacoes" ? "text-sky-700" : "text-sky-300"
+                  }
+                />
+                Mensageria
               </button>
             </RoleGuard>
 
