@@ -15,7 +15,7 @@ class UsuarioRepository {
   async criar(dados, authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
     const { data, error } = await supabaseClient
-      .from("usuarios")
+      .from("perfis_usuarios")
       .insert([dados])
       .select("id, nome, email, funcao");
 
