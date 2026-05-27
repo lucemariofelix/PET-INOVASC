@@ -3,17 +3,20 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
-
-// 👇 BLOCO DE DIAGNÓSTICO CORRIGIDO 👇
-console.log("=== TESTE DE CREDENCIAIS ===");
-console.log("URL carregada:", supabaseUrl);
-// CORREÇÃO: Trocado supabaseKey por supabaseAnonKey
-console.log("Chave carregada:", supabaseAnonKey ? "Chave encontrada! ✅" : "Indefinida/Vazia ❌");
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Chave de serviço (Service Role)
 
 // Cliente padrão para rotas públicas (como a de fazer login)
 const supabasePadrao = createClient(supabaseUrl, supabaseAnonKey);
 
-// NOVO: Função que injeta o token do usuário de forma segura por requisição
+// NOVO: Cliente com poderes administrativos (Bypass RLS e Gerenciamento do Auth de usuários)
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false
+  }
+});
+
+// Função que injeta o token do usuário de forma segura por requisição (Garante RLS ativo)
 const getSupabaseUsuario = (authHeader) => {
   if (!authHeader) return supabasePadrao;
 
@@ -29,5 +32,6 @@ const getSupabaseUsuario = (authHeader) => {
 
 module.exports = {
   supabase: supabasePadrao,
+  supabaseAdmin, // Exportado para uso no seu usuarioService
   getSupabaseUsuario
 };
