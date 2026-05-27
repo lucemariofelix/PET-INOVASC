@@ -6,7 +6,8 @@ const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 class NotificacaoService {
   
   async iniciarDisparoLote(dadosDisparo, authHeader) {
-    const { pacientes, mensagemBase } = dadosDisparo;
+    // Extraímos também o usuario_id (quem apertou o botão) do corpo da requisição
+    const { pacientes, mensagemBase, usuario_id } = dadosDisparo;
 
     if (!pacientes || pacientes.length === 0) {
       throw new Error("A lista de pacientes está vazia.");
@@ -17,7 +18,8 @@ class NotificacaoService {
     }
 
     // Libera a requisição do frontend imediatamente e roda o envio em background
-    this.processarFilaAssincrona(pacientes, mensagemBase);
+    // Passamos o usuario_id para que a fila saiba quem disparou a ação
+    this.processarFilaAssincrona(pacientes, mensagemBase, usuario_id);
 
     return { 
       sucesso: true, 
@@ -25,15 +27,20 @@ class NotificacaoService {
     };
   }
 
-  async processarFilaAssincrona(pacientes, mensagemBase) {
+  async processarFilaAssincrona(pacientes, mensagemBase, usuario_id) {
     console.log(`[START] Iniciando fila de mensagens para ${pacientes.length} contatos.`);
 
     for (const paciente of pacientes) {
-      try {
-        const primeiroNome = paciente.nome.split(' ')[0];
-        const textoFinal = mensagemBase.replace('{nome}', primeiroNome);
+      // Declaramos as variáveis fora do try para o catch conseguir acessá-las se falhar
+      let primeiroNome = '';
+      let textoFinal = '';
+      let telefoneLimpo = '';
 
-        let telefoneLimpo = paciente.telefone.replace(/\D/g, ''); 
+      try {
+        primeiroNome = paciente.nome.split(' ')[0];
+        textoFinal = mensagemBase.replace('{nome}', primeiroNome);
+
+        telefoneLimpo = paciente.telefone.replace(/\D/g, ''); 
         if (!telefoneLimpo.startsWith('55')) {
           telefoneLimpo = `55${telefoneLimpo}`;
         }
@@ -57,16 +64,28 @@ class NotificacaoService {
           throw new Error('Falha na API da Evolution');
         }
 
-        // 2. AQUI ENTRA O REPOSITORY: Grava no histórico do paciente no banco de dados
-        await notificacaoRepository.registrarEnvio(paciente.id, textoFinal, 'ENVIADO');
+        // 2. Grava no histórico com as colunas exatas da tabela do Supabase
+        await notificacaoRepository.registrarEnvio({
+          paciente_id: paciente.id,
+          telefone_destino: telefoneLimpo,
+          texto_enviado: textoFinal,
+          status: 'ENVIADO',
+          usuario_id: usuario_id || null 
+        });
 
         console.log(`[OK] Mensagem enviada e registrada para ${primeiroNome} (${telefoneLimpo})`);
 
       } catch (error) {
         console.error(`[ERRO] Falha ao enviar para paciente ID ${paciente.id}:`, error.message);
         
-        // Opcional: Você pode registrar a falha no banco também para controle de relatórios
-        await notificacaoRepository.registrarEnvio(paciente.id, 'Falha no envio', 'ERRO').catch(()=>null);
+        // Em caso de erro, grava o status negativo no banco para auditoria
+        await notificacaoRepository.registrarEnvio({
+          paciente_id: paciente.id,
+          telefone_destino: telefoneLimpo || paciente.telefone || 'N/A',
+          texto_enviado: textoFinal || mensagemBase,
+          status: 'ERRO',
+          usuario_id: usuario_id || null
+        }).catch(() => null); // O .catch() vazio ignora se o banco também falhar
       }
 
       // Delay de segurança anti-ban (entre 4 e 9 segundos)
