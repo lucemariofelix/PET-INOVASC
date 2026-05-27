@@ -194,4 +194,5 @@ const api = {
 };
 
 // MUDANÇA 2: Adicionamos a exportação "Default" no final do arquivo
+export { api };
 export default api;
