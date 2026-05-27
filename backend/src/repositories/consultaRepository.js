@@ -65,6 +65,22 @@ class ConsultaRepository {
     return data;
   }
 
+  // NOVO: Verifica se o paciente já possui um agendamento ativo no mesmo dia e horário
+  async verificarConflitoHorario(pacienteId, dataProximaConsulta, authHeader) {
+    const supabaseClient = getSupabaseUsuario(authHeader);
+
+    const { data, error } = await supabaseClient
+      .from('consultas')
+      .select('id, tipo_profissional')
+      .eq('paciente_id', pacienteId)
+      .eq('data_proxima_consulta', dataProximaConsulta)
+      .not('status_consulta', 'in', '("CANCELADA","CANCELADO")') // Ignora consultas canceladas
+      .maybeSingle(); // Retorna null se não houver conflito, sem estourar erro no node
+
+    if (error) throw error;
+    return data;
+  }
+
   // Cria uma nova consulta utilizando as credenciais seguras do usuário logado
   async criar(dadosConsulta, authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
