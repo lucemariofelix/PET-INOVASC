@@ -1,4 +1,5 @@
 const usuarioService = require("../services/usuarioService");
+const logRepository = require("../repositories/logRepository"); // <-- IMPORTADO
 
 class UsuarioController {
   async listar(request, reply) {
@@ -21,10 +22,17 @@ class UsuarioController {
         request.body,
         authHeader,
       );
+
+      // REGISTO DE AUDITORIA
+      await logRepository.registrar(
+        null, 
+        'CRIOU_USUARIO', 
+        `Cadastrou membro da equipa: ${request.body.nome} (${request.body.funcao})`
+      );
+
       return reply.status(201).send({ mensagem: "Usuário criado!", usuario });
     } catch (error) {
       request.log.error(error);
-      // Erro 23505 no Postgres significa que a coluna UNIQUE (email) já existe
       if (error.code === "23505") {
         return reply
           .status(400)
@@ -43,6 +51,14 @@ class UsuarioController {
         request.body,
         authHeader,
       );
+
+      // REGISTO DE AUDITORIA
+      await logRepository.registrar(
+        null, 
+        'ATUALIZOU_USUARIO', 
+        `Alterou acessos/dados do utilizador ID: ${id}`
+      );
+
       return reply.send({ mensagem: "Usuário atualizado!", usuario });
     } catch (error) {
       request.log.error(error);
@@ -57,6 +73,14 @@ class UsuarioController {
       const { id } = request.params;
       const authHeader = request.headers.authorization;
       await usuarioService.excluirUsuario(id, authHeader);
+
+      // REGISTO DE AUDITORIA
+      await logRepository.registrar(
+        null, 
+        'EXCLUIU_USUARIO', 
+        `Removeu permanentemente o utilizador ID: ${id}`
+      );
+
       return reply.send({ mensagem: "Usuário removido com sucesso." });
     } catch (error) {
       request.log.error(error);
