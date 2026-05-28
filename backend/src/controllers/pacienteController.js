@@ -1,4 +1,5 @@
 const pacienteService = require("../services/pacienteService");
+const logRepository = require("../repositories/logRepository"); // <-- IMPORTADO
 
 class PacienteController {
   // CRIAR (POST)
@@ -10,6 +11,13 @@ class PacienteController {
       const paciente = await pacienteService.cadastrarPaciente(
         dadosBody,
         authHeader,
+      );
+
+      // REGISTO DE AUDITORIA
+      await logRepository.registrar(
+        null, 
+        'CRIOU_PACIENTE', 
+        `Cadastrou o paciente com CPF/CNS: ${dadosBody.cpf_cns || 'Não informado'}`
       );
 
       return reply.status(201).send({
@@ -39,31 +47,27 @@ class PacienteController {
     }
   }
 
-  // LISTAR (GET)
+  // LISTAR (GET) - SEM LOG (Ação de leitura contínua)
   async listar(request, reply) {
     try {
       const authHeader = request.headers.authorization;
-
       const pacientes = await pacienteService.listarPacientes(authHeader);
-
       return reply.send({ total: pacientes.length, pacientes });
     } catch (error) {
       request.log.error(error);
-
       if (error.code === "42501") {
         return reply.status(401).send({
           erro: "Sessão expirada ou sem permissão. Por favor, faça login novamente.",
         });
       }
-
       return reply.status(500).send({ erro: "Falha ao buscar pacientes." });
     }
   }
 
-  // ATUALIZAR (PUT) - NOVO
+  // ATUALIZAR (PUT)
   async atualizar(request, reply) {
     try {
-      const { id } = request.params; // Captura da URL (/pacientes/123)
+      const { id } = request.params;
       const dadosBody = request.body;
       const authHeader = request.headers.authorization;
 
@@ -73,6 +77,13 @@ class PacienteController {
         authHeader,
       );
 
+      // REGISTO DE AUDITORIA
+      await logRepository.registrar(
+        null, 
+        'ATUALIZOU_PACIENTE', 
+        `Atualizou os dados do paciente ID: ${id}`
+      );
+
       return reply.status(200).send({
         mensagem: "Paciente atualizado com sucesso!",
         paciente,
@@ -80,7 +91,6 @@ class PacienteController {
     } catch (error) {
       request.log.error(error);
 
-      // Tratamento para CPF/CNS duplicado em outro paciente
       if (
         error.code === "23505" ||
         error.message?.includes("pacientes_cpf_cns_key")
