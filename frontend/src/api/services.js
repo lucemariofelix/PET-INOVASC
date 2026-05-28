@@ -191,6 +191,15 @@ const api = {
     }
     return res.json();
   },
+
+  // ==========================================
+  // AUDITORIA E LOGS (ADMIN)
+  // ==========================================
+  getLogs: async () => {
+    const res = await fetchComAutenticacao("/logs");
+    if (!res.ok) throw new Error("Erro ao buscar logs do sistema");
+    return res.json();
+  },
 };
 
 // MUDANÇA 2: Adicionamos a exportação "Default" no final do arquivo
