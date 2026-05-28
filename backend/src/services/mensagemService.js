@@ -84,7 +84,7 @@ class MensagemService {
   async statusConexaoWhatsApp() {
     const evolutionUrl = process.env.EVOLUTION_API_URL;
     const apikey = process.env.EVOLUTION_API_KEY;
-    const instanceName = process.env.EVOLUTION_INSTANCE;
+    const instanceName = process.env.EVOLUTION_INSTANCE_NAME;
 
     if (!evolutionUrl || !apikey || !instanceName) {
       return { status: 'unconfigured', mensagem: 'Variáveis da Evolution não configuradas no .env' };
