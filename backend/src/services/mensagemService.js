@@ -34,7 +34,7 @@ class MensagemService {
     // 5. Integração AWS (Evolution API)
     const evolutionUrl = process.env.EVOLUTION_API_URL;
     const apikey = process.env.EVOLUTION_API_KEY;
-    const instanceName = process.env.EVOLUTION_INSTANCE;
+    const instanceName = process.env.EVOLUTION_INSTANCE_NAME;
 
     // Se faltar configuração no .env, faz apenas uma simulação e salva no banco
     if (!evolutionUrl || !apikey || !instanceName) {
