@@ -1,49 +1,57 @@
-const { supabase } = require('../config/supabase'); // Ajuste o caminho se necessário
+const { supabaseAdmin } = require('../config/supabase'); 
 
-exports.receberStatusEvolution = async (request, reply) => {
-  try {
-    const payload = request.body;
-    
-    // 1. Log para você ver exatamente o que a Evolution manda (útil para debugar no Render)
-    console.log('🔔 Webhook Recebido da Evolution:', JSON.stringify(payload, null, 2));
-
-    // 2. A Evolution envia vários eventos. Só queremos os de atualização de mensagem (entregue/lida)
-    // O formato exato depende da versão da sua Evolution, mas geralmente o evento é 'MESSAGES_UPDATE'
-    if (payload.event === 'messages.update' || payload.event === 'MESSAGES_UPDATE') {
+class WebhookController {
+  async receberStatusEvolution(request, reply) {
+    try {
+      const payload = request.body;
       
-      // Extrai o número de telefone (a Evolution costuma enviar com @s.whatsapp.net no final)
-      const remoteJid = payload.data?.key?.remoteJid || payload.data[0]?.key?.remoteJid;
-      const telefone = remoteJid ? remoteJid.replace('@s.whatsapp.net', '') : null;
-      
-      const statusMensagem = payload.data?.update?.status || payload.data[0]?.update?.status; 
-      // Status comuns: 2 (Recebido), 3 (Lido), 4 (Assistido)
+      // Log para auditoria no Render
+      console.log('🔔 [WEBHOOK] Evento recebido da Evolution:', payload.event);
 
-      if (telefone && statusMensagem) {
+      if (payload.event === 'messages.update' || payload.event === 'MESSAGES_UPDATE') {
+        // A Evolution pode mandar em formato de objeto único ou array, essa lógica cobre os dois
+        const data = Array.isArray(payload.data) ? payload.data[0] : payload.data;
         
-        // 3. Atualiza o banco de dados (Supabase)
-        // Aqui assumimos que você quer registrar que a pessoa foi notificada
-        const { error } = await supabase
-          .from('pacientes') // ou 'consultas', dependendo de onde você guarda o telefone
-          .update({ 
-            // Você precisará ter essas colunas criadas lá no seu Supabase
-            ultima_notificacao_status: statusMensagem === 3 ? 'LIDO' : 'ENTREGUE',
-            data_ultima_notificacao: new Date().toISOString() 
-          })
-          .like('telefone', `%${telefone.substring(2)}%`); // Busca parcial ignorando o código do país (55)
+        const remoteJid = data?.key?.remoteJid;
+        const telefone = remoteJid ? remoteJid.replace('@s.whatsapp.net', '') : null;
+        
+        // Status da Evolution: 2 (Entregue), 3 (Lido), 4 (Assistido/Reproduzido)
+        const statusMensagemNum = data?.update?.status; 
+        
+        if (telefone && statusMensagemNum) {
+          let statusFormatado = null;
+          
+          if (statusMensagemNum === 2) statusFormatado = 'ENTREGUE';
+          if (statusMensagemNum === 3 || statusMensagemNum === 4) statusFormatado = 'LIDO';
 
-        if (error) {
-          console.error('Erro ao atualizar Supabase via Webhook:', error.message);
-        } else {
-          console.log(`✅ Paciente do telefone ${telefone} atualizado com sucesso!`);
+          if (statusFormatado) {
+            // Atualiza o histórico de mensagens desse paciente que ainda estava como "ENVIADO" ou "ENTREGUE"
+            // Retiramos o 55 e o DDD para garantir a busca parcial do número
+            const numeroLimpo = telefone.substring(2); 
+
+            const { error } = await supabaseAdmin
+              .from('historico_mensagens')
+              .update({ status: statusFormatado })
+              .like('telefone_destino', `%${numeroLimpo}%`)
+              .in('status', ['ENVIADO', 'ENTREGUE']); // Evita reescrever status de ERRO
+
+            if (error) {
+              console.error('[WEBHOOK ERRO] Falha ao atualizar Supabase:', error.message);
+            } else {
+              console.log(`✅ [WEBHOOK] Status atualizado para ${statusFormatado} (Tel: ${telefone})`);
+            }
+          }
         }
       }
+
+      // Regra de Ouro: Devolver 200 OK imediatamente para a Evolution não bloquear a fila
+      return reply.code(200).send({ recebido: true });
+
+    } catch (error) {
+      request.log.error(error);
+      return reply.code(500).send({ erro: 'Falha interna no processamento do webhook' });
     }
-
-    // 4. Regra de Ouro do Webhook: Responda rápido com 200 OK, senão a Evolution tenta mandar de novo
-    return reply.status(200).send({ recebido: true });
-
-  } catch (error) {
-    request.log.error(error);
-    return reply.status(500).send({ erro: 'Falha interna no processamento do webhook' });
   }
-};
+}
+
+module.exports = new WebhookController();
