@@ -1,10 +1,8 @@
 const webhookController = require('../controllers/webhookController');
 
 async function rotasWebhooks(fastify, options) {
-  
-  // Rota PÚBLICA para a Evolution API enviar os eventos de mensagem lida/entregue
+  // ATENÇÃO: Esta rota é PÚBLICA (não usa token). A Evolution precisa conseguir acessar livremente.
   fastify.post('/webhooks/evolution', webhookController.receberStatusEvolution);
-
 }
 
 module.exports = rotasWebhooks;
