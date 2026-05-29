@@ -136,7 +136,7 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
             >
               <FaHeartbeat
                 className={
-                  activeTab === "dashboard" ? "text-sky-700" : "text-sky-300"
+                  activeTab === "dashboard" ? "text-red-500" : "text-red-300"
                 }
               />
               Alertas
