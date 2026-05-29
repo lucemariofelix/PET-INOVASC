@@ -26,7 +26,7 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
       <div className="py-4 px-4 sm:px-8 flex items-center justify-between max-w-screen-2xl mx-auto">
         {/* 1. LOGO E TÍTULO */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center text-sky-800 font-bold text-xl shrink-0">
+          <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center text-red-500 font-bold text-xl shrink-0">
             <FaHeartbeat />
           </div>
           <div>
@@ -188,7 +188,9 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
               >
                 <FaBullhorn
                   className={
-                    activeTab === "notificacoes" ? "text-sky-700" : "text-sky-300"
+                    activeTab === "notificacoes"
+                      ? "text-sky-700"
+                      : "text-sky-300"
                   }
                 />
                 Mensageria
