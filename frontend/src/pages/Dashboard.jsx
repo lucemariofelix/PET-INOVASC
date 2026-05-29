@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { api } from "../api/services";
 import { getBadgeInfo } from "../utils/dateHelpers";
-import { formatarTelefone } from '../utils/formatters';
+import { formatarTelefone } from "../utils/formatters";
 import ModalConfirmacao from "../components/ModalConfirmacao";
 import ModalAlerta from "../components/ModalAlerta";
 import PainelMetricas from "../components/PainelMetricas";
-import { FaSearch, FaChevronLeft, FaChevronRight, FaCheck, FaCheckDouble, FaExclamationCircle, FaClock } from "react-icons/fa";
+import {
+  FaSearch,
+  FaChevronLeft,
+  FaChevronRight,
+  FaCheck,
+  FaCheckDouble,
+  FaExclamationCircle,
+  FaClock,
+} from "react-icons/fa";
 
 export default function Dashboard() {
   const [consultas, setConsultas] = useState([]);
@@ -67,18 +75,21 @@ export default function Dashboard() {
     let passaFiltroBusca = true;
     if (termoBusca.trim() !== "") {
       const termo = termoBusca.toLowerCase();
-      
+
       // Coleta todas as informações e joga para minúsculo para comparar
       const nome = paciente.nome_completo?.toLowerCase() || "";
       // Ajustado para o padrão cpf_cns usado no seu banco
-      const documento = paciente.cpf_cns?.toLowerCase() || paciente.documento?.toLowerCase() || "";
+      const documento =
+        paciente.cpf_cns?.toLowerCase() ||
+        paciente.documento?.toLowerCase() ||
+        "";
       const acs = paciente.acs?.toLowerCase() || "";
       const condicao = paciente.condicao?.toLowerCase() || "";
       const profissional = consulta.tipo_profissional?.toLowerCase() || "";
 
       // Se o termo digitado bater com QUALQUER UMA dessas colunas, ele exibe na tela
-      passaFiltroBusca = 
-        nome.includes(termo) || 
+      passaFiltroBusca =
+        nome.includes(termo) ||
         documento.includes(termo) ||
         acs.includes(termo) ||
         condicao.includes(termo) ||
@@ -107,43 +118,61 @@ export default function Dashboard() {
 
   // LÓGICA DE RENDERIZAÇÃO DOS TIQUES DO WHATSAPP
   const renderizarStatusWhatsApp = (status, dataEnvio, isMobile = false) => {
-    const dataFormatada = new Date(dataEnvio).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
-    const baseClass = isMobile 
-      ? "text-[10px] font-semibold border rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2" 
+    const dataFormatada = new Date(dataEnvio).toLocaleDateString("pt-BR", {
+      timeZone: "UTC",
+    });
+    const baseClass = isMobile
+      ? "text-[10px] font-semibold border rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2"
       : "text-[11px] font-medium flex items-center gap-1.5 p-1 rounded w-fit mt-0.5";
 
     switch (status) {
-      case 'LIDO':
+      case "LIDO":
         return (
-          <span className={`${baseClass} text-sky-700 bg-sky-50 border-sky-100`}>
+          <span
+            className={`${baseClass} text-sky-700 bg-sky-50 border-sky-100`}
+          >
             <FaCheckDouble size={isMobile ? 12 : 14} className="text-sky-500" />
             Visto pelo paciente ({dataFormatada})
           </span>
         );
-      case 'ENTREGUE':
+      case "ENTREGUE":
         return (
-          <span className={`${baseClass} text-slate-700 bg-slate-50 border-slate-200`}>
-            <FaCheckDouble size={isMobile ? 12 : 14} className="text-slate-400" />
+          <span
+            className={`${baseClass} text-slate-700 bg-slate-50 border-slate-200`}
+          >
+            <FaCheckDouble
+              size={isMobile ? 12 : 14}
+              className="text-slate-400"
+            />
             Entregue ({dataFormatada})
           </span>
         );
-      case 'ENVIADO':
+      case "ENVIADO":
         return (
-          <span className={`${baseClass} text-slate-600 bg-slate-50 border-slate-100`}>
+          <span
+            className={`${baseClass} text-slate-600 bg-slate-50 border-slate-100`}
+          >
             <FaCheck size={isMobile ? 12 : 14} className="text-slate-400" />
             Enviado ({dataFormatada})
           </span>
         );
-      case 'ERRO':
+      case "ERRO":
         return (
-          <span className={`${baseClass} text-red-700 bg-red-50 border-red-100`}>
-            <FaExclamationCircle size={isMobile ? 12 : 14} className="text-red-500" />
+          <span
+            className={`${baseClass} text-red-700 bg-red-50 border-red-100`}
+          >
+            <FaExclamationCircle
+              size={isMobile ? 12 : 14}
+              className="text-red-500"
+            />
             Falha no envio
           </span>
         );
       default:
         return (
-          <span className={`${baseClass} text-amber-700 bg-amber-50 border-amber-100`}>
+          <span
+            className={`${baseClass} text-amber-700 bg-amber-50 border-amber-100`}
+          >
             <FaClock size={isMobile ? 12 : 14} className="text-amber-500" />
             Processando...
           </span>
@@ -200,8 +229,8 @@ export default function Dashboard() {
               ],
             };
           }
-          return item; 
-        })
+          return item;
+        }),
       );
 
       setAlerta({
@@ -222,7 +251,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      
       {/* 1. CABEÇALHO DA PÁGINA (Apenas Título) */}
       <div>
         <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">
@@ -240,10 +268,8 @@ export default function Dashboard() {
 
       {/* 3. BLOCO DA TABELA (Tabela + Barra de Ferramentas colada nela) */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        
         {/* BARRA DE FERRAMENTAS DA TABELA */}
         <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-50">
-          
           <h3 className="text-lg font-bold text-slate-700 hidden xl:block">
             Diretório de Acompanhamento
           </h3>
@@ -328,12 +354,16 @@ export default function Dashboard() {
                     {itensAtuais.map((consulta, index) => {
                       const paciente = consulta.pacientes;
                       const badge = getBadgeInfo(consulta);
-                      
+
                       // CORREÇÃO: Lê o histórico direto da consulta
                       const mensagens = consulta.historico_mensagens || [];
-                      const ultimaMensagem = mensagens.length > 0 
-                        ? mensagens.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio))[0] 
-                        : null;
+                      const ultimaMensagem =
+                        mensagens.length > 0
+                          ? mensagens.sort(
+                              (a, b) =>
+                                new Date(b.data_envio) - new Date(a.data_envio),
+                            )[0]
+                          : null;
 
                       return (
                         <tr
@@ -344,15 +374,20 @@ export default function Dashboard() {
                             <p className="font-bold text-slate-800 leading-tight">
                               {paciente?.nome_completo}
                             </p>
-                            
+
                             <div className="flex flex-col gap-0.5 mt-1">
                               <p className="text-xs text-slate-400">
-                                {formatarTelefone(paciente?.telefone) || "Sem contato"}
+                                {formatarTelefone(paciente?.telefone) ||
+                                  "Sem contato"}
                               </p>
-                              
+
                               {/* INDICADOR VISUAL DE MENSAGEM COM TIQUES */}
                               {ultimaMensagem ? (
-                                renderizarStatusWhatsApp(ultimaMensagem.status, ultimaMensagem.data_envio, false)
+                                renderizarStatusWhatsApp(
+                                  ultimaMensagem.status,
+                                  ultimaMensagem.data_envio,
+                                  false,
+                                )
                               ) : (
                                 <span className="text-[11px] font-medium text-amber-600 flex items-center gap-1.5 p-1 bg-amber-50 rounded w-fit mt-0.5">
                                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
@@ -361,7 +396,7 @@ export default function Dashboard() {
                               )}
                             </div>
                           </td>
-                          
+
                           <td className="px-6 py-4 text-slate-600">
                             {paciente?.acs || "Não inf."}
                           </td>
@@ -399,16 +434,20 @@ export default function Dashboard() {
               </div>
 
               {/* VISUALIZAÇÃO MOBILE (Cards) */}
-              <div className="block lg:hidden grid grid-cols-1 gap-4 p-2">
+              <div className="grid lg:hidden grid-cols-1 gap-4 p-2">
                 {itensAtuais.map((consulta, index) => {
                   const paciente = consulta.pacientes;
                   const badge = getBadgeInfo(consulta);
-                  
+
                   // CORREÇÃO: Lê o histórico direto da consulta
                   const mensagens = consulta.historico_mensagens || [];
-                  const ultimaMensagem = mensagens.length > 0 
-                    ? mensagens.sort((a, b) => new Date(b.data_envio) - new Date(a.data_envio))[0] 
-                    : null;
+                  const ultimaMensagem =
+                    mensagens.length > 0
+                      ? mensagens.sort(
+                          (a, b) =>
+                            new Date(b.data_envio) - new Date(a.data_envio),
+                        )[0]
+                      : null;
 
                   return (
                     <div
@@ -423,10 +462,14 @@ export default function Dashboard() {
                           <p className="text-xs text-slate-500 mt-1">
                             {paciente?.telefone || "Sem contato"}
                           </p>
-                          
+
                           {/* INDICADOR VISUAL DE MENSAGEM MOBILE COM TIQUES */}
                           {ultimaMensagem ? (
-                            renderizarStatusWhatsApp(ultimaMensagem.status, ultimaMensagem.data_envio, true)
+                            renderizarStatusWhatsApp(
+                              ultimaMensagem.status,
+                              ultimaMensagem.data_envio,
+                              true,
+                            )
                           ) : (
                             <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2">
                               <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
@@ -434,7 +477,7 @@ export default function Dashboard() {
                             </span>
                           )}
                         </div>
-                        
+
                         <span
                           className={`px-2 py-1.5 rounded-md text-[10px] font-bold border shrink-0 mt-1 ${badge.color}`}
                         >
