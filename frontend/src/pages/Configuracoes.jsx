@@ -196,7 +196,7 @@ export default function Configuracoes() {
         </div>
 
         {/* Conteúdo Principal */}
-        <div className="flex-1 p-6 md:p-8">
+        <div className="flex-1 min-w-0 p-6 md:p-8">
           {/* ======================================================== */}
           {/* ABA 1: WHATSAPP (Seu código original mantido intacto) */}
           {/* ======================================================== */}
