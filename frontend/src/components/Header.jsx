@@ -9,7 +9,7 @@ import {
   FaBars,
   FaTimes,
   FaCog,
-  FaBullhorn, // <-- Ícone novo para a Mensageria
+  FaBullhorn,
 } from "react-icons/fa";
 import RoleGuard from "../components/RoleGuard";
 
@@ -26,8 +26,9 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
       <div className="py-4 px-4 sm:px-8 flex items-center justify-between max-w-screen-2xl mx-auto">
         {/* 1. LOGO E TÍTULO */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center text-red-500 font-bold text-xl shrink-0">
-            <FaHeartbeat />
+          <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center font-bold text-xl shrink-0">
+            {/* CORAÇÃO DA LOGO: Sempre Vermelho */}
+            <FaHeartbeat className="text-red-500" />
           </div>
           <div>
             <h1 className="text-white font-bold text-xl leading-tight">
@@ -53,7 +54,13 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
               onClick={() => handleTabClick("dashboard")}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "dashboard" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
             >
-              <FaHeartbeat /> Alertas
+              {/* CORAÇÃO DO MENU DESKTOP */}
+              <FaHeartbeat
+                className={
+                  activeTab === "dashboard" ? "text-red-500" : "text-red-400"
+                }
+              />{" "}
+              Alertas
             </button>
 
             <button
@@ -134,9 +141,10 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
               onClick={() => handleTabClick("dashboard")}
               className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "dashboard" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
             >
+              {/* CORAÇÃO DO MENU MOBILE */}
               <FaHeartbeat
                 className={
-                  activeTab === "dashboard" ? "text-red-500" : "text-red-300"
+                  activeTab === "dashboard" ? "text-red-500" : "text-red-400"
                 }
               />
               Alertas
