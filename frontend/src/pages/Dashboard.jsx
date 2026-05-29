@@ -5,7 +5,7 @@ import { formatarTelefone } from '../utils/formatters';
 import ModalConfirmacao from "../components/ModalConfirmacao";
 import ModalAlerta from "../components/ModalAlerta";
 import PainelMetricas from "../components/PainelMetricas";
-import { FaSearch, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaSearch, FaChevronLeft, FaChevronRight, FaCheck, FaCheckDouble, FaExclamationCircle, FaClock } from "react-icons/fa";
 
 export default function Dashboard() {
   const [consultas, setConsultas] = useState([]);
@@ -103,6 +103,52 @@ export default function Dashboard() {
 
   const irParaPaginaAnterior = () => {
     if (paginaAtual > 1) setPaginaAtual(paginaAtual - 1);
+  };
+
+  // LÓGICA DE RENDERIZAÇÃO DOS TIQUES DO WHATSAPP
+  const renderizarStatusWhatsApp = (status, dataEnvio, isMobile = false) => {
+    const dataFormatada = new Date(dataEnvio).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+    const baseClass = isMobile 
+      ? "text-[10px] font-semibold border rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2" 
+      : "text-[11px] font-medium flex items-center gap-1.5 p-1 rounded w-fit mt-0.5";
+
+    switch (status) {
+      case 'LIDO':
+        return (
+          <span className={`${baseClass} text-sky-700 bg-sky-50 border-sky-100`}>
+            <FaCheckDouble size={isMobile ? 12 : 14} className="text-sky-500" />
+            Visto pelo paciente ({dataFormatada})
+          </span>
+        );
+      case 'ENTREGUE':
+        return (
+          <span className={`${baseClass} text-slate-700 bg-slate-50 border-slate-200`}>
+            <FaCheckDouble size={isMobile ? 12 : 14} className="text-slate-400" />
+            Entregue ({dataFormatada})
+          </span>
+        );
+      case 'ENVIADO':
+        return (
+          <span className={`${baseClass} text-slate-600 bg-slate-50 border-slate-100`}>
+            <FaCheck size={isMobile ? 12 : 14} className="text-slate-400" />
+            Enviado ({dataFormatada})
+          </span>
+        );
+      case 'ERRO':
+        return (
+          <span className={`${baseClass} text-red-700 bg-red-50 border-red-100`}>
+            <FaExclamationCircle size={isMobile ? 12 : 14} className="text-red-500" />
+            Falha no envio
+          </span>
+        );
+      default:
+        return (
+          <span className={`${baseClass} text-amber-700 bg-amber-50 border-amber-100`}>
+            <FaClock size={isMobile ? 12 : 14} className="text-amber-500" />
+            Processando...
+          </span>
+        );
+    }
   };
 
   // Funções de Disparo (Mantidas intactas)
@@ -304,12 +350,9 @@ export default function Dashboard() {
                                 {formatarTelefone(paciente?.telefone) || "Sem contato"}
                               </p>
                               
-                              {/* INDICADOR VISUAL DE MENSAGEM COM CORREÇÃO DE FUSO */}
+                              {/* INDICADOR VISUAL DE MENSAGEM COM TIQUES */}
                               {ultimaMensagem ? (
-                                <span className="text-[11px] font-medium text-emerald-600 flex items-center gap-1.5 p-1 bg-emerald-50 rounded w-fit mt-0.5">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                  Avisado ({new Date(ultimaMensagem.data_envio).toLocaleDateString('pt-BR', { timeZone: 'UTC' })})
-                                </span>
+                                renderizarStatusWhatsApp(ultimaMensagem.status, ultimaMensagem.data_envio, false)
                               ) : (
                                 <span className="text-[11px] font-medium text-amber-600 flex items-center gap-1.5 p-1 bg-amber-50 rounded w-fit mt-0.5">
                                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
@@ -381,16 +424,13 @@ export default function Dashboard() {
                             {paciente?.telefone || "Sem contato"}
                           </p>
                           
-                          {/* INDICADOR VISUAL DE MENSAGEM COM CORREÇÃO DE FUSO */}
+                          {/* INDICADOR VISUAL DE MENSAGEM MOBILE COM TIQUES */}
                           {ultimaMensagem ? (
-                            <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2">
-                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                               Notificado em {new Date(ultimaMensagem.data_envio).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
-                            </span>
+                            renderizarStatusWhatsApp(ultimaMensagem.status, ultimaMensagem.data_envio, true)
                           ) : (
                             <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2">
-                               <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                               Aguardando disparo
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                              Aguardando disparo
                             </span>
                           )}
                         </div>

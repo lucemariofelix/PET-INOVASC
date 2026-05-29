@@ -11,12 +11,13 @@ import {
   FaTrash,
   FaTimes,
   FaSave,
+  FaHistory, // <-- Ícone novo para a Auditoria
 } from "react-icons/fa";
 import { api } from "../api/services";
 import ModalAlerta from "../components/ModalAlerta";
 
 export default function Configuracoes() {
-  // Controle de Abas Internas (WhatsApp vs Usuários)
+  // Controle de Abas Internas (WhatsApp vs Usuários vs Auditoria)
   const [abaAtiva, setAbaAtiva] = useState("whatsapp");
 
   // ==========================================
@@ -41,6 +42,12 @@ export default function Configuracoes() {
     funcao: "ACS",
   });
   const [isEditando, setIsEditando] = useState(false);
+
+  // ==========================================
+  // ESTADOS: AUDITORIA (LOGS)
+  // ==========================================
+  const [logs, setLogs] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
 
   const [alerta, setAlerta] = useState({
     isOpen: false,
@@ -69,7 +76,7 @@ export default function Configuracoes() {
   }, []);
 
   // ==========================================
-  // LÓGICA: USUÁRIOS
+  // LÓGICA: USUÁRIOS E AUDITORIA
   // ==========================================
   const carregarUsuarios = async () => {
     setLoadingUsuarios(true);
@@ -83,8 +90,22 @@ export default function Configuracoes() {
     }
   };
 
+  const carregarLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const data = await api.getLogs();
+      setLogs(data);
+    } catch (error) {
+      console.error("Erro ao carregar logs:", error);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  // Carrega os dados consoante a aba selecionada
   useEffect(() => {
     if (abaAtiva === "usuarios") carregarUsuarios();
+    if (abaAtiva === "logs") carregarLogs();
   }, [abaAtiva]);
 
   const abrirModalNovo = () => {
@@ -95,7 +116,7 @@ export default function Configuracoes() {
 
   const abrirModalEdicao = (user) => {
     setIsEditando(true);
-    setUsuarioAtual({ ...user, senha: "" }); // Senha vazia significa que não será alterada
+    setUsuarioAtual({ ...user, senha: "" });
     setModalUserAberto(true);
   };
 
@@ -113,7 +134,6 @@ export default function Configuracoes() {
     e.preventDefault();
     try {
       if (isEditando) {
-        // Se a senha estiver vazia, removemos do payload para não atualizar em branco
         const payload = { ...usuarioAtual };
         if (!payload.senha) delete payload.senha;
         await api.atualizarUsuario(usuarioAtual.id, payload);
@@ -165,6 +185,16 @@ export default function Configuracoes() {
     }
   };
 
+  const formatarData = (dataIso) => {
+    return new Date(dataIso).toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in duration-300">
       {/* Cabeçalho */}
@@ -173,7 +203,7 @@ export default function Configuracoes() {
           <FaCog className="text-sky-700" /> Configurações do Sistema
         </h2>
         <p className="text-slate-500 text-sm sm:text-base mt-1">
-          Gerenciamento do servidor e controle de acessos da equipe.
+          Gerenciamento do servidor, controle de acessos e monitorização.
         </p>
       </div>
 
@@ -193,12 +223,19 @@ export default function Configuracoes() {
           >
             <FaUserShield size={18} /> Equipe e Acessos
           </button>
+
+          <button
+            onClick={() => setAbaAtiva("logs")}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${abaAtiva === "logs" ? "bg-sky-100 text-sky-800 shadow-sm border border-sky-200" : "text-slate-600 hover:bg-slate-200"}`}
+          >
+            <FaHistory size={18} /> Auditoria
+          </button>
         </div>
 
         {/* Conteúdo Principal */}
-        <div className="flex-1 min-w-0 p-6 md:p-8">
+        <div className="flex-1 p-6 md:p-8">
           {/* ======================================================== */}
-          {/* ABA 1: WHATSAPP (Seu código original mantido intacto) */}
+          {/* ABA 1: WHATSAPP */}
           {/* ======================================================== */}
           {abaAtiva === "whatsapp" && (
             <div className="animate-in fade-in">
@@ -339,6 +376,73 @@ export default function Configuracoes() {
                             Nenhum usuário cadastrado.
                           </td>
                         </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ======================================================== */}
+          {/* ABA 3: AUDITORIA (LOGS) */}
+          {/* ======================================================== */}
+          {abaAtiva === "logs" && (
+            <div className="animate-in fade-in">
+              <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-2">
+                <h3 className="text-lg font-bold text-slate-800">
+                  Monitor de Atividades
+                </h3>
+              </div>
+
+              {loadingLogs ? (
+                <div className="py-10 flex justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-700"></div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-slate-50 text-slate-500 uppercase font-semibold text-xs border-b border-slate-200">
+                      <tr>
+                        <th className="px-6 py-4">Data / Hora</th>
+                        <th className="px-6 py-4">Usuário</th>
+                        <th className="px-6 py-4">Ação</th>
+                        <th className="px-6 py-4">Detalhes</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {logs.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan="4"
+                            className="px-6 py-8 text-center text-slate-500"
+                          >
+                            Nenhum registro encontrado.
+                          </td>
+                        </tr>
+                      ) : (
+                        logs.map((log) => (
+                          <tr key={log.id} className="hover:bg-slate-50">
+                            <td className="px-6 py-4 text-slate-500">
+                              {formatarData(log.created_at)}
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2 font-medium text-slate-800">
+                                <FaUserShield className="text-sky-300" />
+                                {log.perfis_usuarios?.nome || "Sistema"}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 font-bold text-sky-700">
+                              {log.acao}
+                            </td>
+                            <td
+                              className="px-6 py-4 text-slate-600 truncate max-w-xs"
+                              title={log.detalhes}
+                            >
+                              {log.detalhes}
+                            </td>
+                          </tr>
+                        ))
                       )}
                     </tbody>
                   </table>

@@ -18,10 +18,11 @@ fastify.register(cors, {
 fastify.register(require("./routes/pacientes"));
 fastify.register(require("./routes/consultas"));
 fastify.register(require("./routes/auth"));
-fastify.register(require("./routes/webhooks"));
 fastify.register(require("./routes/mensagens"));
 fastify.register(require("./routes/rotasUsuarios"));
 fastify.register(require("./routes/rotasNotificacoes"));
+fastify.register(require('./routes/rotasWebhooks'));
+fastify.register(require('./routes/rotasConfiguracoes'));
 
 // ----------------------------------------------------
 // LIGANDO O MOTOR

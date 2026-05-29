@@ -34,7 +34,7 @@ class MensagemService {
     // 5. Integração AWS (Evolution API)
     const evolutionUrl = process.env.EVOLUTION_API_URL;
     const apikey = process.env.EVOLUTION_API_KEY;
-    const instanceName = process.env.EVOLUTION_INSTANCE;
+    const instanceName = process.env.EVOLUTION_INSTANCE_NAME;
 
     // Se faltar configuração no .env, faz apenas uma simulação e salva no banco
     if (!evolutionUrl || !apikey || !instanceName) {
@@ -84,7 +84,7 @@ class MensagemService {
   async statusConexaoWhatsApp() {
     const evolutionUrl = process.env.EVOLUTION_API_URL;
     const apikey = process.env.EVOLUTION_API_KEY;
-    const instanceName = process.env.EVOLUTION_INSTANCE;
+    const instanceName = process.env.EVOLUTION_INSTANCE_NAME;
 
     if (!evolutionUrl || !apikey || !instanceName) {
       return { status: 'unconfigured', mensagem: 'Variáveis da Evolution não configuradas no .env' };
