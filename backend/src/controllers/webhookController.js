@@ -29,9 +29,8 @@ class WebhookController {
         // ESPIÃO SUPREMO: Imprime o pacote cru para vermos exatamente onde o ID está escondido!
         console.log("🕵️ [RAW DATA]:", JSON.stringify(data));
 
-        // TÉCNICA DE OURO APRIMORADA: Rede que apanha o ID em qualquer versão da Evolution API
-        const messageId =
-          data?.key?.id || data?.id || data?.messageId || data?.update?.key?.id;
+        // TÉCNICA DE OURO DEFINITIVA: Pegamos o 'keyId' (o código 3EB0...) em vez do ID interno
+        const messageId = data?.keyId || data?.key?.id || data?.update?.key?.id;
         const statusBruto = data?.update?.status || data?.status;
 
         console.log(`[DEBUG] MsgID: ${messageId} | Status: ${statusBruto}`);
