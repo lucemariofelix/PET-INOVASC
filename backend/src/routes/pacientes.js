@@ -28,17 +28,22 @@ async function rotasPacientes(fastify, options) {
   // Leitura aberta para todos os usuários autenticados (incluindo ACS)
   fastify.get("/pacientes", pacienteController.listar);
 
-  // Escrita e atualização trancadas
+  // Escrita e atualização trancadas E validadas (Unimos tudo no 2º parâmetro)
   fastify.post(
     "/pacientes",
-    adminERecepcao,
-    { schema: esquemaPaciente },
+    {
+      ...adminERecepcao, // Traz o preHandler de segurança
+      schema: esquemaPaciente, // Traz a blindagem de dados
+    },
     pacienteController.criar,
   );
+
   fastify.put(
     "/pacientes/:id",
-    adminERecepcao,
-    { schema: esquemaPaciente },
+    {
+      ...adminERecepcao, // Traz o preHandler de segurança
+      schema: esquemaPaciente, // Traz a blindagem de dados
+    },
     pacienteController.atualizar,
   );
 }
