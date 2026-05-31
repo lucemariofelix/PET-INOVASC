@@ -97,7 +97,7 @@ class MensagemService {
   }
 
   // ========================================================================
-  // MÉTODO 2: CHECAGEM DE STATUS E GERAÇÃO DO QR CODE (COM RAIO-X)
+  // MÉTODO 2: CHECAGEM DE STATUS E GERAÇÃO DO QR CODE (CORRIGIDO)
   // ========================================================================
   async statusConexaoWhatsApp() {
     const evolutionUrl = process.env.EVOLUTION_API_URL;
@@ -112,7 +112,6 @@ class MensagemService {
     }
 
     try {
-      // 1. Tenta buscar o estado da conexão primeiro
       const resState = await fetch(
         `${evolutionUrl}/instance/connectionState/${instanceName}`,
         {
@@ -122,18 +121,12 @@ class MensagemService {
       );
 
       const stateData = await resState.json();
-
-      // LOG ESPIÃO 1: O que a Evolution diz sobre o estado?
-      console.log("[RAIO-X EVOLUTION] Estado:", stateData);
-
       const statusInstancia = stateData?.instance?.state || stateData?.state;
 
-      // Se já estiver conectado, devolvemos logo o sucesso
+      // Se já conectou de vez, sucesso!
       if (statusInstancia === "open") return { status: "connected" };
-      if (statusInstancia === "connecting")
-        return { status: "connecting", mensagem: "A sincronizar mensagens..." };
 
-      // 2. Se não está conectado, pedimos o QR Code
+      // Tenta obter o QR Code independentemente se o status é "connecting" ou "close"
       const resConnect = await fetch(
         `${evolutionUrl}/instance/connect/${instanceName}`,
         {
@@ -144,17 +137,23 @@ class MensagemService {
 
       const connectData = await resConnect.json();
 
-      // LOG ESPIÃO 2: A Evolution devolveu o QR Code ou um erro?
-      console.log("[RAIO-X EVOLUTION] Conexão:", connectData);
-
-      // Se a API devolveu a imagem em base64, o WhatsApp precisa ser lido
-      if (connectData.base64) {
+      // O PULO DO GATO: Se existir um QR Code em base64 na resposta, ele ganha prioridade!
+      // Isso evita que o QR Code pisque e suma quando o frontend fizer a checagem de 5 em 5 segundos
+      if (connectData && connectData.base64) {
         return { status: "qrcode", qrcode: connectData.base64 };
+      }
+
+      // Só devolvemos o "connecting" genérico se realmente NÃO houver QR code para desenhar
+      if (statusInstancia === "connecting") {
+        return {
+          status: "connecting",
+          mensagem: "A iniciar e sincronizar conexões...",
+        };
       }
 
       return {
         status: "disconnected",
-        mensagem: "A instância está offline ou não enviou o QR Code.",
+        mensagem: "A instância está desconectada.",
       };
     } catch (error) {
       console.error("Erro ao conectar com Evolution API:", error);
