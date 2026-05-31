@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { api } from "../api/services";
+import { supabase } from "../api/supabase.js";
 import { getBadgeInfo } from "../utils/dateHelpers";
 import { formatarTelefone } from "../utils/formatters";
 import ModalConfirmacao from "../components/ModalConfirmacao";
@@ -17,7 +18,8 @@ import {
 
 export default function Dashboard() {
   const [consultas, setConsultas] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // CORREÇÃO 1: O componente já nasce a carregar os dados
+  const [loading, setLoading] = useState(true);
 
   // ESTADOS EXISTENTES: Filtros e Modais
   const [filtro, setFiltro] = useState("TODAS");
@@ -37,26 +39,86 @@ export default function Dashboard() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const itensPorPagina = 5; // Quantidade de registros por página
 
-  const carregarDados = async () => {
-    setLoading(true);
-    try {
-      const data = await api.getTodasConsultas();
-      setConsultas(data.consultas || data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // O único useEffect responsável por buscar os dados ao abrir a tela
   useEffect(() => {
+    const carregarDados = async () => {
+      try {
+        const data = await api.getTodasConsultas();
+        setConsultas(data.consultas || data || []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     carregarDados();
   }, []);
 
-  // NOVO: Volta para a página 1 sempre que o usuário digitar na busca ou trocar o filtro
+  // =======================================================================
+  // OUVINTE DO SUPABASE REALTIME (A mágica dos tiques azuis)
+  // =======================================================================
   useEffect(() => {
-    setPaginaAtual(1);
-  }, [termoBusca, filtro]);
+    const canalRealtime = supabase
+      .channel("mudancas-status-whatsapp")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "historico_mensagens",
+        },
+        (payload) => {
+          const msgAtualizada = payload.new;
+          console.log("🔔 [REALTIME] Status recebido:", msgAtualizada.status);
+
+          setConsultas((consultasAtuais) =>
+            consultasAtuais.map((consulta) => {
+              // Confirma se a atualização é para a consulta que estamos a mapear
+              if (
+                consulta.id === msgAtualizada.consulta_id ||
+                consulta.pacientes?.id === msgAtualizada.paciente_id
+              ) {
+                const historico = [...(consulta.historico_mensagens || [])];
+
+                // Tenta achar a mensagem exata pelo ID que acabámos de criar no backend
+                const msgIndex = historico.findIndex(
+                  (m) => m.mensagem_id === msgAtualizada.mensagem_id,
+                );
+
+                if (msgIndex !== -1) {
+                  // Se encontrou a mensagem exata, atualiza o status dela
+                  historico[msgIndex] = {
+                    ...historico[msgIndex],
+                    status: msgAtualizada.status,
+                  };
+                } else if (historico.length > 0) {
+                  // Se não encontrou o ID (porque a injeção local manual ainda não o tem),
+                  // assume que a atualização é para a mensagem mais recente enviada (a 1ª da lista)
+                  historico[0] = {
+                    ...historico[0],
+                    status: msgAtualizada.status,
+                  };
+                }
+
+                return { ...consulta, historico_mensagens: historico };
+              }
+              return consulta;
+            }),
+          );
+        },
+      )
+      .subscribe();
+
+    // Limpeza: remove o "megafone" se o utilizador mudar de página
+    return () => {
+      supabase.removeChannel(canalRealtime);
+    };
+  }, []);
+  // =======================================================================
+
+  // CORREÇÃO 2: O useEffect que atualizava a página para 1 foi removido daqui
+  // para evitar o erro de Cascading Renders no React.
 
   // LÓGICA DE FILTRAGEM COMBINADA (Status + Busca Universal)
   const consultasFiltradas = consultas.filter((consulta) => {
@@ -218,11 +280,11 @@ export default function Dashboard() {
       // A MÁGICA DO REACT ACONTECE AQUI:
       setConsultas((consultasAtuais) =>
         consultasAtuais.map((item) => {
-          // CORREÇÃO: Comparamos o ID da CONSULTA, e não do paciente
+          // Comparamos o ID da CONSULTA, e não do paciente
           if (item.id === consulta.id) {
             return {
               ...item,
-              // CORREÇÃO: Injetamos o histórico direto na consulta, não no paciente
+              // Injetamos o histórico direto na consulta
               historico_mensagens: [
                 { data_envio: new Date().toISOString(), status: "ENVIADO" },
                 ...(item.historico_mensagens || []),
@@ -284,7 +346,11 @@ export default function Dashboard() {
                 type="text"
                 placeholder="Buscar paciente, ACS, condição ou profissional..."
                 value={termoBusca}
-                onChange={(e) => setTermoBusca(e.target.value)}
+                onChange={(e) => {
+                  // CORREÇÃO 3: Define a página para 1 no exato momento da busca
+                  setTermoBusca(e.target.value);
+                  setPaginaAtual(1);
+                }}
                 className="w-full pl-9 pr-4 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition text-sm shadow-sm"
               />
             </div>
@@ -292,19 +358,29 @@ export default function Dashboard() {
             {/* BOTÕES DE FILTRO */}
             <div className="flex flex-wrap gap-1 bg-slate-200/50 p-1 rounded-lg">
               <button
-                onClick={() => setFiltro("TODAS")}
+                onClick={() => {
+                  // CORREÇÃO 3: Define a página para 1 no clique do filtro
+                  setFiltro("TODAS");
+                  setPaginaAtual(1);
+                }}
                 className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-semibold transition ${filtro === "TODAS" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
               >
                 Todas
               </button>
               <button
-                onClick={() => setFiltro("ATRASADAS")}
+                onClick={() => {
+                  setFiltro("ATRASADAS");
+                  setPaginaAtual(1);
+                }}
                 className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-semibold transition ${filtro === "ATRASADAS" ? "bg-red-50 text-red-700 shadow-sm" : "text-slate-500 hover:text-red-700"}`}
               >
                 Atrasadas
               </button>
               <button
-                onClick={() => setFiltro("NO_PRAZO")}
+                onClick={() => {
+                  setFiltro("NO_PRAZO");
+                  setPaginaAtual(1);
+                }}
                 className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-semibold transition ${filtro === "NO_PRAZO" ? "bg-green-50 text-green-700 shadow-sm" : "text-slate-500 hover:text-green-700"}`}
               >
                 No Prazo
@@ -314,7 +390,7 @@ export default function Dashboard() {
         </div>
 
         {/* ÁREA DE CONTEÚDO DA TABELA */}
-        <div className="p-2 sm:p-0 min-h-[400px]">
+        <div className="p-2 sm:p-0 min-h-100">
           {loading ? (
             <div className="py-20 flex flex-col items-center justify-center">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sky-700 mb-4"></div>
@@ -327,7 +403,10 @@ export default function Dashboard() {
               </p>
               {termoBusca && (
                 <button
-                  onClick={() => setTermoBusca("")}
+                  onClick={() => {
+                    setTermoBusca("");
+                    setPaginaAtual(1);
+                  }}
                   className="mt-4 text-sky-600 hover:text-sky-800 text-sm font-medium underline"
                 >
                   Limpar busca
@@ -355,7 +434,7 @@ export default function Dashboard() {
                       const paciente = consulta.pacientes;
                       const badge = getBadgeInfo(consulta);
 
-                      // CORREÇÃO: Lê o histórico direto da consulta
+                      // Lê o histórico direto da consulta
                       const mensagens = consulta.historico_mensagens || [];
                       const ultimaMensagem =
                         mensagens.length > 0
@@ -401,7 +480,7 @@ export default function Dashboard() {
                             {paciente?.acs || "Não inf."}
                           </td>
                           <td className="px-6 py-4">
-                            <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-medium truncate max-w-[150px] inline-block">
+                            <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-medium truncate max-w-37.5 inline-block">
                               {paciente?.condicao || "NENHUM"}
                             </span>
                           </td>
@@ -421,7 +500,7 @@ export default function Dashboard() {
                           <td className="px-6 py-4 text-center">
                             <button
                               onClick={() => solicitarDisparo(consulta)}
-                              className="bg-slate-800 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2 mx-auto w-full max-w-[120px]"
+                              className="bg-slate-800 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2 mx-auto w-full max-w-30"
                             >
                               Disparar Msg
                             </button>
@@ -439,7 +518,7 @@ export default function Dashboard() {
                   const paciente = consulta.pacientes;
                   const badge = getBadgeInfo(consulta);
 
-                  // CORREÇÃO: Lê o histórico direto da consulta
+                  // Lê o histórico direto da consulta
                   const mensagens = consulta.historico_mensagens || [];
                   const ultimaMensagem =
                     mensagens.length > 0
