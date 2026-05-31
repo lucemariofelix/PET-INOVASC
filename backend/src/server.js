@@ -12,6 +12,15 @@ fastify.register(cors, {
   methods: ["GET", "POST", "PUT", "DELETE"],
 });
 
+// Rota de Boas-vindas (Health Check)
+fastify.get("/", async (request, reply) => {
+  return reply.code(200).send({
+    status: "online",
+    sistema: "API SGR-UBS",
+    mensagem: "Servidor rodando perfeitamente!",
+  });
+});
+
 // ----------------------------------------------------
 // REGISTRO DE ROTAS (Módulos)
 // ----------------------------------------------------
