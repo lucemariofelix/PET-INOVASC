@@ -97,7 +97,7 @@ class MensagemService {
   }
 
   // ========================================================================
-  // MÉTODO 2: CHECAGEM DE STATUS E GERAÇÃO DO QR CODE
+  // MÉTODO 2: CHECAGEM DE STATUS E GERAÇÃO DO QR CODE (COM RAIO-X)
   // ========================================================================
   async statusConexaoWhatsApp() {
     const evolutionUrl = process.env.EVOLUTION_API_URL;
@@ -112,6 +112,7 @@ class MensagemService {
     }
 
     try {
+      // 1. Tenta buscar o estado da conexão primeiro
       const resState = await fetch(
         `${evolutionUrl}/instance/connectionState/${instanceName}`,
         {
@@ -121,12 +122,18 @@ class MensagemService {
       );
 
       const stateData = await resState.json();
+
+      // LOG ESPIÃO 1: O que a Evolution diz sobre o estado?
+      console.log("[RAIO-X EVOLUTION] Estado:", stateData);
+
       const statusInstancia = stateData?.instance?.state || stateData?.state;
 
+      // Se já estiver conectado, devolvemos logo o sucesso
       if (statusInstancia === "open") return { status: "connected" };
       if (statusInstancia === "connecting")
         return { status: "connecting", mensagem: "A sincronizar mensagens..." };
 
+      // 2. Se não está conectado, pedimos o QR Code
       const resConnect = await fetch(
         `${evolutionUrl}/instance/connect/${instanceName}`,
         {
@@ -137,19 +144,23 @@ class MensagemService {
 
       const connectData = await resConnect.json();
 
+      // LOG ESPIÃO 2: A Evolution devolveu o QR Code ou um erro?
+      console.log("[RAIO-X EVOLUTION] Conexão:", connectData);
+
+      // Se a API devolveu a imagem em base64, o WhatsApp precisa ser lido
       if (connectData.base64) {
         return { status: "qrcode", qrcode: connectData.base64 };
       }
 
       return {
         status: "disconnected",
-        mensagem: "Por favor, gere um novo código.",
+        mensagem: "A instância está offline ou não enviou o QR Code.",
       };
     } catch (error) {
       console.error("Erro ao conectar com Evolution API:", error);
       return {
         status: "error",
-        mensagem: "Servidor do WhatsApp (Evolution) parece estar offline.",
+        mensagem: "Servidor do WhatsApp (Evolution) offline.",
       };
     }
   }
