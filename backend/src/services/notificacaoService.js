@@ -5,7 +5,6 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class NotificacaoService {
   async iniciarDisparoLote(dadosDisparo, authHeader) {
-    // Extraímos também o usuario_id (quem apertou o botão) do corpo da requisição
     const { pacientes, mensagemBase, usuario_id } = dadosDisparo;
 
     if (!pacientes || pacientes.length === 0) {
@@ -18,8 +17,6 @@ class NotificacaoService {
       );
     }
 
-    // Libera a requisição do frontend imediatamente e roda o envio em background
-    // Passamos o usuario_id para que a fila saiba quem disparou a ação
     this.processarFilaAssincrona(pacientes, mensagemBase, usuario_id);
 
     return {
@@ -34,13 +31,11 @@ class NotificacaoService {
     );
 
     for (const paciente of pacientes) {
-      // Declaramos as variáveis fora do try para o catch conseguir acessá-las se falhar
       let primeiroNome = "";
       let textoFinal = "";
       let telefoneLimpo = "";
 
       try {
-        // CORREÇÃO: Busca o nome_completo para evitar erro ao tentar fatiar a string
         const nomeReal = paciente.nome_completo || paciente.nome || "Paciente";
         primeiroNome = nomeReal.split(" ")[0];
 
@@ -57,7 +52,6 @@ class NotificacaoService {
           textMessage: { text: textoFinal },
         };
 
-        // 1. Dispara para o WhatsApp via Evolution API
         const respostaEvolution = await fetch(
           `${process.env.EVOLUTION_API_URL}/message/sendText/${process.env.EVOLUTION_INSTANCE_NAME}`,
           {
@@ -70,25 +64,30 @@ class NotificacaoService {
           },
         );
 
+        // Lemos como texto primeiro por segurança
+        const textData = await respostaEvolution.text();
+
         if (!respostaEvolution.ok) {
-          // Isso vai ler a resposta completa de erro que a Evolution devolveu (ex: "Unauthorized", "Instance not found", etc)
-          const detalheErro = await respostaEvolution.text();
           throw new Error(
-            `Status ${respostaEvolution.status} - Detalhe: ${detalheErro}`,
+            `Status ${respostaEvolution.status} - Detalhe: ${textData}`,
           );
         }
 
-        // 2. Grava no histórico com as colunas exatas da tabela do Supabase
+        // TÉCNICA DE OURO: Parse do JSON e captura da matrícula da mensagem
+        const jsonData = JSON.parse(textData);
+        const idDaMensagem = jsonData?.key?.id || jsonData?.id || null;
+
         await notificacaoRepository.registrarEnvio({
           paciente_id: paciente.id,
           telefone_destino: telefoneLimpo,
           texto_enviado: textoFinal,
           status: "ENVIADO",
           usuario_id: usuario_id || null,
+          mensagem_id: idDaMensagem, // <-- Nova coluna
         });
 
         console.log(
-          `[OK] Mensagem enviada e registrada para ${primeiroNome} (${telefoneLimpo})`,
+          `[OK] Mensagem enviada para ${primeiroNome} (Tel: ${telefoneLimpo} | ID: ${idDaMensagem})`,
         );
       } catch (error) {
         console.error(
@@ -96,7 +95,6 @@ class NotificacaoService {
           error.message,
         );
 
-        // Em caso de erro, grava o status negativo no banco para auditoria
         await notificacaoRepository
           .registrarEnvio({
             paciente_id: paciente.id,
@@ -105,10 +103,9 @@ class NotificacaoService {
             status: "ERRO",
             usuario_id: usuario_id || null,
           })
-          .catch(() => null); // O .catch() vazio ignora se o banco também falhar
+          .catch(() => null);
       }
 
-      // Delay de segurança anti-ban (entre 4 e 9 segundos)
       const tempoAleatorio =
         Math.floor(Math.random() * (9000 - 4000 + 1)) + 4000;
       await delay(tempoAleatorio);

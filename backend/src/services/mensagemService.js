@@ -3,7 +3,7 @@ const mensagemRepository = require("../repositories/mensagemRepository");
 
 class MensagemService {
   // ========================================================================
-  // MÉTODO 1: DISPARO DE MENSAGENS (CORRIGIDO PARA EVITAR CRASH DE JSON)
+  // MÉTODO 1: DISPARO DE MENSAGENS (COM TÉCNICA DE OURO)
   // ========================================================================
   async dispararMensagem(
     {
@@ -69,14 +69,18 @@ class MensagemService {
       },
     );
 
-    // CORREÇÃO: Lemos como texto primeiro para não quebrar se a API devolver HTML de erro
     const textData = await response.text();
 
     if (!response.ok) {
       throw new Error(`Falha Evolution (${response.status}): ${textData}`);
     }
 
-    // Salva o histórico Real no Supabase
+    const jsonData = JSON.parse(textData);
+
+    // TÉCNICA DE OURO: Extrair a matrícula (ID) da mensagem recém disparada
+    const idDaMensagem = jsonData?.key?.id || jsonData?.id || null;
+
+    // Salva o histórico Real no Supabase com o ID atrelado
     await mensagemRepository.salvarHistorico(
       {
         telefone_destino: telefoneFormatado,
@@ -84,16 +88,16 @@ class MensagemService {
         status: "ENVIADO",
         paciente_id: paciente_id || null,
         consulta_id: consulta_id || null,
+        mensagem_id: idDaMensagem, // <-- Nova coluna
       },
       authHeader,
     );
 
-    // Tentamos devolver como JSON apenas se deu Sucesso (200 OK)
-    return JSON.parse(textData);
+    return jsonData;
   }
 
   // ========================================================================
-  // MÉTODO 2: CHECAGEM DE STATUS E GERAÇÃO DO QR CODE (CORRIGIDO PARA A TELA DE CONFIGURAÇÕES)
+  // MÉTODO 2: CHECAGEM DE STATUS E GERAÇÃO DO QR CODE
   // ========================================================================
   async statusConexaoWhatsApp() {
     const evolutionUrl = process.env.EVOLUTION_API_URL;
@@ -108,7 +112,6 @@ class MensagemService {
     }
 
     try {
-      // 1. Tenta buscar o estado da conexão primeiro
       const resState = await fetch(
         `${evolutionUrl}/instance/connectionState/${instanceName}`,
         {
@@ -120,12 +123,10 @@ class MensagemService {
       const stateData = await resState.json();
       const statusInstancia = stateData?.instance?.state || stateData?.state;
 
-      // Se já estiver conectado, devolvemos logo o sucesso
       if (statusInstancia === "open") return { status: "connected" };
       if (statusInstancia === "connecting")
         return { status: "connecting", mensagem: "A sincronizar mensagens..." };
 
-      // 2. Se não está conectado, pedimos o QR Code
       const resConnect = await fetch(
         `${evolutionUrl}/instance/connect/${instanceName}`,
         {
@@ -136,7 +137,6 @@ class MensagemService {
 
       const connectData = await resConnect.json();
 
-      // Se a API devolveu a imagem em base64, o WhatsApp precisa ser lido
       if (connectData.base64) {
         return { status: "qrcode", qrcode: connectData.base64 };
       }
