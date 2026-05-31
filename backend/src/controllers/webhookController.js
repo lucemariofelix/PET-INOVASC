@@ -26,13 +26,15 @@ class WebhookController {
           ? payload.data[0]
           : payload.data;
 
-        // TÉCNICA DE OURO: Ignora telefones/lids e extrai diretamente o ID da mensagem
-        const messageId = data?.key?.id || data?.id;
+        // ESPIÃO SUPREMO: Imprime o pacote cru para vermos exatamente onde o ID está escondido!
+        console.log("🕵️ [RAW DATA]:", JSON.stringify(data));
+
+        // TÉCNICA DE OURO APRIMORADA: Rede que apanha o ID em qualquer versão da Evolution API
+        const messageId =
+          data?.key?.id || data?.id || data?.messageId || data?.update?.key?.id;
         const statusBruto = data?.update?.status || data?.status;
 
-        console.log(
-          `[DEBUG] MsgID: ${messageId} | Status recebido: ${statusBruto}`,
-        );
+        console.log(`[DEBUG] MsgID: ${messageId} | Status: ${statusBruto}`);
 
         if (messageId && statusBruto) {
           let statusFormatado = null;
@@ -54,7 +56,6 @@ class WebhookController {
           }
 
           if (statusFormatado) {
-            // BUSCA INFALÍVEL: Usando .eq (Igualdade exata) e o .select() para confirmar
             const { data: linhasAlteradas, error } = await supabaseAdmin
               .from("historico_mensagens")
               .update({ status: statusFormatado })
@@ -63,13 +64,10 @@ class WebhookController {
               .select();
 
             if (error) {
-              console.error(
-                "❌ [WEBHOOK ERRO] Falha ao atualizar Supabase:",
-                error.message,
-              );
+              console.error("❌ [WEBHOOK ERRO] Falha Supabase:", error.message);
             } else if (!linhasAlteradas || linhasAlteradas.length === 0) {
               console.warn(
-                `⚠️ [WEBHOOK AVISO] Mensagem ID ${messageId} não encontrada. (Pode ser uma msg antiga sem ID gravado no banco)`,
+                `⚠️ [WEBHOOK AVISO] Mensagem ID ${messageId} não encontrada na BD.`,
               );
             } else {
               console.log(
