@@ -8,7 +8,7 @@ const fastify = Fastify({ logger: true });
 // REGISTRO DE PLUGINS DE SEGURANÇA
 // ----------------------------------------------------
 fastify.register(cors, {
-  origin: "*", // Permite que o Vercel ou localhost conversem com essa API
+  origin: ["https://pet-inovasc.vercel.app", "http://localhost:5173"], // Permite que o Vercel ou localhost conversem com essa API
   methods: ["GET", "POST", "PUT", "DELETE"],
 });
 
@@ -21,8 +21,8 @@ fastify.register(require("./routes/auth"));
 fastify.register(require("./routes/mensagens"));
 fastify.register(require("./routes/rotasUsuarios"));
 fastify.register(require("./routes/rotasNotificacoes"));
-fastify.register(require('./routes/rotasWebhooks'));
-fastify.register(require('./routes/rotasConfiguracoes'));
+fastify.register(require("./routes/rotasWebhooks"));
+fastify.register(require("./routes/rotasConfiguracoes"));
 
 // ----------------------------------------------------
 // LIGANDO O MOTOR
