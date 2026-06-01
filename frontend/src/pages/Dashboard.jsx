@@ -70,7 +70,6 @@ export default function Dashboard() {
         },
         (payload) => {
           const msgAtualizada = payload.new;
-          console.log("🔔 [REALTIME] Status recebido:", msgAtualizada.status);
 
           setConsultas((consultasAtuais) =>
             consultasAtuais.map((consulta) => {

@@ -26,14 +26,9 @@ class WebhookController {
           ? payload.data[0]
           : payload.data;
 
-        // ESPIÃO SUPREMO: Imprime o pacote cru para vermos exatamente onde o ID está escondido!
-        console.log("🕵️ [RAW DATA]:", JSON.stringify(data));
-
         // TÉCNICA DE OURO DEFINITIVA: Pegamos o 'keyId' (o código 3EB0...) em vez do ID interno
         const messageId = data?.keyId || data?.key?.id || data?.update?.key?.id;
         const statusBruto = data?.update?.status || data?.status;
-
-        console.log(`[DEBUG] MsgID: ${messageId} | Status: ${statusBruto}`);
 
         if (messageId && statusBruto) {
           let statusFormatado = null;
