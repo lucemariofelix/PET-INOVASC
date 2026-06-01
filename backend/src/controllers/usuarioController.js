@@ -23,9 +23,11 @@ class UsuarioController {
         authHeader,
       );
 
+      const usuarioId = request.user?.id || null;
+
       // REGISTO DE AUDITORIA
       await logRepository.registrar(
-        null, 
+        usuarioId, 
         'CRIOU_USUARIO', 
         `Cadastrou membro da equipa: ${request.body.nome} (${request.body.funcao})`
       );
@@ -52,9 +54,12 @@ class UsuarioController {
         authHeader,
       );
 
+      const usuarioId = request.user?.id || null;
+
+
       // REGISTO DE AUDITORIA
       await logRepository.registrar(
-        null, 
+        usuarioId, 
         'ATUALIZOU_USUARIO', 
         `Alterou acessos/dados do utilizador ID: ${id}`
       );
@@ -74,9 +79,11 @@ class UsuarioController {
       const authHeader = request.headers.authorization;
       await usuarioService.excluirUsuario(id, authHeader);
 
+      const usuarioId = request.user?.id || null;
+
       // REGISTO DE AUDITORIA
       await logRepository.registrar(
-        null, 
+        usuarioId, 
         'EXCLUIU_USUARIO', 
         `Removeu permanentemente o utilizador ID: ${id}`
       );
