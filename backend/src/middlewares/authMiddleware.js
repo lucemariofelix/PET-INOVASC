@@ -22,10 +22,10 @@ exports.verificarPermissao = (rolesPermitidas) => {
         return reply.status(401).send({ erro: "Sessão inválida ou expirada." });
       }
 
-      // 3. Consulta a nossa tabela para ver a função do usuário (ADMIN, RECEPCAO, etc.)
+      // 3. Consulta a nossa tabela para ver a função E O NOME do usuário
       const { data: perfil, error: dbError } = await supabaseClient
         .from("perfis_usuarios")
-        .select("funcao")
+        .select("nome, funcao") // <-- CORREÇÃO: Adicionado o 'nome' aqui na busca
         .eq("id", user.id)
         .single();
 
@@ -35,14 +35,21 @@ exports.verificarPermissao = (rolesPermitidas) => {
           .send({ erro: "Perfil não encontrado no banco de dados." });
       }
 
-      // 4. A TRAVA PRINCIPAL: Verifica se a função do cara está na lista VIP da rota
+      // 4. A TRAVA PRINCIPAL: Verifica se a função está na lista VIP da rota
       if (!rolesPermitidas.includes(perfil.funcao)) {
         return reply.status(403).send({
           erro: `Acesso Negado. O perfil ${perfil.funcao} não tem permissão para isso.`,
         });
       }
 
-      // Se o código chegou até aqui, o usuário tem permissão. Pode continuar para o Controller!
+      // 5. O SEGREDO: Injeta os dados de quem fez o login dentro do request!
+      // Assim, qualquer Controller que vier depois consegue saber quem é a pessoa.
+      request.user = {
+        id: user.id,
+        nome: perfil.nome,
+        funcao: perfil.funcao
+      };
+
     } catch (error) {
       request.log.error("Erro no Middleware de Autenticação:", error);
       return reply
