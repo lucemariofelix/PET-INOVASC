@@ -1,25 +1,37 @@
 export const calcularAtraso = (dataUltima) => {
   if (!dataUltima) return 0;
-  const hoje = new Date(); 
-  hoje.setHours(0, 0, 0, 0);
-  const data = new Date(dataUltima); 
-  data.setHours(0, 0, 0, 0);
-  return Math.ceil(Math.abs(hoje - data) / (1000 * 60 * 60 * 24));
+  
+  // 1. Isola a data e fixa ao meio-dia para evitar fuso horário
+  const dataString = dataUltima.split("T")[0];
+  const data = new Date(`${dataString}T12:00:00`);
+  
+  // 2. Fixa o 'hoje' ao meio-dia para uma comparação justa
+  const hoje = new Date();
+  hoje.setHours(12, 0, 0, 0);
+  
+  // 3. Usa Math.round para evitar falhas por milissegundos
+  return Math.round(Math.abs(hoje - data) / (1000 * 60 * 60 * 24));
 };
 
 export const getBadgeInfo = (consulta) => {
   if (consulta.data_proxima_consulta) {
-    const hoje = new Date(); 
-    hoje.setHours(0, 0, 0, 0);
-    const dataProx = new Date(consulta.data_proxima_consulta); 
-    dataProx.setHours(0, 0, 0, 0);
-    const diffTime = (dataProx - hoje) / (1000 * 60 * 60 * 24);
+    // 1. Isola a data e fixa ao meio-dia
+    const dataString = consulta.data_proxima_consulta.split("T")[0];
+    const dataProx = new Date(`${dataString}T12:00:00`);
+    
+    // 2. Fixa o 'hoje' ao meio-dia
+    const hoje = new Date();
+    hoje.setHours(12, 0, 0, 0);
+    
+    // 3. Cálculo perfeito dos dias de diferença
+    const diffTime = Math.round((dataProx - hoje) / (1000 * 60 * 60 * 24));
     
     if (diffTime >= 0 && diffTime <= 2) {
       return { 
         label: "LEMBRETE", 
         color: "bg-blue-100 text-blue-800 border-blue-200", 
-        textoDias: diffTime === 0 ? "É Hoje!" : `Faltam ${diffTime} dias` 
+        // Adicionada uma validação extra para o "Amanhã" ficar mais natural
+        textoDias: diffTime === 0 ? "É Hoje!" : diffTime === 1 ? "Amanhã" : `Faltam ${diffTime} dias` 
       };
     }
   }
