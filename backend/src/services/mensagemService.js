@@ -59,6 +59,15 @@ class MensagemService {
       return { aviso: "Mensagem simulada. Configure as variáveis." };
     }
 
+    // =======================================================
+    // NOVA TRAVA DE SEGURANÇA: Verifica se o Zap está online
+    // =======================================================
+    const statusZap = await this.statusConexaoWhatsApp();
+    if (statusZap.status !== "connected") {
+      throw new Error("WHATSAPP_DESCONECTADO"); 
+    }
+    // =======================================================
+
     // Disparo Real
     const response = await fetch(
       `${evolutionUrl}/message/sendText/${instanceName}`,
