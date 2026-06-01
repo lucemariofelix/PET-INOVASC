@@ -79,12 +79,11 @@ class PacienteController {
         authHeader,
       );
 
-      // Tenta extrair o nome ou ID do utilizador autenticado
-      const nomeUsuario = request.user?.nome || request.user?.email || request.user?.sub || 'Usuário Autenticado';
+      const usuarioId = request.user?.id || null;
 
       // REGISTO DE AUDITORIA CORRIGIDO
       await logRepository.registrar(
-        nomeUsuario, // <-- Substituímos o null pelo nomeUsuario
+        usuarioId, // <-- Substituímos o null pelo nomeUsuario
         'ATUALIZOU_PACIENTE', 
         `Atualizou os dados do paciente ID: ${id}`
       );
