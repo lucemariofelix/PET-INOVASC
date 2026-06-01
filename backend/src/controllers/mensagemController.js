@@ -16,6 +16,13 @@ exports.enviarMensagem = async (request, reply) => {
   } catch (error) {
     request.log.error("Erro ao disparar WhatsApp:", error);
 
+    // NOVA INTERCETAÇÃO: Avisa que precisa ler o QR Code
+    if (error.message === "WHATSAPP_DESCONECTADO") {
+      return reply.status(409).send({ 
+        erro: "O WhatsApp do posto está desconectado. Por favor, vá à aba de configurações e leia o QR Code antes de enviar mensagens." 
+      });
+    }
+
     // Tratamento para o erro de validação do telefone
     if (error.message.includes("não possui um número")) {
       return reply.status(400).send({ erro: error.message });
