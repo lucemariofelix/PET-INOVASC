@@ -13,12 +13,11 @@ class PacienteController {
         authHeader,
       );
 
-      // Tenta extrair o nome ou ID do utilizador autenticado (Ajuste a chave se o seu token usar outro nome, ex: .email, .id)
-      const nomeUsuario = request.user?.nome || request.user?.email || request.user?.sub || 'Usuário Autenticado';
+      const usuarioId = request.user?.id || null;
 
       // REGISTO DE AUDITORIA CORRIGIDO
       await logRepository.registrar(
-        nomeUsuario, // <-- Agora enviamos quem fez a ação!
+        usuarioId, // <-- Agora enviamos quem fez a ação!
         'CRIOU_PACIENTE', 
         `Cadastrou o paciente com CPF/CNS: ${dadosBody.cpf_cns || 'Não informado'}`
       );
