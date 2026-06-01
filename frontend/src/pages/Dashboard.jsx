@@ -180,9 +180,11 @@ export default function Dashboard() {
 
   // LÓGICA DE RENDERIZAÇÃO DOS TIQUES DO WHATSAPP
   const renderizarStatusWhatsApp = (status, dataEnvio, isMobile = false) => {
-    const dataFormatada = new Date(dataEnvio).toLocaleDateString("pt-BR", {
-      timeZone: "UTC",
-    });
+    const data = new Date(dataEnvio);
+
+    // Omitimos o "timeZone: UTC" para ele usar automaticamente a hora local do computador (GMT-3)
+    const dataFormatada = `${data.toLocaleDateString("pt-BR")} às ${data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+
     const baseClass = isMobile
       ? "text-[10px] font-semibold border rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2"
       : "text-[11px] font-medium flex items-center gap-1.5 p-1 rounded w-fit mt-0.5";
