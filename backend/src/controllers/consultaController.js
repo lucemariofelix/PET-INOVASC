@@ -39,12 +39,12 @@ class ConsultaController {
       
       const consulta = await consultaService.agendarConsulta(dadosBody, authHeader);
       
-      // RECUPERA O NOME DE QUEM ESTÁ LOGADO (Injetado pelo middleware)
-      const nomeUsuario = request.user?.nome || 'Usuário Desconhecido';
+      // RECUPERA O ID DE QUEM ESTÁ LOGADO (Para o banco de dados aceitar)
+      const usuarioId = request.user?.id || null;
       
-      // REGISTO DE AUDITORIA CORRIGIDO
+      // REGISTO DE AUDITORIA
       await logRepository.registrar(
-        nomeUsuario, // <-- Substituímos o 'null' pelo nome de quem agendou
+        usuarioId, // <-- Agora sim, enviamos o UUID!
         'AGENDOU_CONSULTA', 
         `Agendamento para paciente ID: ${dadosBody.paciente_id} com ${dadosBody.tipo_profissional}`
       );
