@@ -1,84 +1,31 @@
-const { supabaseAdmin } = require("../config/supabase");
+const webhookService = require("../services/webhookService");
 
 class WebhookController {
   async receberStatusEvolution(request, reply) {
     try {
-      // =================================================================
-      // CAMADA 3: SEGURANÇA DO WEBHOOK (O Cadeado da Porta dos Fundos)
-      // =================================================================
+      // 1. SEGURANÇA (O Cadeado)
       const webhookSecret = request.headers["x-evolution-secret"];
 
       if (webhookSecret !== process.env.EVOLUTION_WEBHOOK_SECRET) {
-        console.warn(
-          "⚠️ [SEGURANÇA] Tentativa de acesso não autorizado ao Webhook bloqueada.",
-        );
+        console.warn("⚠️ [SEGURANÇA] Tentativa de acesso não autorizado ao Webhook bloqueada.");
         return reply.code(403).send({ erro: "Acesso negado" });
       }
-      // =================================================================
 
+      // 2. ENCAMINHAMENTO PARA O SERVICE
       const payload = request.body;
+      
+      // Não usamos await aqui intencionalmente (Fire and Forget)
+      // A Evolution precisa da resposta 200 imediata, o processamento ocorre em segundo plano
+      webhookService.processarEvento(payload).catch((err) => {
+        console.error("Erro assíncrono no processamento do Webhook:", err);
+      });
 
-      if (
-        payload.event === "messages.update" ||
-        payload.event === "MESSAGES_UPDATE"
-      ) {
-        const data = Array.isArray(payload.data)
-          ? payload.data[0]
-          : payload.data;
-
-        // TÉCNICA DE OURO DEFINITIVA: Pegamos o 'keyId' (o código 3EB0...) em vez do ID interno
-        const messageId = data?.keyId || data?.key?.id || data?.update?.key?.id;
-        const statusBruto = data?.update?.status || data?.status;
-
-        if (messageId && statusBruto) {
-          let statusFormatado = null;
-
-          if (
-            statusBruto === 2 ||
-            statusBruto === "DELIVERY_ACK" ||
-            statusBruto === "RECEIVED"
-          ) {
-            statusFormatado = "ENTREGUE";
-          }
-          if (
-            statusBruto === 3 ||
-            statusBruto === 4 ||
-            statusBruto === "READ" ||
-            statusBruto === "PLAYED"
-          ) {
-            statusFormatado = "LIDO";
-          }
-
-          if (statusFormatado) {
-            const { data: linhasAlteradas, error } = await supabaseAdmin
-              .from("historico_mensagens")
-              .update({ status: statusFormatado })
-              .eq("mensagem_id", messageId)
-              .in("status", ["ENVIADO", "ENTREGUE", "SIMULADO"])
-              .select();
-
-            if (error) {
-              console.error("❌ [WEBHOOK ERRO] Falha Supabase:", error.message);
-            } else if (!linhasAlteradas || linhasAlteradas.length === 0) {
-              console.warn(
-                `⚠️ [WEBHOOK AVISO] Mensagem ID ${messageId} não encontrada na BD.`,
-              );
-            } else {
-              console.log(
-                `✅ [WEBHOOK] Mensagem ${messageId} atualizada com sucesso para: ${statusFormatado}`,
-              );
-            }
-          }
-        }
-      }
-
-      // Regra de Ouro: Devolver 200 OK imediatamente para a Evolution
+      // 3. RESPOSTA IMEDIATA
       return reply.code(200).send({ recebido: true });
+      
     } catch (error) {
       request.log.error(error);
-      return reply
-        .code(500)
-        .send({ erro: "Falha interna no processamento do webhook" });
+      return reply.code(500).send({ erro: "Falha interna no controlador do webhook" });
     }
   }
 }
