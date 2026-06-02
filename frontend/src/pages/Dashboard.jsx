@@ -18,7 +18,6 @@ import {
 
 export default function Dashboard() {
   const [consultas, setConsultas] = useState([]);
-  // CORREÇÃO 1: O componente já nasce a carregar os dados
   const [loading, setLoading] = useState(true);
 
   // ESTADOS EXISTENTES: Filtros e Modais
@@ -116,21 +115,23 @@ export default function Dashboard() {
   }, []);
   // =======================================================================
 
-  // CORREÇÃO 2: O useEffect que atualizava a página para 1 foi removido daqui
-  // para evitar o erro de Cascading Renders no React.
-
   // LÓGICA DE FILTRAGEM COMBINADA (Status + Busca Universal)
   const consultasFiltradas = consultas.filter((consulta) => {
     const badge = getBadgeInfo(consulta);
     const paciente = consulta.pacientes || {};
 
-    // 1. Verifica o Filtro de Status
+    // 1. Verifica o Filtro de Status (ADICIONADA A NOVA REGRA AQUI)
     let passaFiltroStatus = false;
     if (filtro === "TODAS") passaFiltroStatus = true;
     else if (filtro === "ATRASADAS")
       passaFiltroStatus = badge.label === "URGENTE" || badge.label === "ALERTA";
     else if (filtro === "NO_PRAZO")
-      passaFiltroStatus = badge.label === "OK" || badge.label === "LEMBRETE";
+      passaFiltroStatus =
+        badge.label === "OK" ||
+        badge.label === "LEMBRETE" ||
+        badge.label === "AGENDADO";
+    else if (filtro === "SEM_REGISTO")
+      passaFiltroStatus = badge.label === "SEM REGISTO";
 
     // 2. Verifica o Filtro de Busca Universal (Nome, Doc, ACS, Condição ou Profissional)
     let passaFiltroBusca = true;
@@ -243,7 +244,7 @@ export default function Dashboard() {
     }
   };
 
-  // Funções de Disparo (Mantidas intactas)
+  // Funções de Disparo
   const solicitarDisparo = (consulta) => {
     const paciente = consulta.pacientes;
 
@@ -348,7 +349,6 @@ export default function Dashboard() {
                 placeholder="Buscar paciente, ACS, condição ou profissional..."
                 value={termoBusca}
                 onChange={(e) => {
-                  // CORREÇÃO 3: Define a página para 1 no exato momento da busca
                   setTermoBusca(e.target.value);
                   setPaginaAtual(1);
                 }}
@@ -360,7 +360,6 @@ export default function Dashboard() {
             <div className="flex flex-wrap gap-1 bg-slate-200/50 p-1 rounded-lg">
               <button
                 onClick={() => {
-                  // CORREÇÃO 3: Define a página para 1 no clique do filtro
                   setFiltro("TODAS");
                   setPaginaAtual(1);
                 }}
@@ -368,6 +367,18 @@ export default function Dashboard() {
               >
                 Todas
               </button>
+
+              {/* NOVO BOTÃO: SEM REGISTO */}
+              <button
+                onClick={() => {
+                  setFiltro("SEM_REGISTO");
+                  setPaginaAtual(1);
+                }}
+                className={`flex-1 sm:flex-none px-4 py-1.5 rounded-md text-sm font-semibold transition ${filtro === "SEM_REGISTO" ? "bg-orange-50 text-orange-700 shadow-sm" : "text-slate-500 hover:text-orange-700"}`}
+              >
+                Sem Registo
+              </button>
+
               <button
                 onClick={() => {
                   setFiltro("ATRASADAS");
