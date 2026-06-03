@@ -2,19 +2,30 @@ const { supabaseAdmin } = require("../config/supabase");
 
 class WebhookRepository {
   async atualizarStatusMensagem(messageId, statusFormatado) {
-    const { data: linhasAlteradas, error } = await supabaseAdmin
+    let query = supabaseAdmin
       .from("historico_mensagens")
       .update({ status: statusFormatado })
-      .eq("mensagem_id", messageId)
-      .in("status", ["ENVIADO", "ENTREGUE", "SIMULADO"])
-      .select();
+      .eq("mensagem_id", messageId);
+
+    // 🔥 REGRA MONOTÔNICA
+    if (statusFormatado !== "LIDO") {
+      query = query.neq("status", "LIDO");
+    }
+
+    const { data, error } = await query.select();
 
     if (error) {
-      console.error("❌ [WEBHOOK ERRO] Falha Supabase:", error.message);
+      console.error("❌ Supabase erro:", error.message);
       throw error;
     }
 
-    return linhasAlteradas;
+    if (!data || data.length === 0) {
+      console.warn(`⚠️ Nenhuma linha atualizada (${messageId})`);
+    } else {
+      console.log(`✅ Atualizado para: ${statusFormatado}`);
+    }
+
+    return data;
   }
 }
 
