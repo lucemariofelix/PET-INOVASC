@@ -1,15 +1,15 @@
-const webhookRepository = require("../repositories/webhookRepository");
+const webhookRepository = require("../repositories/webhookRepository"); // [cite: 14]
 
 // 🔁 Retry simples para falhas transitórias
 async function retry(fn, tentativas = 3) {
   try {
     return await fn();
   } catch (err) {
+    // [cite: 15]
     if (tentativas <= 1) throw err;
 
     console.warn(`⚠️ Retry... (${tentativas - 1} restantes)`);
-
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await new Promise((resolve) => setTimeout(resolve, 300)); // [cite: 16]
     return retry(fn, tentativas - 1);
   }
 }
@@ -17,30 +17,21 @@ async function retry(fn, tentativas = 3) {
 class WebhookService {
   async processarEvento(payload) {
     try {
+      // Correção 3: Tratamento de eventos irrelevantes
       if (
         payload.event !== "messages.update" &&
         payload.event !== "MESSAGES_UPDATE"
-      ) return;
-
-      const data = Array.isArray(payload.data)
-        ? payload.data[0]
-        : payload.data;
-
-      // 🔥 PADRÃO CONFIÁVEL
-      const messageId = data?.key?.id;
-
-      if (!messageId) {
-        console.warn("⚠️ messageId não encontrado");
+      ) {
         return;
       }
 
-      const statusBruto = data?.update?.status || data?.status;
+      const data = Array.isArray(payload.data) ? payload.data[0] : payload.data; // [cite: 18, 19]
 
-      if (!statusBruto) return;
+      const messageId = data?.key?.id; // [cite: 20]
+      const statusBruto = data?.update?.status || data?.status; // [cite: 22]
 
       const statusComparacao = String(statusBruto).toUpperCase();
-
-      let statusFormatado = null;
+      let statusFormatado = null; // [cite: 23]
 
       if (
         statusComparacao === "2" ||
@@ -48,32 +39,31 @@ class WebhookService {
         statusComparacao === "RECEIVED"
       ) {
         statusFormatado = "ENTREGUE";
-      }
-
-      if (
+      } else if (
         statusComparacao === "3" ||
         statusComparacao === "4" ||
         statusComparacao === "READ" ||
         statusComparacao === "PLAYED"
       ) {
-        statusFormatado = "LIDO";
+        statusFormatado = "LIDO"; // [cite: 24]
       }
 
-      if (!statusFormatado) return;
+      // Correção 1: Envio de undefined ou null evitado
+      if (!messageId || !statusFormatado) {
+        console.log(
+          `Ignorando webhook. ID: ${messageId}, Status Bruto: ${statusBruto}`,
+        );
+        return;
+      }
 
-      console.log(`🔍 ${messageId} → ${statusFormatado}`);
+      console.log(`🔍 ${messageId} → ${statusFormatado}`); // [cite: 25]
 
-      // 🔥 Retry aplicado aqui
       await retry(() =>
-        webhookRepository.atualizarStatusMensagem(
-          messageId,
-          statusFormatado
-        )
-      );
-
+        webhookRepository.atualizarStatusMensagem(messageId, statusFormatado),
+      ); // [cite: 26]
     } catch (error) {
-      console.error("❌ Erro no service:", error);
-      throw error;
+      console.error("❌ Erro no service:", error); // [cite: 27]
+      throw error; // [cite: 28]
     }
   }
 }

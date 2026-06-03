@@ -1,4 +1,4 @@
-const { supabaseAdmin } = require("../config/supabase");
+const { supabaseAdmin } = require("../config/supabase"); // [cite: 7]
 
 class WebhookRepository {
   async atualizarStatusMensagem(messageId, statusFormatado) {
@@ -9,23 +9,24 @@ class WebhookRepository {
 
     // 🔥 REGRA MONOTÔNICA
     if (statusFormatado !== "LIDO") {
+      // [cite: 8]
       query = query.neq("status", "LIDO");
     }
 
-    const { data, error } = await query.select();
+    const { data, error } = await query.select(); // [cite: 9]
 
     if (error) {
-      console.error("❌ Supabase erro:", error.message);
+      console.error("❌ Supabase erro:", error.message); // [cite: 10]
       throw error;
     }
 
     if (!data || data.length === 0) {
-      console.warn(`⚠️ Nenhuma linha atualizada (${messageId})`);
+      console.warn(`⚠️ Nenhuma linha atualizada (${messageId})`); // [cite: 11]
     } else {
-      console.log(`✅ Atualizado para: ${statusFormatado}`);
+      console.log(`✅ Atualizado para: ${statusFormatado}`); // [cite: 12]
     }
 
-    return data;
+    return data; // [cite: 13]
   }
 }
 

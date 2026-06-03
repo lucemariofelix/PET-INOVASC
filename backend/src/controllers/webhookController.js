@@ -1,4 +1,4 @@
-const webhookService = require("../services/webhookService");
+const webhookService = require("../services/webhookService"); // [cite: 1]
 
 class WebhookController {
   async receberStatusEvolution(request, reply) {
@@ -6,20 +6,19 @@ class WebhookController {
       const webhookSecret = request.headers["x-evolution-secret"];
 
       if (webhookSecret !== process.env.EVOLUTION_WEBHOOK_SECRET) {
+        // [cite: 2]
         console.warn("⚠️ Acesso não autorizado ao webhook");
-        return reply.code(403).send({ erro: "Acesso negado" });
+        return reply.code(403).send({ erro: "Acesso negado" }); // [cite: 3]
       }
 
       const payload = request.body;
-
-      // 🔥 PROCESSAMENTO DIRETO (com await)
-      await webhookService.processarEvento(payload);
+      await webhookService.processarEvento(payload); // [cite: 4]
 
       return reply.code(200).send({ recebido: true });
-
     } catch (error) {
-      request.log.error("❌ Erro no webhook:", error);
-      return reply.code(500).send({ erro: "Erro no webhook" });
+      // Correção 2: Tratamento de logger seguro
+      console.error("❌ Erro no webhook:", error);
+      return reply.code(500).send({ erro: "Erro no webhook" }); // [cite: 6]
     }
   }
 }
