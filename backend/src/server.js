@@ -12,13 +12,18 @@ fastify.register(cors, {
   methods: ["GET", "POST", "PUT", "DELETE"],
 });
 
-// Rota de Boas-vindas (Health Check)
+// 🔵 Rota principal (humana / debug)
 fastify.get("/", async (request, reply) => {
   return reply.code(200).send({
     status: "online",
     sistema: "API SGR-UBS",
     mensagem: "Servidor rodando perfeitamente!",
   });
+});
+
+// 🟢 Health check (infra / monitoramento)
+fastify.get("/health", async () => {
+  return { status: "ok" };
 });
 
 // ----------------------------------------------------
