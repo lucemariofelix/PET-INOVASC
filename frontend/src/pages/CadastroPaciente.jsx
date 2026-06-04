@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { FaUserPlus } from "react-icons/fa";
 import { api } from "../api/services";
 import { formatarDocumento } from "../utils/formatters";

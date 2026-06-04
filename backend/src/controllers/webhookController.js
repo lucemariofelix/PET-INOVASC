@@ -4,8 +4,9 @@ class WebhookController {
   async receberStatusEvolution(request, reply) {
     try {
       const webhookSecret = request.headers["x-evolution-secret"];
+      const expectedWebhookSecret = process.env.EVOLUTION_WEBHOOK_SECRET;
 
-      if (webhookSecret !== process.env.EVOLUTION_WEBHOOK_SECRET) {
+      if (!expectedWebhookSecret || webhookSecret !== expectedWebhookSecret) {
         // [cite: 2]
         console.warn("⚠️ Acesso não autorizado ao webhook");
         return reply.code(403).send({ erro: "Acesso negado" }); // [cite: 3]

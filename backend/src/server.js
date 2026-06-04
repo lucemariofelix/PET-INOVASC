@@ -29,10 +29,10 @@ fastify.get("/health", async () => {
 // ----------------------------------------------------
 // REGISTRO DE ROTAS (Módulos)
 // ----------------------------------------------------
-fastify.register(require("./routes/pacientes"));
-fastify.register(require("./routes/consultas"));
-fastify.register(require("./routes/auth"));
-fastify.register(require("./routes/mensagens"));
+fastify.register(require("./routes/rotasPacientes"));
+fastify.register(require("./routes/rotasConsultas"));
+fastify.register(require("./routes/rotasAuth"));
+fastify.register(require("./routes/rotasMensagens"));
 fastify.register(require("./routes/rotasUsuarios"));
 fastify.register(require("./routes/rotasNotificacoes"));
 fastify.register(require("./routes/rotasWebhooks"));

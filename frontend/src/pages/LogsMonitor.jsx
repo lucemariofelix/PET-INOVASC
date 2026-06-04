@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import api from "../api/services"; // Ajuste o caminho se necessário
 import { FaHistory, FaUserShield } from "react-icons/fa";
 

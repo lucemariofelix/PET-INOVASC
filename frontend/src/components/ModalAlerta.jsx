@@ -1,4 +1,3 @@
-import React from 'react';
 import { FaCheckCircle, FaExclamationCircle, FaInfoCircle } from 'react-icons/fa';
 
 export default function ModalAlerta({ isOpen, tipo, titulo, mensagem, onClose }) {

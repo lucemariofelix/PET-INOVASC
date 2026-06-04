@@ -1,12 +1,14 @@
 // src/routes/rotasNotificacoes.js
 const notificacaoController = require("../controllers/notificacaoController");
+const { verificarPermissao } = require("../middlewares/authMiddleware");
 
 const esquemaDisparoLote = {
   body: {
     type: "object",
-    required: ["mensagem", "pacientes"],
+    required: ["mensagemBase", "pacientes"],
     properties: {
-      mensagem: { type: "string", minLength: 5 }, // Impede o envio de mensagens em branco ou com 1 letra
+      mensagemBase: { type: "string", minLength: 5 }, // Impede o envio de mensagens em branco ou com 1 letra
+      usuario_id: { type: ["string", "null"] },
       pacientes: {
         type: "array",
         minItems: 1, // Impede o disparo se a lista estiver vazia
@@ -14,6 +16,7 @@ const esquemaDisparoLote = {
           type: "object",
           required: ["telefone", "nome_completo"],
           properties: {
+            id: { type: "string" },
             telefone: { type: "string", minLength: 10 },
             nome_completo: { type: "string" },
           },
@@ -24,16 +27,18 @@ const esquemaDisparoLote = {
   },
 };
 
-// Se você usa middleware para verificar token/permissão, importe-o aqui.
-// Exemplo genérico:
-// const { verificarPermissao } = require('../middlewares/authMiddleware');
-
 async function rotasNotificacoes(fastify, options) {
+  const todosAutenticados = {
+    preHandler: [verificarPermissao(["ADMIN", "RECEPCAO", "ACS"])],
+  };
+
   // A rota exata que o frontend está procurando
-  // Se tiver middleware de segurança, adicione-o como no resto do sistema
   fastify.post(
     "/notificacoes/lote",
-    { schema: esquemaDisparoLote },
+    {
+      ...todosAutenticados,
+      schema: esquemaDisparoLote,
+    },
     notificacaoController.disparar,
   );
 }

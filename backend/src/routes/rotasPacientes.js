@@ -20,13 +20,17 @@ const esquemaPaciente = {
 };
 
 async function rotasPacientes(fastify, options) {
+  const todosAutenticados = {
+    preHandler: [verificarPermissao(["ADMIN", "RECEPCAO", "ACS"])],
+  };
+
   // ADMIN e RECEPCAO têm permissão para criar e editar pacientes
   const adminERecepcao = {
     preHandler: [verificarPermissao(["ADMIN", "RECEPCAO"])],
   };
 
   // Leitura aberta para todos os usuários autenticados (incluindo ACS)
-  fastify.get("/pacientes", pacienteController.listar);
+  fastify.get("/pacientes", todosAutenticados, pacienteController.listar);
 
   // Escrita e atualização trancadas E validadas (Unimos tudo no 2º parâmetro)
   fastify.post(

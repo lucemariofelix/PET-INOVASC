@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   FaQrcode,
   FaCheckCircle,
@@ -64,7 +64,7 @@ export default function Configuracoes() {
       const data = await api.getWhatsAppStatus();
       setStatusWpp(data.status);
       if (data.status === "qrcode") setQrCodeBase64(data.qrcode);
-    } catch (error) {
+    } catch {
       setStatusWpp("error");
     }
   };
