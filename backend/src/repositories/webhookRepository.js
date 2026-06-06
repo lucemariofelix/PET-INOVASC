@@ -21,7 +21,11 @@ class WebhookRepository {
     }
 
     if (!data || data.length === 0) {
-      console.warn(`⚠️ Nenhuma linha atualizada (${messageId})`); // [cite: 11]
+      console.warn("[WEBHOOK_DIAG] Nenhuma linha atualizada para messageId", {
+        messageId,
+        coluna_busca: "mensagem_id",
+        statusFormatado,
+      }); // [cite: 11]
     } else {
       console.log(`✅ Atualizado para: ${statusFormatado}`); // [cite: 12]
     }

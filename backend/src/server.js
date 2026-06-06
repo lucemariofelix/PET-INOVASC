@@ -1,8 +1,12 @@
 require("dotenv").config();
 const Fastify = require("fastify");
 const cors = require("@fastify/cors"); // <- O Porteiro do CORS
+const errorHandler = require("./middlewares/errorHandler");
 
 const fastify = Fastify({ logger: true });
+
+// Registro do Handler Global de Erros
+fastify.setErrorHandler(errorHandler);
 
 // ----------------------------------------------------
 // REGISTRO DE PLUGINS DE SEGURANÇA

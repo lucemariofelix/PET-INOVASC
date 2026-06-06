@@ -77,6 +77,14 @@ class NotificacaoService {
         const jsonData = JSON.parse(textData);
         const idDaMensagem = jsonData?.key?.id || jsonData?.id || null;
 
+        console.log("[EVOLUTION_DIAG] mensagem_id extraído do sendText:", {
+          origem: "NotificacaoService",
+          paciente_id: paciente.id,
+          mensagem_id: idDaMensagem,
+          temKeyId: Boolean(jsonData?.key?.id),
+          temIdRaiz: Boolean(jsonData?.id),
+        });
+
         await notificacaoRepository.registrarEnvio({
           paciente_id: paciente.id,
           telefone_destino: telefoneLimpo,
@@ -87,7 +95,7 @@ class NotificacaoService {
         });
 
         console.log(
-          `[OK] Mensagem enviada para ${primeiroNome} (Tel: ${telefoneLimpo} | ID: ${idDaMensagem})`,
+          `[OK] Mensagem enviada para ${primeiroNome} (ID: ${idDaMensagem})`,
         );
       } catch (error) {
         console.error(

@@ -89,6 +89,13 @@ class MensagemService {
     // TÉCNICA DE OURO: Extrair a matrícula (ID) da mensagem recém disparada
     const idDaMensagem = jsonData?.key?.id || jsonData?.id || null;
 
+    console.log("[EVOLUTION_DIAG] mensagem_id extraído do sendText:", {
+      origem: "MensagemService",
+      mensagem_id: idDaMensagem,
+      temKeyId: Boolean(jsonData?.key?.id),
+      temIdRaiz: Boolean(jsonData?.id),
+    });
+
     // Salva o histórico Real no Supabase com o ID atrelado
     await mensagemRepository.salvarHistorico(
       {

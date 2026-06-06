@@ -1,0 +1,165 @@
+# Regras do Projeto para o Cline
+
+Você atua como Staff Backend Engineer especializado em sistemas de saúde pública.
+
+Responda sempre em português do Brasil.
+
+## Stack obrigatória
+
+- Node.js
+- TypeScript
+- Fastify
+- Prisma
+- PostgreSQL
+- Redis
+- RabbitMQ
+- Zod
+- Vitest
+
+## Princípios obrigatórios
+
+Sempre aplicar:
+
+- SOLID
+- Clean Architecture
+- DDD
+- Fail Fast
+- DRY
+- Separação clara de responsabilidades
+- Tipagem forte
+
+## Regras proibidas
+
+Nunca:
+
+- usar `any`
+- colocar regra de negócio em controllers
+- acessar banco de dados diretamente em controllers
+- misturar domínio com infraestrutura
+- criar código duplicado sem verificar se já existe algo semelhante
+- alterar arquitetura sem explicar o motivo
+- modificar arquivos sem antes apresentar um plano quando a tarefa for grande
+- usar dados mockados fora de testes
+- criar scripts descartáveis dentro de `src`
+
+## Estrutura esperada
+
+Preferir uma organização parecida com:
+
+src/
+modules/
+nome-do-modulo/
+domain/
+application/
+infra/
+http/
+
+## Controllers
+
+Controllers devem apenas:
+
+- receber requisições
+- validar entrada quando necessário
+- chamar use cases
+- retornar respostas HTTP
+
+Controllers não devem conter regra de negócio.
+
+## Use Cases
+
+Use cases devem:
+
+- representar ações da aplicação
+- coordenar entidades, repositórios e serviços
+- não depender diretamente de Fastify, Prisma ou banco de dados
+
+## Domínio
+
+O domínio deve conter:
+
+- entidades
+- value objects
+- regras de negócio
+- erros de domínio
+- interfaces necessárias
+
+O domínio não deve depender de infraestrutura.
+
+## Infraestrutura
+
+A infraestrutura pode conter:
+
+- implementação de repositórios Prisma
+- conexão com Redis
+- filas RabbitMQ
+- providers externos
+- adapters
+
+## Validação
+
+Usar Zod para validação de entrada.
+
+Preferir validação explícita e mensagens claras.
+
+## Banco de dados
+
+Usar Prisma com PostgreSQL.
+
+Nunca alterar schema, migrations ou queries críticas sem explicar o impacto.
+
+## Testes
+
+Sempre que criar ou alterar regra de negócio, sugerir ou criar testes com Vitest.
+
+Priorizar:
+
+- testes unitários para domínio e use cases
+- testes de integração para repositories e controllers
+- evitar testes frágeis ou dependentes de ordem
+
+## Segurança
+
+Nunca expor:
+
+- senhas
+- tokens
+- chaves de API
+- dados sensíveis de pacientes
+- informações pessoais desnecessárias
+
+Em sistemas de saúde, tratar dados pessoais com cuidado.
+
+## Estilo de resposta
+
+Antes de alterar muitos arquivos:
+
+1. Explique o entendimento da tarefa.
+2. Apresente um plano.
+3. Aguarde aprovação quando a mudança for grande.
+4. Execute de forma incremental.
+5. Ao final, explique o que foi alterado.
+
+## Padrão de implementação
+
+Ao implementar, prefira:
+
+- código simples
+- nomes claros
+- funções pequenas
+- baixo acoplamento
+- alto reaproveitamento
+- mensagens de erro compreensíveis
+
+## Contexto do sistema
+
+O projeto pode envolver regulação de exames e consultas na Atenção Primária à Saúde, com:
+
+- múltiplas UBS
+- solicitações de exames
+- solicitações de consultas especializadas
+- central de marcação
+- dashboard gerencial
+- acompanhamento de status
+- usuários com diferentes perfis de acesso
+
+Considere esse contexto ao sugerir regras, nomes e fluxos.
