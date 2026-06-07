@@ -32,7 +32,7 @@ async function rotasNotificacoes(fastify, options) {
     preHandler: [verificarPermissao(["ADMIN", "RECEPCAO", "ACS"])],
   };
 
-  // A rota exata que o frontend está procurando
+  // 1. Rota de envio: Protegida (Apenas usuários logados do sistema podem acionar)
   fastify.post(
     "/notificacoes/lote",
     {
@@ -42,8 +42,10 @@ async function rotasNotificacoes(fastify, options) {
     notificacaoController.disparar,
   );
 
-  // A NOVA rota para escutar a Evolution API
-  fastify.post("/webhook", NotificacaoController.receberWebhook);
+  // 2. Rota de escuta (Webhook): Aberta para a Evolution API enviar os status de leitura
+  // Observação: Não colocamos schema de body aqui ainda porque queremos logar o JSON
+  // cru da Evolution para descobrir a estrutura exata primeiro.
+  fastify.post("/notificacoes/webhook", notificacaoController.receberWebhook);
 }
 
 module.exports = rotasNotificacoes;
