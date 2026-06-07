@@ -41,6 +41,9 @@ async function rotasNotificacoes(fastify, options) {
     },
     notificacaoController.disparar,
   );
+
+  // A NOVA rota para escutar a Evolution API
+  fastify.post("/webhook", NotificacaoController.receberWebhook);
 }
 
 module.exports = rotasNotificacoes;
