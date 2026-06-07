@@ -3,7 +3,10 @@ const Fastify = require("fastify");
 const cors = require("@fastify/cors"); // <- O Porteiro do CORS
 const errorHandler = require("./middlewares/errorHandler");
 
-const fastify = Fastify({ logger: true });
+const fastify = Fastify({
+  logger: true,
+  bodyLimit: 5 * 1024 * 1024, // 5MB para payloads maiores da Evolution API
+});
 
 // Registro do Handler Global de Erros
 fastify.setErrorHandler(errorHandler);
