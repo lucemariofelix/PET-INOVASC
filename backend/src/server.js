@@ -5,7 +5,7 @@ const errorHandler = require("./middlewares/errorHandler");
 
 const fastify = Fastify({
   logger: true,
-  bodyLimit: 5 * 1024 * 1024, // 5MB para payloads maiores da Evolution API
+  bodyLimit: 10 * 1024 * 1024, // 10MB para payloads maiores da Evolution API
 });
 
 // Registro do Handler Global de Erros
