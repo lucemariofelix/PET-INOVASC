@@ -43,6 +43,40 @@ class WebhookService {
 
       const data = Array.isArray(payload.data) ? payload.data[0] : payload.data; // [cite: 18, 19]
 
+      console.log("[WEBHOOK_DIAG] Object.keys(data):", Object.keys(data || {}));
+
+      console.log(
+        "[WEBHOOK_DIAG] Object.keys(data.key):",
+        Object.keys(data?.key || {}),
+      );
+
+      console.log(
+        "[WEBHOOK_DIAG] Object.keys(data.update):",
+        Object.keys(data?.update || {}),
+      );
+
+      console.log(
+        "[WEBHOOK_DIAG] Object.keys(data.message):",
+        Object.keys(data?.message || {}),
+      );
+
+      console.log(
+        "[WEBHOOK_DIAG] Object.keys(data.message.key):",
+        Object.keys(data?.message?.key || {}),
+      );
+
+      console.log("[WEBHOOK_DIAG] Candidatos a messageId:", {
+        "data.id": data?.id ?? null,
+        "data.messageId": data?.messageId ?? null,
+        "data.key.id": data?.key?.id ?? null,
+        "data.update.id": data?.update?.id ?? null,
+        "data.update.key.id": data?.update?.key?.id ?? null,
+        "data.message.key.id": data?.message?.key?.id ?? null,
+        "data.key.fromMe": data?.key?.fromMe ?? null,
+        "data.update.status": data?.update?.status ?? null,
+        "data.status": data?.status ?? null,
+      });
+
       const messageId = data?.key?.id; // [cite: 20]
       const statusBruto = data?.update?.status || data?.status; // [cite: 22]
 
