@@ -1,4 +1,3 @@
-// src/services/notificacaoService.js
 const notificacaoRepository = require("../repositories/notificacaoRepository");
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -64,7 +63,6 @@ class NotificacaoService {
           },
         );
 
-        // Lemos como texto primeiro por segurança
         const textData = await respostaEvolution.text();
 
         if (!respostaEvolution.ok) {
@@ -73,7 +71,6 @@ class NotificacaoService {
           );
         }
 
-        // TÉCNICA DE OURO: Parse do JSON e captura da matrícula da mensagem
         const jsonData = JSON.parse(textData);
         const idDaMensagem = jsonData?.key?.id || jsonData?.id || null;
 
@@ -85,17 +82,29 @@ class NotificacaoService {
           temIdRaiz: Boolean(jsonData?.id),
         });
 
+        // CORREÇÃO: Se a Evolution não devolveu um ID, o registro será salvo
+        // com mensagem_id=null. O webhook nunca encontrará esse registro pelo
+        // WHERE mensagem_id = '...' e o status jamais sairá de ENVIADO.
+        // O aviso abaixo sinaliza esse caso explicitamente nos logs.
+        if (!idDaMensagem) {
+          console.error(
+            "[NOTIFICACAO] ⚠️ mensagem_id ausente na resposta da Evolution. " +
+            "O status ENTREGUE/LIDO não será atualizado para esta mensagem. " +
+            "Resposta recebida: " + JSON.stringify(jsonData),
+          );
+        }
+
         await notificacaoRepository.registrarEnvio({
           paciente_id: paciente.id,
           telefone_destino: telefoneLimpo,
           texto_enviado: textoFinal,
           status: "ENVIADO",
           usuario_id: usuario_id || null,
-          mensagem_id: idDaMensagem, // <-- Nova coluna
+          mensagem_id: idDaMensagem,
         });
 
         console.log(
-          `[OK] Mensagem enviada para ${primeiroNome} (ID: ${idDaMensagem})`,
+          `[OK] Mensagem enviada para ${primeiroNome} (ID: ${idDaMensagem ?? "N/A"})`,
         );
       } catch (error) {
         console.error(
@@ -110,6 +119,7 @@ class NotificacaoService {
             texto_enviado: textoFinal || mensagemBase,
             status: "ERRO",
             usuario_id: usuario_id || null,
+            mensagem_id: null,
           })
           .catch(() => null);
       }
