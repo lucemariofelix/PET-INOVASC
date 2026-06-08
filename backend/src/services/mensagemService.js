@@ -1,9 +1,8 @@
-// IMPORTAÇÃO: Chamar o repositório de dados para salvar no banco
 const mensagemRepository = require("../repositories/mensagemRepository");
 
 class MensagemService {
   // ========================================================================
-  // MÉTODO 1: DISPARO DE MENSAGENS (COM TÉCNICA DE OURO)
+  // MÉTODO 1: DISPARO DE MENSAGENS
   // ========================================================================
   async dispararMensagem(
     {
@@ -51,6 +50,7 @@ class MensagemService {
           telefone_destino: telefoneFormatado,
           texto_enviado: texto,
           status: "SIMULADO",
+          status_ordem: 1,
           paciente_id: paciente_id || null,
           consulta_id: consulta_id || null,
         },
@@ -59,16 +59,12 @@ class MensagemService {
       return { aviso: "Mensagem simulada. Configure as variáveis." };
     }
 
-    // =======================================================
-    // NOVA TRAVA DE SEGURANÇA: Verifica se o Zap está online
-    // =======================================================
+    // Verifica se o WhatsApp está online antes de disparar
     const statusZap = await this.statusConexaoWhatsApp();
     if (statusZap.status !== "connected") {
-      throw new Error("WHATSAPP_DESCONECTADO"); 
+      throw new Error("WHATSAPP_DESCONECTADO");
     }
-    // =======================================================
 
-    // Disparo Real
     const response = await fetch(
       `${evolutionUrl}/message/sendText/${instanceName}`,
       {
@@ -86,7 +82,6 @@ class MensagemService {
 
     const jsonData = JSON.parse(textData);
 
-    // TÉCNICA DE OURO: Extrair a matrícula (ID) da mensagem recém disparada
     const idDaMensagem = jsonData?.key?.id || jsonData?.id || null;
 
     console.log("[EVOLUTION_DIAG] mensagem_id extraído do sendText:", {
@@ -96,15 +91,27 @@ class MensagemService {
       temIdRaiz: Boolean(jsonData?.id),
     });
 
-    // Salva o histórico Real no Supabase com o ID atrelado
+    if (!idDaMensagem) {
+      console.error(
+        "[MENSAGEM] ⚠️ mensagem_id ausente na resposta da Evolution. " +
+        "O status ENTREGUE/LIDO não será atualizado para esta mensagem. " +
+        "Resposta recebida: " + JSON.stringify(jsonData),
+      );
+    }
+
+    // PROBLEMA 3 CORRIGIDO: status_ordem incluído no insert para garantir
+    // que o webhookRepository consiga atualizar via .lt("status_ordem", 2).
+    // Sem esse campo, NULL < 2 retorna NULL no Postgres e nenhuma linha
+    // é atualizada — status trava em ENVIADO para sempre.
     await mensagemRepository.salvarHistorico(
       {
         telefone_destino: telefoneFormatado,
         texto_enviado: texto,
         status: "ENVIADO",
+        status_ordem: 1,
         paciente_id: paciente_id || null,
         consulta_id: consulta_id || null,
-        mensagem_id: idDaMensagem, // <-- Nova coluna
+        mensagem_id: idDaMensagem,
       },
       authHeader,
     );
@@ -113,7 +120,7 @@ class MensagemService {
   }
 
   // ========================================================================
-  // MÉTODO 2: CHECAGEM DE STATUS E GERAÇÃO DO QR CODE (CORRIGIDO)
+  // MÉTODO 2: CHECAGEM DE STATUS E GERAÇÃO DO QR CODE
   // ========================================================================
   async statusConexaoWhatsApp() {
     const evolutionUrl = process.env.EVOLUTION_API_URL;
@@ -139,10 +146,8 @@ class MensagemService {
       const stateData = await resState.json();
       const statusInstancia = stateData?.instance?.state || stateData?.state;
 
-      // Se já conectou de vez, sucesso!
       if (statusInstancia === "open") return { status: "connected" };
 
-      // Tenta obter o QR Code independentemente se o status é "connecting" ou "close"
       const resConnect = await fetch(
         `${evolutionUrl}/instance/connect/${instanceName}`,
         {
@@ -153,13 +158,10 @@ class MensagemService {
 
       const connectData = await resConnect.json();
 
-      // O PULO DO GATO: Se existir um QR Code em base64 na resposta, ele ganha prioridade!
-      // Isso evita que o QR Code pisque e suma quando o frontend fizer a checagem de 5 em 5 segundos
       if (connectData && connectData.base64) {
         return { status: "qrcode", qrcode: connectData.base64 };
       }
 
-      // Só devolvemos o "connecting" genérico se realmente NÃO houver QR code para desenhar
       if (statusInstancia === "connecting") {
         return {
           status: "connecting",
