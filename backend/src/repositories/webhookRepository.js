@@ -1,17 +1,5 @@
 const { supabaseAdmin } = require("../config/supabase");
 
-// Hierarquia de status: um status só pode avançar, nunca regredir.
-// ENVIADO(1) → ENTREGUE(2) → LIDO(3)
-// A coluna `status_ordem` na tabela deve refletir esses valores.
-// Se não existir, execute esta migration no Supabase:
-//
-//   ALTER TABLE historico_mensagens ADD COLUMN IF NOT EXISTS status_ordem INT DEFAULT 1;
-//   UPDATE historico_mensagens SET status_ordem = 1 WHERE status = 'ENVIADO';
-//   UPDATE historico_mensagens SET status_ordem = 1 WHERE status = 'SIMULADO';
-//   UPDATE historico_mensagens SET status_ordem = 1 WHERE status = 'ERRO';
-//   UPDATE historico_mensagens SET status_ordem = 2 WHERE status = 'ENTREGUE';
-//   UPDATE historico_mensagens SET status_ordem = 3 WHERE status = 'LIDO';
-
 const STATUS_ORDEM = {
   ENVIADO: 1,
   SIMULADO: 1,
