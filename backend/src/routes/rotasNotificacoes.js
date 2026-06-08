@@ -1,4 +1,3 @@
-// src/routes/rotasNotificacoes.js
 const notificacaoController = require("../controllers/notificacaoController");
 const { verificarPermissao } = require("../middlewares/authMiddleware");
 
@@ -7,11 +6,11 @@ const esquemaDisparoLote = {
     type: "object",
     required: ["mensagemBase", "pacientes"],
     properties: {
-      mensagemBase: { type: "string", minLength: 5 }, // Impede o envio de mensagens em branco ou com 1 letra
+      mensagemBase: { type: "string", minLength: 5 },
       usuario_id: { type: ["string", "null"] },
       pacientes: {
         type: "array",
-        minItems: 1, // Impede o disparo se a lista estiver vazia
+        minItems: 1,
         items: {
           type: "object",
           required: ["telefone", "nome_completo"],
@@ -32,20 +31,21 @@ async function rotasNotificacoes(fastify, options) {
     preHandler: [verificarPermissao(["ADMIN", "RECEPCAO", "ACS"])],
   };
 
-  // 1. Rota de envio: Protegida (Apenas usuários logados do sistema podem acionar)
+  // CORREÇÃO: .bind(notificacaoController) adicionado para preservar o
+  // contexto `this` quando o Fastify invocar o método como handler.
   fastify.post(
     "/notificacoes/lote",
     {
       ...todosAutenticados,
       schema: esquemaDisparoLote,
     },
-    notificacaoController.disparar,
+    notificacaoController.disparar.bind(notificacaoController),
   );
 
-  // 2. Rota de escuta (Webhook): Aberta para a Evolution API enviar os status de leitura
-  // Observação: Não colocamos schema de body aqui ainda porque queremos logar o JSON
-  // cru da Evolution para descobrir a estrutura exata primeiro.
-  fastify.post("/notificacoes/webhook", notificacaoController.receberWebhook);
+  // CORREÇÃO: A rota /notificacoes/webhook foi REMOVIDA.
+  // Ela duplicava o papel do /webhooks/evolution sem processar nada,
+  // fazendo com que metade dos eventos da Evolution fosse descartada.
+  // Configure na Evolution API somente: POST /webhooks/evolution
 }
 
 module.exports = rotasNotificacoes;
