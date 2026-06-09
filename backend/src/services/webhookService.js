@@ -34,6 +34,7 @@ class WebhookService {
 
       // A extração do ID à prova de balas para a v2.3.7
       const messageId =
+        data?.keyId ||
         data?.key?.id ||
         data?.id ||
         data?.messageId ||
