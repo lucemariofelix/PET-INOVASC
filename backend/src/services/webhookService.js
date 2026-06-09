@@ -14,6 +14,8 @@ async function retry(fn, tentativas = 3) {
 
 class WebhookService {
   async processarEvento(payload) {
+    console.log("=== JSON BRUTO DA V2.3.7 ===");
+    console.log(JSON.stringify(payload, null, 2));
     try {
       // BUG D CORRIGIDO: Normaliza o evento para maiúsculas e substitui "."
       // por "_" antes de comparar, cobrindo todas as variações que a
