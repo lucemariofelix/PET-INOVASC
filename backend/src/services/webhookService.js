@@ -30,34 +30,47 @@ class WebhookService {
 
       const data = Array.isArray(payload.data) ? payload.data[0] : payload.data;
 
-      const messageId = data?.key?.id;
+      // A extração do ID à prova de balas para a v2.3.7
+      const messageId =
+        data?.key?.id ||
+        data?.id ||
+        data?.messageId ||
+        data?.message?.key?.id ||
+        data?.message?.id;
+
       const statusBruto = data?.update?.status ?? data?.status;
 
-      // Log de diagnóstico — remover após confirmar funcionamento em produção
-      console.log("[WEBHOOK_DIAG]", JSON.stringify({
-        eventoOriginal: payload.event,
-        eventoNormalizado,
-        messageId: messageId ?? null,
-        statusBruto: statusBruto ?? null,
-        dataIsArray: Array.isArray(payload.data),
-        temKeyId: !!data?.key?.id,
-        temUpdateStatus: !!data?.update?.status,
-      }));
+      // Log de diagnóstico
+      console.log(
+        "[WEBHOOK_DIAG]",
+        JSON.stringify({
+          eventoOriginal: payload.event,
+          eventoNormalizado,
+          messageId: messageId ?? null,
+          statusBruto: statusBruto ?? null,
+          dataIsArray: Array.isArray(payload.data),
+          temKeyId: !!data?.key?.id,
+          temUpdateStatus: !!data?.update?.status,
+        }),
+      );
 
       const statusComparacao = String(statusBruto).toUpperCase();
       let statusFormatado = null;
 
+      // Adicionado SERVER_ACK e o número 3 para cobrir todas as variações de "Entregue"
       if (
-        statusComparacao === "2" ||
+        statusComparacao === "SERVER_ACK" ||
         statusComparacao === "DELIVERY_ACK" ||
-        statusComparacao === "RECEIVED"
+        statusComparacao === "RECEIVED" ||
+        statusComparacao === "2" ||
+        statusComparacao === "3"
       ) {
         statusFormatado = "ENTREGUE";
       } else if (
-        statusComparacao === "3" ||
-        statusComparacao === "4" ||
         statusComparacao === "READ" ||
-        statusComparacao === "PLAYED"
+        statusComparacao === "PLAYED" ||
+        statusComparacao === "4" ||
+        statusComparacao === "5"
       ) {
         statusFormatado = "LIDO";
       }
