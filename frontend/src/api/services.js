@@ -9,6 +9,15 @@ const getAuthHeaders = () => {
   };
 };
 
+const limparSessaoLocal = () => {
+  localStorage.removeItem("sgr_token");
+  localStorage.removeItem("sgr_usuario");
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event("sgr:sessao-expirada"));
+  }
+};
+
 // 2. O NOVO VIGIA GLOBAL: Toda requisição passa por aqui primeiro
 const fetchComAutenticacao = async (endpoint, options = {}) => {
   const res = await fetch(`${API_URL}${endpoint}`, {
@@ -21,9 +30,7 @@ const fetchComAutenticacao = async (endpoint, options = {}) => {
 
   // A TRAVA GLOBAL: Se bater 401 em QUALQUER lugar do sistema, cai aqui!
   if (res.status === 401) {
-    localStorage.removeItem("sgr_token");
-    localStorage.removeItem("sgr_usuario");
-    window.location.reload(); // Ativa a trava do App.jsx
+    limparSessaoLocal();
 
     // Trava a execução para não quebrar o React
     throw new Error("Sessão expirada. Redirecionando para login...");
@@ -35,6 +42,15 @@ const fetchComAutenticacao = async (endpoint, options = {}) => {
 // 3. Suas rotas agora ficam super limpas, chamando o vigia
 // MUDANÇA 1: Tiramos o "export" daqui, virou apenas "const api ="
 const api = {
+  getMe: async () => {
+    const res = await fetchComAutenticacao("/auth/me");
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.erro || "Erro ao validar sessão");
+    }
+    return res.json();
+  },
+
   getConsultasAtrasadas: async () => {
     const res = await fetchComAutenticacao("/consultas/atrasadas");
     if (!res.ok) {

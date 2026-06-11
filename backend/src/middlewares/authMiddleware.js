@@ -47,9 +47,8 @@ exports.verificarPermissao = (rolesPermitidas) => {
       request.user = {
         id: user.id,
         nome: perfil.nome,
-        funcao: perfil.funcao
+        funcao: perfil.funcao,
       };
-
     } catch (error) {
       request.log.error("Erro no Middleware de Autenticação:", error);
       return reply
