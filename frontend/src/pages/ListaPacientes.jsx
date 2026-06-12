@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   FaList,
   FaChevronLeft,
@@ -14,6 +14,9 @@ import ModalAlerta from "../components/ModalAlerta";
 export default function ListaPacientes() {
   const [pacientesOptions, setPacientesOptions] = useState([]);
   const [loadingPacientes, setLoadingPacientes] = useState(false);
+  const [agentesACS, setAgentesACS] = useState([]);
+  const [grupos, setGrupos] = useState([]);
+  const [loadingMetadados, setLoadingMetadados] = useState(false);
 
   // Estados da Paginação
   const [paginaAtual, setPaginaAtual] = useState(1);
@@ -29,18 +32,6 @@ export default function ListaPacientes() {
     mensagem: "",
   });
 
-  const listaACS = [
-    "Área Descoberta",
-    "Lucemário",
-    "Janúsia",
-    "Maria José",
-    "Rouse",
-    "Fabíola",
-    "Alex",
-    "Zerilda",
-    "Ceiça",
-  ];
-
   const fetchPacientes = async () => {
     setLoadingPacientes(true);
     try {
@@ -55,8 +46,27 @@ export default function ListaPacientes() {
     }
   };
 
+  const fetchMetadados = async () => {
+    setLoadingMetadados(true);
+
+    try {
+      const [respostaACS, respostaGrupos] = await Promise.all([
+        api.getACS(),
+        api.getGrupos(),
+      ]);
+
+      setAgentesACS(respostaACS.usuarios || respostaACS || []);
+      setGrupos(respostaGrupos.grupos || respostaGrupos || []);
+    } catch (err) {
+      console.error("Erro ao buscar ACS/grupos:", err);
+    } finally {
+      setLoadingMetadados(false);
+    }
+  };
+
   useEffect(() => {
     fetchPacientes();
+    fetchMetadados();
   }, []);
 
   // Lógica de Paginação
@@ -87,10 +97,30 @@ export default function ListaPacientes() {
     )[0];
   };
 
+  const obterNomeAgente = (paciente) => {
+    return paciente?.agente?.nome || paciente?.acs || "Não Informado";
+  };
+
+  const obterGruposPaciente = (paciente) => {
+    return (paciente?.pacientes_grupos || [])
+      .map((vinculo) => vinculo.grupos_acompanhamento)
+      .filter(Boolean);
+  };
+
+  const extrairGruposIds = (paciente) => {
+    return (paciente?.pacientes_grupos || [])
+      .map((vinculo) => vinculo.grupo_id || vinculo.grupos_acompanhamento?.id)
+      .filter(Boolean);
+  };
+
   // --- LÓGICA DE EDIÇÃO ---
   const abrirModalEdicao = (paciente) => {
     // Clonamos os dados para não alterar a tabela antes de salvar no banco
-    setPacienteEditando({ ...paciente });
+    setPacienteEditando({
+      ...paciente,
+      agente_id: paciente.agente_id || paciente.agente?.id || "",
+      grupos_ids: extrairGruposIds(paciente),
+    });
     setModalEdicaoAberto(true);
   };
 
@@ -104,6 +134,19 @@ export default function ListaPacientes() {
       ...prev,
       cpf_cns: formatarDocumento(e.target.value),
     }));
+  };
+
+  const toggleGrupoEdicao = (grupoId) => {
+    setPacienteEditando((prev) => {
+      const gruposAtuais = prev.grupos_ids || [];
+
+      return {
+        ...prev,
+        grupos_ids: gruposAtuais.includes(grupoId)
+          ? gruposAtuais.filter((id) => id !== grupoId)
+          : [...gruposAtuais, grupoId],
+      };
+    });
   };
 
   const salvarEdicao = async (e) => {
@@ -128,7 +171,8 @@ export default function ListaPacientes() {
       data_nascimento: pacienteEditando.data_nascimento,
       telefone: pacienteEditando.telefone,
       endereco: pacienteEditando.endereco,
-      acs: pacienteEditando.acs,
+      agente_id: pacienteEditando.agente_id || null,
+      grupos_ids: pacienteEditando.grupos_ids || [],
       condicao: pacienteEditando.condicao,
     };
 
@@ -209,8 +253,8 @@ export default function ListaPacientes() {
                         </p>
                       </td>
                       <td className="px-6 py-4 text-slate-600">
-                        {pac.acs ? (
-                          pac.acs
+                        {obterNomeAgente(pac) !== "Não Informado" ? (
+                          obterNomeAgente(pac)
                         ) : (
                           <span className="text-slate-400 italic">
                             Não Informado
@@ -235,6 +279,18 @@ export default function ListaPacientes() {
                         >
                           {pac.condicao || "NENHUMA"}
                         </span>
+                        {obterGruposPaciente(pac).length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {obterGruposPaciente(pac).map((grupo) => (
+                              <span
+                                key={grupo.id}
+                                className="rounded border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+                              >
+                                {grupo.nome}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         {(() => {
@@ -314,7 +370,7 @@ export default function ListaPacientes() {
                         Agente / ACS
                       </span>
                       <span className="text-slate-700 line-clamp-1">
-                        {pac.acs || "Não inf."}
+                        {obterNomeAgente(pac)}
                       </span>
                     </div>
                     <div>
@@ -324,11 +380,24 @@ export default function ListaPacientes() {
                       <span className="text-slate-700 truncate">
                         {pac.telefone || "Sem contato"}
                       </span>
-                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {obterGruposPaciente(pac).length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {obterGruposPaciente(pac).map((grupo) => (
+                      <span
+                        key={grupo.id}
+                        className="rounded border border-emerald-100 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+                      >
+                        {grupo.nome}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
 
             {/* CONTROLES DE PAGINAÇÃO */}
             {pacientesOptions.length > 0 && (
@@ -439,14 +508,16 @@ export default function ListaPacientes() {
                     Agente de Saúde (ACS)
                   </label>
                   <select
-                    name="acs"
-                    value={pacienteEditando.acs || listaACS[0]}
+                    name="agente_id"
+                    value={pacienteEditando.agente_id || ""}
                     onChange={handleChangeEdicao}
+                    disabled={loadingMetadados}
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none bg-white"
                   >
-                    {listaACS.map((agente, idx) => (
-                      <option key={idx} value={agente}>
-                        {agente}
+                    <option value="">Área Descoberta</option>
+                    {agentesACS.map((agente) => (
+                      <option key={agente.id} value={agente.id}>
+                        {agente.nome}
                       </option>
                     ))}
                   </select>
@@ -498,6 +569,38 @@ export default function ListaPacientes() {
                   <option value="GESTANTE">Gestante</option>
                   <option value="CD">CD: Crescimento e Desenvolvimento</option>
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">
+                  Grupos de Acompanhamento
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {grupos.length === 0 ? (
+                    <p className="text-sm text-slate-400">
+                      {loadingMetadados
+                        ? "Carregando grupos..."
+                        : "Nenhum grupo cadastrado"}
+                    </p>
+                  ) : (
+                    grupos.map((grupo) => (
+                      <label
+                        key={grupo.id}
+                        className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={(pacienteEditando.grupos_ids || []).includes(
+                            grupo.id,
+                          )}
+                          onChange={() => toggleGrupoEdicao(grupo.id)}
+                          className="h-4 w-4 rounded border-slate-300 text-sky-700 focus:ring-sky-500"
+                        />
+                        <span>{grupo.nome}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
               </div>
 
               <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">

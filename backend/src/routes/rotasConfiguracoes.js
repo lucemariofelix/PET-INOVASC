@@ -1,10 +1,11 @@
 const logController = require('../controllers/logController');
+const { verificarPermissao } = require("../middlewares/authMiddleware");
 
 // A função empacota as rotas e recebe a instância do fastify
 async function rotasConfiguracoes(fastify, options) {
-  
-  // Se você tiver um middleware de autenticação, pode adicioná-lo aqui (ex: { preHandler: [seuMiddleware] })
-  fastify.get('/logs', logController.listar);
+  const soAdmin = { preHandler: [verificarPermissao(["ADMIN"])] };
+
+  fastify.get('/logs', soAdmin, logController.listar);
 
 }
 

@@ -1,31 +1,22 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import { FaUserPlus } from "react-icons/fa";
 import { api } from "../api/services";
 import { formatarDocumento } from "../utils/formatters";
 import ModalAlerta from "../components/ModalAlerta";
 
 export default function CadastroPaciente({ onSuccess }) {
-  // Simulação do Banco de Dados de ACS
-  const listaACS = [
-    "Área Descoberta",
-    "Lucemario",
-    "Janúsia",
-    "Maria José",
-    "Rouse",
-    "Fabíola",
-    "Alex",
-    "Zerilda",
-    "Ceiça",
-  ];
-
   // Estados do Formulário
   const [nome, setNome] = useState("");
   const [cpf, setCpf] = useState("");
   const [nascimento, setNascimento] = useState("");
   const [telefone, setTelefone] = useState("");
   const [endereco, setEndereco] = useState("");
-  const [acs, setAcs] = useState(listaACS[0]);
+  const [agenteId, setAgenteId] = useState("");
+  const [gruposIds, setGruposIds] = useState([]);
   const [condicao, setCondicao] = useState("NENHUM");
+  const [agentesACS, setAgentesACS] = useState([]);
+  const [grupos, setGrupos] = useState([]);
+  const [loadingMetadados, setLoadingMetadados] = useState(false);
 
   // Estado de controle do Modal
   const [alerta, setAlerta] = useState({
@@ -34,6 +25,34 @@ export default function CadastroPaciente({ onSuccess }) {
     titulo: "",
     mensagem: "",
   });
+
+  useEffect(() => {
+    const carregarMetadados = async () => {
+      setLoadingMetadados(true);
+
+      try {
+        const [respostaACS, respostaGrupos] = await Promise.all([
+          api.getACS(),
+          api.getGrupos(),
+        ]);
+
+        setAgentesACS(respostaACS.usuarios || respostaACS || []);
+        setGrupos(respostaGrupos.grupos || respostaGrupos || []);
+      } catch (error) {
+        console.error("Erro ao carregar ACS/grupos:", error);
+        setAlerta({
+          isOpen: true,
+          tipo: "erro",
+          titulo: "Erro ao carregar dados",
+          mensagem: "Não foi possível carregar ACS e grupos de acompanhamento.",
+        });
+      } finally {
+        setLoadingMetadados(false);
+      }
+    };
+
+    carregarMetadados();
+  }, []);
 
   // Lógica da Máscara de CPF/CNS
   const handleCpfChange = (e) => {
@@ -61,6 +80,14 @@ export default function CadastroPaciente({ onSuccess }) {
     setTelefone(aplicarMascaraTelefone(e.target.value));
   };
 
+  const toggleGrupo = (grupoId) => {
+    setGruposIds((idsAtuais) =>
+      idsAtuais.includes(grupoId)
+        ? idsAtuais.filter((id) => id !== grupoId)
+        : [...idsAtuais, grupoId],
+    );
+  };
+
   const handleSubmitPaciente = async (e) => {
     e.preventDefault();
 
@@ -84,7 +111,8 @@ export default function CadastroPaciente({ onSuccess }) {
       data_nascimento: nascimento,
       telefone: telefone,
       endereco,
-      acs,
+      agente_id: agenteId || null,
+      grupos_ids: gruposIds,
       condicao,
     };
 
@@ -97,7 +125,8 @@ export default function CadastroPaciente({ onSuccess }) {
       setNascimento("");
       setTelefone("");
       setEndereco("");
-      setAcs(listaACS[0]);
+      setAgenteId("");
+      setGruposIds([]);
       setCondicao("NENHUM");
 
       // Apenas abre o modal de sucesso
@@ -186,13 +215,15 @@ export default function CadastroPaciente({ onSuccess }) {
               Agente de Saúde (ACS)
             </label>
             <select
-              value={acs}
-              onChange={(e) => setAcs(e.target.value)}
+              value={agenteId}
+              onChange={(e) => setAgenteId(e.target.value)}
+              disabled={loadingMetadados}
               className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition bg-white"
             >
-              {listaACS.map((agente, idx) => (
-                <option key={idx} value={agente}>
-                  {agente}
+              <option value="">Área Descoberta</option>
+              {agentesACS.map((agente) => (
+                <option key={agente.id} value={agente.id}>
+                  {agente.nome}
                 </option>
               ))}
             </select>
@@ -245,6 +276,34 @@ export default function CadastroPaciente({ onSuccess }) {
             <option value="GESTANTE">Gestante</option>
             <option value="CD">CD: Crescimento e Desenvolvimento</option>
           </select>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">
+            Grupos de Acompanhamento
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {grupos.length === 0 ? (
+              <p className="text-sm text-slate-400">
+                {loadingMetadados ? "Carregando grupos..." : "Nenhum grupo cadastrado"}
+              </p>
+            ) : (
+              grupos.map((grupo) => (
+                <label
+                  key={grupo.id}
+                  className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={gruposIds.includes(grupo.id)}
+                    onChange={() => toggleGrupo(grupo.id)}
+                    className="h-4 w-4 rounded border-slate-300 text-sky-700 focus:ring-sky-500"
+                  />
+                  <span>{grupo.nome}</span>
+                </label>
+              ))
+            )}
+          </div>
         </div>
 
         <div className="pt-4 border-t border-slate-100">

@@ -12,12 +12,13 @@ class WebhookController {
       }
 
       const payload = request.body;
-      await webhookService.processarEvento(payload);
+      await webhookService.processarEvento(payload); // [cite: 4]
 
       return reply.code(200).send({ recebido: true });
     } catch (error) {
-      console.error("❌ Erro no webhookController:", error);
-      return reply.code(500).send({ erro: "Erro no webhook" });
+      // Correção 2: Tratamento de logger seguro
+      console.error("❌ Erro no webhook:", error);
+      return reply.code(500).send({ erro: "Erro no webhook" }); // [cite: 6]
     }
   }
 }

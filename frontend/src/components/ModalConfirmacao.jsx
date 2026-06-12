@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function ModalConfirmacao({ isOpen, titulo, mensagem, onConfirm, onCancel }) {
   if (!isOpen) return null;
 

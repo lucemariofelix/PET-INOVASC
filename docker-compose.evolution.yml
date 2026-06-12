@@ -1,0 +1,30 @@
+services:
+  evolution-api:
+    image: atendai/evolution-api:latest
+    container_name: evolution_api_local
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_URL=http://localhost:8080
+      - AUTHENTICATION_API_KEY=chave-teste-local-123
+
+      # Banco de Dados (Aponta para o seu Supabase Local no esquema evolution_v4)
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://postgres:postgres@host.docker.internal:54322/postgres?schema=evolution_v4
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution_local
+
+      # Redis (Necessário para estabilidade e filas de envio)
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis-evolution:6379
+
+      # Webhook Global (Pode manter falso e configurar por instância via API)
+      - WEBHOOK_GLOBAL_ENABLED=false
+    depends_on:
+      - redis-evolution
+
+  redis-evolution:
+    image: redis:alpine
+    container_name: redis_evolution_local
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes

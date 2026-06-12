@@ -15,6 +15,19 @@ class UsuarioController {
     }
   }
 
+  async listarACS(request, reply) {
+    try {
+      const authHeader = request.headers.authorization;
+      const usuarios = await usuarioService.listarACS(authHeader);
+      return reply.send({ usuarios });
+    } catch (error) {
+      request.log.error(error);
+      if (error.code === "42501")
+        return reply.status(401).send({ erro: "Sem permissão." });
+      return reply.status(500).send({ erro: "Falha ao buscar agentes ACS." });
+    }
+  }
+
   async criar(request, reply) {
     try {
       const authHeader = request.headers.authorization;

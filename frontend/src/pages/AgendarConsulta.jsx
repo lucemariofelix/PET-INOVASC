@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { FaCalendarPlus } from 'react-icons/fa';
 import { api } from '../api/services';
 import { formatarDocumento } from '../utils/formatters';

@@ -12,6 +12,18 @@ class UsuarioRepository {
     return data;
   }
 
+  async listarACS(authHeader) {
+    const supabaseClient = getSupabaseUsuario(authHeader);
+    const { data, error } = await supabaseClient
+      .from("perfis_usuarios")
+      .select("id, nome, funcao")
+      .eq("funcao", "ACS")
+      .order("nome");
+
+    if (error) throw error;
+    return data;
+  }
+
   async criar(dados, authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
     const { data, error } = await supabaseClient

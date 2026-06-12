@@ -6,6 +6,10 @@ class UsuarioService {
     return await usuarioRepository.listarTodos(authHeader);
   }
 
+  async listarACS(authHeader) {
+    return await usuarioRepository.listarACS(authHeader);
+  }
+
   async criarUsuario(dados, authHeader) {
     if (!dados.nome || !dados.email || !dados.senha || !dados.funcao) {
       throw new Error("Todos os campos são obrigatórios para criar um usuário.");

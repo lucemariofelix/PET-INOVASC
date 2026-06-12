@@ -66,6 +66,26 @@ class PacienteController {
     }
   }
 
+  async filtrar(request, reply) {
+    try {
+      const authHeader = request.headers.authorization;
+      const pacientes = await pacienteService.filtrarPacientes(
+        request.query,
+        authHeader,
+      );
+
+      return reply.send({ total: pacientes.length, pacientes });
+    } catch (error) {
+      request.log.error(error);
+      if (error.code === "42501") {
+        return reply.status(401).send({
+          erro: "Sessão expirada ou sem permissão. Por favor, faça login novamente.",
+        });
+      }
+      return reply.status(500).send({ erro: "Falha ao filtrar pacientes." });
+    }
+  }
+
   // ATUALIZAR (PUT)
   async atualizar(request, reply) {
     try {

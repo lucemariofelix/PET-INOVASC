@@ -5,8 +5,9 @@ class ConsultaController {
   
   async listarAtrasadas(request, reply) {
     try {
-      const resultado = await consultaService.obterConsultasAtrasadas();
-      return reply.send({ 
+      const authHeader = request.headers.authorization;
+      const resultado = await consultaService.obterConsultasAtrasadas(authHeader);
+      return reply.send({
         regra_aplicada: `${resultado.dias_regra} dias sem consulta`,
         corte_de_data: resultado.corte_de_data,
         total_alertas: resultado.dados.length, 

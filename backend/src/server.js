@@ -1,8 +1,15 @@
 require("dotenv").config();
 const Fastify = require("fastify");
 const cors = require("@fastify/cors"); // <- O Porteiro do CORS
+const errorHandler = require("./middlewares/errorHandler");
 
-const fastify = Fastify({ logger: true });
+const fastify = Fastify({
+  logger: true,
+  bodyLimit: 10 * 1024 * 1024, // 10MB para payloads maiores da Evolution API
+});
+
+// Registro do Handler Global de Erros
+fastify.setErrorHandler(errorHandler);
 
 // ----------------------------------------------------
 // REGISTRO DE PLUGINS DE SEGURANÇA
@@ -29,11 +36,12 @@ fastify.get("/health", async () => {
 // ----------------------------------------------------
 // REGISTRO DE ROTAS (Módulos)
 // ----------------------------------------------------
-fastify.register(require("./routes/pacientes"));
-fastify.register(require("./routes/consultas"));
-fastify.register(require("./routes/auth"));
-fastify.register(require("./routes/mensagens"));
+fastify.register(require("./routes/rotasPacientes"));
+fastify.register(require("./routes/rotasConsultas"));
+fastify.register(require("./routes/rotasAuth"));
+fastify.register(require("./routes/rotasMensagens"));
 fastify.register(require("./routes/rotasUsuarios"));
+fastify.register(require("./routes/rotasGruposAcompanhamento"));
 fastify.register(require("./routes/rotasNotificacoes"));
 fastify.register(require("./routes/rotasWebhooks"));
 fastify.register(require("./routes/rotasConfiguracoes"));

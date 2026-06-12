@@ -1,19 +1,21 @@
-// src/routes/rotasNotificacoes.js
 const notificacaoController = require("../controllers/notificacaoController");
+const { verificarPermissao } = require("../middlewares/authMiddleware");
 
 const esquemaDisparoLote = {
   body: {
     type: "object",
-    required: ["mensagem", "pacientes"],
+    required: ["mensagemBase", "pacientes"],
     properties: {
-      mensagem: { type: "string", minLength: 5 }, // Impede o envio de mensagens em branco ou com 1 letra
+      mensagemBase: { type: "string", minLength: 5 },
+      usuario_id: { type: ["string", "null"] },
       pacientes: {
         type: "array",
-        minItems: 1, // Impede o disparo se a lista estiver vazia
+        minItems: 1,
         items: {
           type: "object",
           required: ["telefone", "nome_completo"],
           properties: {
+            id: { type: "string" },
             telefone: { type: "string", minLength: 10 },
             nome_completo: { type: "string" },
           },
@@ -24,18 +26,26 @@ const esquemaDisparoLote = {
   },
 };
 
-// Se você usa middleware para verificar token/permissão, importe-o aqui.
-// Exemplo genérico:
-// const { verificarPermissao } = require('../middlewares/authMiddleware');
-
 async function rotasNotificacoes(fastify, options) {
-  // A rota exata que o frontend está procurando
-  // Se tiver middleware de segurança, adicione-o como no resto do sistema
+  const todosAutenticados = {
+    preHandler: [verificarPermissao(["ADMIN", "RECEPCAO", "ACS"])],
+  };
+
+  // CORREÇÃO: .bind(notificacaoController) adicionado para preservar o
+  // contexto `this` quando o Fastify invocar o método como handler.
   fastify.post(
     "/notificacoes/lote",
-    { schema: esquemaDisparoLote },
-    notificacaoController.disparar,
+    {
+      ...todosAutenticados,
+      schema: esquemaDisparoLote,
+    },
+    notificacaoController.disparar.bind(notificacaoController),
   );
+
+  // CORREÇÃO: A rota /notificacoes/webhook foi REMOVIDA.
+  // Ela duplicava o papel do /webhooks/evolution sem processar nada,
+  // fazendo com que metade dos eventos da Evolution fosse descartada.
+  // Configure na Evolution API somente: POST /webhooks/evolution
 }
 
 module.exports = rotasNotificacoes;

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { FaHeartbeat, FaLock, FaEnvelope } from "react-icons/fa";
 import { api } from "../api/services";
 
