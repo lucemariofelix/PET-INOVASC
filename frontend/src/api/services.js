@@ -78,6 +78,18 @@ const api = {
     return res.json();
   },
 
+  criarGrupo: async (payload) => {
+    const res = await fetchComAutenticacao("/grupos-acompanhamento", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.erro || "Erro ao criar grupo de acompanhamento");
+    }
+    return res.json();
+  },
+
   criarPaciente: async (payload) => {
     const res = await fetchComAutenticacao("/pacientes", {
       method: "POST",
