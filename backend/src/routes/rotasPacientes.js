@@ -12,9 +12,27 @@ const esquemaPaciente = {
       telefone: { type: "string", maxLength: 20 },
       endereco: { type: "string", maxLength: 255 },
       acs: { type: "string" },
+      agente_id: {
+        anyOf: [{ type: "string", minLength: 36, maxLength: 36 }, { type: "null" }],
+      },
       condicao: { type: "string" },
+      grupos_ids: {
+        type: "array",
+        items: { type: "string", minLength: 36, maxLength: 36 },
+      },
     },
     // O pulo do gato: bloqueia QUALQUER campo extra que um hacker tente injetar no banco
+    additionalProperties: false,
+  },
+};
+
+const esquemaFiltrosPacientes = {
+  querystring: {
+    type: "object",
+    properties: {
+      grupo_id: { type: "string", minLength: 36, maxLength: 36 },
+      agente_id: { type: "string", minLength: 36, maxLength: 36 },
+    },
     additionalProperties: false,
   },
 };
@@ -31,6 +49,14 @@ async function rotasPacientes(fastify, options) {
 
   // Leitura aberta para todos os usuários autenticados (incluindo ACS)
   fastify.get("/pacientes", todosAutenticados, pacienteController.listar);
+  fastify.get(
+    "/pacientes/filtros",
+    {
+      ...todosAutenticados,
+      schema: esquemaFiltrosPacientes,
+    },
+    pacienteController.filtrar,
+  );
 
   // Escrita e atualização trancadas E validadas (Unimos tudo no 2º parâmetro)
   fastify.post(

@@ -41,6 +41,7 @@ fastify.register(require("./routes/rotasConsultas"));
 fastify.register(require("./routes/rotasAuth"));
 fastify.register(require("./routes/rotasMensagens"));
 fastify.register(require("./routes/rotasUsuarios"));
+fastify.register(require("./routes/rotasGruposAcompanhamento"));
 fastify.register(require("./routes/rotasNotificacoes"));
 fastify.register(require("./routes/rotasWebhooks"));
 fastify.register(require("./routes/rotasConfiguracoes"));

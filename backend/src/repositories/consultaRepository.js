@@ -22,6 +22,11 @@ class ConsultaRepository {
           id,
           nome_completo,
           acs,
+          agente:perfis_usuarios!pacientes_agente_id_fkey (
+            id,
+            nome,
+            funcao
+          ),
           condicao,
           status_telefone,
           consentimento_msg,
@@ -49,6 +54,11 @@ class ConsultaRepository {
           id,
           nome_completo,
           acs,
+          agente:perfis_usuarios!pacientes_agente_id_fkey (
+            id,
+            nome,
+            funcao
+          ),
           condicao,
           status_telefone,
           consentimento_msg,

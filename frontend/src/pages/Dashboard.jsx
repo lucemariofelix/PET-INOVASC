@@ -116,6 +116,10 @@ export default function Dashboard() {
   // =======================================================================
 
   // LÓGICA DE FILTRAGEM COMBINADA (Status + Busca Universal)
+  const obterNomeAgente = (paciente) => {
+    return paciente?.agente?.nome || paciente?.acs || "";
+  };
+
   const consultasFiltradas = consultas.filter((consulta) => {
     const badge = getBadgeInfo(consulta);
     const paciente = consulta.pacientes || {};
@@ -145,7 +149,7 @@ export default function Dashboard() {
         paciente.cpf_cns?.toLowerCase() ||
         paciente.documento?.toLowerCase() ||
         "";
-      const acs = paciente.acs?.toLowerCase() || "";
+      const acs = obterNomeAgente(paciente).toLowerCase();
       const condicao = paciente.condicao?.toLowerCase() || "";
       const profissional = consulta.tipo_profissional?.toLowerCase() || "";
 
@@ -489,7 +493,7 @@ export default function Dashboard() {
                           </td>
 
                           <td className="px-6 py-4 text-slate-600">
-                            {paciente?.acs || "Não inf."}
+                            {obterNomeAgente(paciente) || "Não inf."}
                           </td>
                           <td className="px-6 py-4">
                             <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-medium truncate max-w-37.5 inline-block">
@@ -582,7 +586,7 @@ export default function Dashboard() {
                             Agente / ACS
                           </span>
                           <span className="text-slate-700 line-clamp-1">
-                            {paciente?.acs || "Não inf."}
+                            {obterNomeAgente(paciente) || "Não inf."}
                           </span>
                         </div>
                         <div>

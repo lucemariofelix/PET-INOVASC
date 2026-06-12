@@ -79,6 +79,7 @@ describe("PacienteService", () => {
           status_telefone: "VALIDO",
           consentimento_msg: true,
         }),
+        undefined,
         authHeader,
       );
       expect(resultado).toEqual(pacienteSalvo);
@@ -112,7 +113,84 @@ describe("PacienteService", () => {
         expect.objectContaining({
           consentimento_msg: false,
         }),
+        undefined,
         authHeader,
+      );
+    });
+
+    // -----------------------------------------------------------------------
+    // 5. Cadastro com agente_id e grupos_ids
+    // -----------------------------------------------------------------------
+    it("deve cadastrar paciente separando agente_id e grupos_ids", async () => {
+      // Arrange
+      const agenteId = "11111111-1111-1111-1111-111111111111";
+      const grupoId = "22222222-2222-2222-2222-222222222222";
+      const pacienteSalvo = {
+        id: "33333333-3333-3333-3333-333333333333",
+        nome_completo: "Maria Souza",
+        agente_id: agenteId,
+      };
+
+      pacienteRepository.buscarAgenteACSPorId = vi
+        .fn()
+        .mockResolvedValue({ id: agenteId, nome: "Agente ACS", funcao: "ACS" });
+      pacienteRepository.criar = vi.fn().mockResolvedValue(pacienteSalvo);
+
+      // Act
+      const resultado = await pacienteService.cadastrarPaciente(
+        {
+          nome_completo: "Maria Souza",
+          cpf_cns: "98765432100",
+          agente_id: agenteId,
+          grupos_ids: [grupoId, grupoId],
+        },
+        authHeader,
+      );
+
+      // Assert
+      expect(pacienteRepository.buscarAgenteACSPorId).toHaveBeenCalledWith(
+        agenteId,
+        authHeader,
+      );
+      expect(pacienteRepository.criar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          nome_completo: "Maria Souza",
+          cpf_cns: "98765432100",
+          agente_id: agenteId,
+        }),
+        [grupoId],
+        authHeader,
+      );
+      expect(resultado).toEqual(pacienteSalvo);
+    });
+
+    it("deve lançar erro quando grupos_ids não for uma lista", async () => {
+      await expect(
+        pacienteService.cadastrarPaciente(
+          {
+            nome_completo: "Maria Souza",
+            cpf_cns: "98765432100",
+            grupos_ids: "grupo-invalido",
+          },
+          authHeader,
+        ),
+      ).rejects.toThrow("O campo grupos_ids deve ser uma lista de IDs.");
+    });
+
+    it("deve lançar erro quando agente_id não for ACS válido", async () => {
+      pacienteRepository.buscarAgenteACSPorId = vi.fn().mockResolvedValue(null);
+
+      await expect(
+        pacienteService.cadastrarPaciente(
+          {
+            nome_completo: "Maria Souza",
+            cpf_cns: "98765432100",
+            agente_id: "11111111-1111-1111-1111-111111111111",
+          },
+          authHeader,
+        ),
+      ).rejects.toThrow(
+        "Agente de saúde não encontrado ou não possui função ACS.",
       );
     });
   });
@@ -122,7 +200,7 @@ describe("PacienteService", () => {
   // ===========================================================================
   describe("listarPacientes", () => {
     // -----------------------------------------------------------------------
-    // 5. Delegação simples
+    // 8. Delegação simples
     // -----------------------------------------------------------------------
     it("deve listar pacientes chamando pacienteRepository.listarTodos", async () => {
       // Arrange
@@ -147,7 +225,7 @@ describe("PacienteService", () => {
   // ===========================================================================
   describe("atualizarPaciente", () => {
     // -----------------------------------------------------------------------
-    // 6. Falta id
+    // 9. Falta id
     // -----------------------------------------------------------------------
     it("deve lançar erro quando faltar id na atualização", async () => {
       await expect(
@@ -162,7 +240,7 @@ describe("PacienteService", () => {
     });
 
     // -----------------------------------------------------------------------
-    // 7. Atualização com sucesso
+    // 10. Atualização com sucesso
     // -----------------------------------------------------------------------
     it("deve atualizar paciente com sucesso", async () => {
       // Arrange
@@ -193,9 +271,127 @@ describe("PacienteService", () => {
           nome_completo: "Pedro Atualizado",
           cpf_cns: "55566677788",
         },
+        undefined,
         authHeader,
       );
       expect(resultado).toEqual(pacienteAtualizado);
+    });
+
+    it("deve repassar grupos_ids vazio para remover vínculos", async () => {
+      // Arrange
+      const pacienteAtualizado = {
+        id: 5,
+        nome_completo: "Pedro Atualizado",
+      };
+      pacienteRepository.atualizar = vi
+        .fn()
+        .mockResolvedValue(pacienteAtualizado);
+
+      // Act
+      await pacienteService.atualizarPaciente(
+        5,
+        {
+          nome_completo: "Pedro Atualizado",
+          cpf_cns: "55566677788",
+          grupos_ids: [],
+        },
+        authHeader,
+      );
+
+      // Assert
+      expect(pacienteRepository.atualizar).toHaveBeenCalledWith(
+        5,
+        expect.any(Object),
+        [],
+        authHeader,
+      );
+    });
+
+    it("deve repassar undefined quando grupos_ids não for informado", async () => {
+      // Arrange
+      const pacienteAtualizado = {
+        id: 5,
+        nome_completo: "Pedro Atualizado",
+      };
+      pacienteRepository.atualizar = vi
+        .fn()
+        .mockResolvedValue(pacienteAtualizado);
+
+      // Act
+      await pacienteService.atualizarPaciente(
+        5,
+        {
+          nome_completo: "Pedro Atualizado",
+          cpf_cns: "55566677788",
+        },
+        authHeader,
+      );
+
+      // Assert
+      expect(pacienteRepository.atualizar).toHaveBeenCalledWith(
+        5,
+        expect.any(Object),
+        undefined,
+        authHeader,
+      );
+    });
+  });
+
+  // ===========================================================================
+  // filtrarPacientes
+  // ===========================================================================
+  describe("filtrarPacientes", () => {
+    it("deve filtrar somente por agente_id", async () => {
+      const filtros = { agente_id: "11111111-1111-1111-1111-111111111111" };
+      const pacientesMock = [{ id: 1, nome_completo: "Ana Costa" }];
+      pacienteRepository.filtrar = vi.fn().mockResolvedValue(pacientesMock);
+
+      const resultado = await pacienteService.filtrarPacientes(
+        filtros,
+        authHeader,
+      );
+
+      expect(pacienteRepository.filtrar).toHaveBeenCalledWith(
+        filtros,
+        authHeader,
+      );
+      expect(resultado).toEqual(pacientesMock);
+    });
+
+    it("deve filtrar somente por grupo_id", async () => {
+      const filtros = { grupo_id: "22222222-2222-2222-2222-222222222222" };
+      const pacientesMock = [{ id: 2, nome_completo: "Bruno Alves" }];
+      pacienteRepository.filtrar = vi.fn().mockResolvedValue(pacientesMock);
+
+      await pacienteService.filtrarPacientes(filtros, authHeader);
+
+      expect(pacienteRepository.filtrar).toHaveBeenCalledWith(
+        filtros,
+        authHeader,
+      );
+    });
+
+    it("deve filtrar por grupo_id e agente_id", async () => {
+      const filtros = {
+        grupo_id: "22222222-2222-2222-2222-222222222222",
+        agente_id: "11111111-1111-1111-1111-111111111111",
+      };
+      pacienteRepository.filtrar = vi.fn().mockResolvedValue([]);
+
+      await pacienteService.filtrarPacientes(filtros, authHeader);
+
+      expect(pacienteRepository.filtrar).toHaveBeenCalledWith(
+        filtros,
+        authHeader,
+      );
+    });
+
+    it("deve permitir filtros vazios", async () => {
+      pacienteRepository.filtrar = vi.fn().mockResolvedValue([]);
+
+      await pacienteService.filtrarPacientes(undefined, authHeader);
+
+      expect(pacienteRepository.filtrar).toHaveBeenCalledWith({}, authHeader);
     });
   });
 });

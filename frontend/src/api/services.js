@@ -72,6 +72,12 @@ const api = {
     return res.json();
   },
 
+  getGrupos: async () => {
+    const res = await fetchComAutenticacao("/grupos-acompanhamento");
+    if (!res.ok) throw new Error("Erro ao buscar grupos de acompanhamento");
+    return res.json();
+  },
+
   criarPaciente: async (payload) => {
     const res = await fetchComAutenticacao("/pacientes", {
       method: "POST",
@@ -164,6 +170,12 @@ const api = {
   getUsuarios: async () => {
     const res = await fetchComAutenticacao("/usuarios");
     if (!res.ok) throw new Error("Erro ao buscar usuários");
+    return res.json();
+  },
+
+  getACS: async () => {
+    const res = await fetchComAutenticacao("/usuarios/acs");
+    if (!res.ok) throw new Error("Erro ao buscar agentes ACS");
     return res.json();
   },
 

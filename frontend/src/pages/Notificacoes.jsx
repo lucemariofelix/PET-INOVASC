@@ -10,6 +10,10 @@ import {
 // Ajuste o caminho de importação da sua API conforme a estrutura do seu projeto
 import api from "../api/services";
 
+const obterNomeAgente = (paciente) => {
+  return paciente?.agente?.nome || paciente?.acs || "";
+};
+
 export default function Notificacoes({ usuario }) {
   const [pacientes, setPacientes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +62,7 @@ export default function Notificacoes({ usuario }) {
   // Extrai listas únicas de ACS e Condições para preencher os selects do filtro
   const listaAcs = useMemo(() => {
     // A interrogação (?) protege o código se pacientes for nulo/undefined
-    const agentes = pacientes?.map((p) => p.acs).filter(Boolean) || [];
+    const agentes = pacientes?.map((p) => obterNomeAgente(p)).filter(Boolean) || [];
     return [...new Set(agentes)].sort();
   }, [pacientes]);
 
@@ -70,7 +74,7 @@ export default function Notificacoes({ usuario }) {
   // Aplica os filtros para saber quem vai receber a mensagem
   const pacientesFiltrados = useMemo(() => {
     return pacientes.filter((p) => {
-      const bateAcs = filtroAcs ? p.acs === filtroAcs : true;
+      const bateAcs = filtroAcs ? obterNomeAgente(p) === filtroAcs : true;
       const bateCondicao = filtroCondicao
         ? p.condicao === filtroCondicao
         : true;
