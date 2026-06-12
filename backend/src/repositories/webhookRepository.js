@@ -1,38 +1,19 @@
-const { supabaseAdmin } = require("../config/supabase");
-
-const STATUS_ORDEM = {
-  ENVIADO: 1,
-  SIMULADO: 1,
-  ERRO: 1,
-  ENTREGUE: 2,
-  LIDO: 3,
-};
+const { supabaseAdmin } = require("../config/supabase"); // [cite: 7]
 
 class WebhookRepository {
   async atualizarStatusMensagem(messageId, statusFormatado) {
-    const ordemNovoStatus = STATUS_ORDEM[statusFormatado];
+    let query = supabaseAdmin
+      .from("historico_mensagens")
+      .update({ status: statusFormatado })
+      .eq("mensagem_id", messageId);
 
-    if (!ordemNovoStatus) {
-      console.warn(`[WEBHOOK] Status desconhecido: "${statusFormatado}"`);
-      return null;
+    // 🔥 REGRA MONOTÔNICA
+    if (statusFormatado !== "LIDO") {
+      // [cite: 8]
+      query = query.neq("status", "LIDO");
     }
 
-    // BUG E CORRIGIDO: A lógica anterior estava invertida.
-    // O filtro ".neq('status', 'LIDO')" só era aplicado quando o novo
-    // status NÃO era LIDO — ou seja, permitia ENTREGUE sobrescrever LIDO.
-    //
-    // Agora usamos a coluna numérica `status_ordem` para garantir que
-    // o status só avança: só atualiza se o valor atual for MENOR
-    // que o novo valor (ex: ENVIADO=1 < ENTREGUE=2 ✅, LIDO=3 < ENTREGUE=2 ❌).
-    const { data, error } = await supabaseAdmin
-      .from("historico_mensagens")
-      .update({
-        status: statusFormatado,
-        status_ordem: ordemNovoStatus,
-      })
-      .eq("mensagem_id", messageId)
-      .lt("status_ordem", ordemNovoStatus) // só avança, nunca regride
-      .select();
+    const { data, error } = await query.select(); // [cite: 9]
 
     if (error) {
       console.error("❌ Supabase erro:", error.message);
@@ -40,12 +21,9 @@ class WebhookRepository {
     }
 
     if (!data || data.length === 0) {
-      console.warn(
-        `[WEBHOOK] Nenhuma linha atualizada para mensagem_id="${messageId}" → "${statusFormatado}". ` +
-        `Provável regressão de status bloqueada, ID não encontrado, ou mensagem_id null.`,
-      );
+      console.warn(`⚠️ Nenhuma linha atualizada (${messageId})`); // [cite: 11]
     } else {
-      console.log(`✅ Status atualizado: "${messageId}" → "${statusFormatado}"`);
+      console.log(`✅ Atualizado para: ${statusFormatado}`); // [cite: 12]
     }
 
     return data;

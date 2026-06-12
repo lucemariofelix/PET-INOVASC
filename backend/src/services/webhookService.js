@@ -30,10 +30,11 @@ class WebhookService {
       }
 
       // O PULO DO GATO: Garantimos que iteramos sobre todos os itens agrupados pela AWS
-      const itensArray = Array.isArray(payload.data) ? payload.data : [payload.data];
+      const itensArray = Array.isArray(payload.data)
+        ? payload.data
+        : [payload.data];
 
       for (const data of itensArray) {
-        
         // IGNORA ECOS/RECEBIDAS: Mensagens de pacientes não precisam de status de leitura no envio
         const fromMe = data?.fromMe ?? data?.key?.fromMe ?? true;
         if (fromMe === false) {
@@ -86,7 +87,9 @@ class WebhookService {
         }
 
         if (!messageId) {
-          console.warn("[WEBHOOK] Ignorado: messageId ausente", { statusBruto });
+          console.warn("[WEBHOOK] Ignorado: messageId ausente", {
+            statusBruto,
+          });
           continue; // Usa continue para não matar o array inteiro
         }
 
