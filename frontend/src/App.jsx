@@ -9,6 +9,7 @@ import AgendarConsulta from "./pages/AgendarConsulta";
 import Configuracoes from "./pages/Configuracoes";
 import Notificacoes from "./pages/Notificacoes";
 import Login from "./pages/Login";
+import GestaoGrupos from "./components/GestaoGrupos";
 import { api } from "./api/services";
 
 export default function App() {
@@ -133,6 +134,8 @@ export default function App() {
         {activeTab === "consulta" && (
           <AgendarConsulta onSuccess={() => setActiveTab("dashboard")} />
         )}
+
+        {activeTab === "grupos" && <GestaoGrupos usuario={usuario} />}
 
         {/* NOVA CONDICIONAL: Renderiza a tela de configurações se a aba estiver ativa */}
         {activeTab === "configuracoes" && <Configuracoes />}

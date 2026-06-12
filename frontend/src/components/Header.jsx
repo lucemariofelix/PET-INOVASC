@@ -10,6 +10,7 @@ import {
   FaTimes,
   FaCog,
   FaBullhorn,
+  FaLayerGroup,
 } from "react-icons/fa";
 import RoleGuard from "../components/RoleGuard";
 
@@ -88,6 +89,13 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
 
             {/* ABA MENSAGERIA */}
             <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO", "ACS"]}>
+              <button
+                onClick={() => handleTabClick("grupos")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "grupos" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
+              >
+                <FaLayerGroup /> Grupos
+              </button>
+
               <button
                 onClick={() => handleTabClick("notificacoes")}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "notificacoes" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
@@ -190,6 +198,18 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
 
             {/* ABA MENSAGERIA NO MOBILE */}
             <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO", "ACS"]}>
+              <button
+                onClick={() => handleTabClick("grupos")}
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "grupos" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
+              >
+                <FaLayerGroup
+                  className={
+                    activeTab === "grupos" ? "text-sky-700" : "text-sky-300"
+                  }
+                />
+                Grupos
+              </button>
+
               <button
                 onClick={() => handleTabClick("notificacoes")}
                 className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "notificacoes" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
