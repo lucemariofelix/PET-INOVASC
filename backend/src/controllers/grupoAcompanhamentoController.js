@@ -60,6 +60,12 @@ class GrupoAcompanhamentoController {
     } catch (error) {
       request.log.error(error);
 
+      if (error.message === "WHATSAPP_DESCONECTADO") {
+        return reply.status(503).send({
+          erro: "Falha: O WhatsApp do sistema está desconectado. Conecte o aparelho antes de iniciar o disparo.",
+        });
+      }
+
       const erroCliente =
         error.message?.includes("Informe") ||
         error.message?.includes("Nenhum paciente");

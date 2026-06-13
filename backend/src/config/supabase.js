@@ -8,13 +8,15 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Chave de se
 // Cliente padrão para rotas públicas (como a de fazer login)
 const supabasePadrao = createClient(supabaseUrl, supabaseAnonKey);
 
-// NOVO: Cliente com poderes administrativos (Bypass RLS e Gerenciamento do Auth de usuários)
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false
-  }
-});
+// Cliente com poderes administrativos (Bypass RLS e Gerenciamento do Auth de usuários)
+const supabaseAdmin = supabaseServiceKey
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
+    })
+  : null;
 
 // Função que injeta o token do usuário de forma segura por requisição (Garante RLS ativo)
 const getSupabaseUsuario = (authHeader) => {

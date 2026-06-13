@@ -29,6 +29,7 @@ let updateUserByIdMock;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role-test";
 
   // Mock do supabaseAdmin
   createUserMock = vi.fn();
@@ -148,7 +149,7 @@ describe("UsuarioService", () => {
         email: "maria@ubs.com",
         funcao: "RECEPCAO",
       };
-      usuarioRepository.criar = vi.fn().mockResolvedValue(perfilSalvo);
+      usuarioRepository.criarComAdmin = vi.fn().mockResolvedValue(perfilSalvo);
 
       const resultado = await usuarioService.criarUsuario(
         {
@@ -165,15 +166,12 @@ describe("UsuarioService", () => {
         password: "senha123",
         email_confirm: true,
       });
-      expect(usuarioRepository.criar).toHaveBeenCalledWith(
-        {
-          id: "uuid-novo-123",
-          nome: "Maria",
-          email: "maria@ubs.com",
-          funcao: "RECEPCAO",
-        },
-        authHeader,
-      );
+      expect(usuarioRepository.criarComAdmin).toHaveBeenCalledWith({
+        id: "uuid-novo-123",
+        nome: "Maria",
+        email: "maria@ubs.com",
+        funcao: "RECEPCAO",
+      });
       expect(resultado).toEqual(perfilSalvo);
     });
 
@@ -182,7 +180,7 @@ describe("UsuarioService", () => {
         data: { user: { id: "uuid-lower" } },
         error: null,
       });
-      usuarioRepository.criar = vi.fn().mockResolvedValue({ id: "uuid-lower" });
+      usuarioRepository.criarComAdmin = vi.fn().mockResolvedValue({ id: "uuid-lower" });
 
       await usuarioService.criarUsuario(
         {
@@ -197,18 +195,17 @@ describe("UsuarioService", () => {
       expect(createUserMock).toHaveBeenCalledWith(
         expect.objectContaining({ email: "carlos@ubs.com" }),
       );
-      expect(usuarioRepository.criar).toHaveBeenCalledWith(
+      expect(usuarioRepository.criarComAdmin).toHaveBeenCalledWith(
         expect.objectContaining({ email: "carlos@ubs.com" }),
-        authHeader,
       );
     });
 
-    it("deve não enviar senha ao usuarioRepository.criar", async () => {
+    it("deve não enviar senha ao usuarioRepository.criarComAdmin", async () => {
       createUserMock.mockResolvedValue({
         data: { user: { id: "uuid-sem-senha" } },
         error: null,
       });
-      usuarioRepository.criar = vi
+      usuarioRepository.criarComAdmin = vi
         .fn()
         .mockResolvedValue({ id: "uuid-sem-senha" });
 
@@ -222,7 +219,7 @@ describe("UsuarioService", () => {
         authHeader,
       );
 
-      const payloadEnviado = usuarioRepository.criar.mock.calls[0][0];
+      const payloadEnviado = usuarioRepository.criarComAdmin.mock.calls[0][0];
       expect(payloadEnviado).not.toHaveProperty("senha");
       expect(payloadEnviado).not.toHaveProperty("password");
       expect(payloadEnviado).toEqual({
@@ -254,7 +251,7 @@ describe("UsuarioService", () => {
       );
     });
 
-    it("deve não chamar usuarioRepository.criar quando o Supabase Auth falhar", async () => {
+    it("deve não chamar usuarioRepository.criarComAdmin quando o Supabase Auth falhar", async () => {
       createUserMock.mockResolvedValue({
         data: null,
         error: { message: "Auth error" },
@@ -274,19 +271,45 @@ describe("UsuarioService", () => {
         // esperado
       }
 
-      expect(usuarioRepository.criar).not.toHaveBeenCalled();
+      expect(usuarioRepository.criarComAdmin).not.toHaveBeenCalled();
       // Rollback NÃO deve ser chamado pois o usuário nunca foi criado
       expect(deleteUserMock).not.toHaveBeenCalled();
     });
 
-    it("deve fazer rollback chamando deleteUser quando usuarioRepository.criar falhar após o Auth criar o usuário", async () => {
+    it("deve lançar erro claro quando Supabase Auth não retornar user.id", async () => {
+      createUserMock.mockResolvedValue({
+        data: { user: {} },
+        error: null,
+      });
+      usuarioRepository.criarComAdmin = vi.fn();
+
+      await expect(
+        usuarioService.criarUsuario(
+          {
+            nome: "Sem ID",
+            email: "semid@ubs.com",
+            senha: "abc",
+            funcao: "ACS",
+          },
+          authHeader,
+        ),
+      ).rejects.toThrow(
+        "Erro ao criar credencial de login: ID do usuário não retornado pelo Supabase Auth.",
+      );
+
+      expect(usuarioRepository.criarComAdmin).not.toHaveBeenCalled();
+      expect(deleteUserMock).not.toHaveBeenCalled();
+    });
+
+    it("deve fazer rollback chamando deleteUser quando usuarioRepository.criarComAdmin falhar após o Auth criar o usuário", async () => {
       createUserMock.mockResolvedValue({
         data: { user: { id: "uuid-rollback" } },
         error: null,
       });
-      usuarioRepository.criar = vi
+      usuarioRepository.criarComAdmin = vi
         .fn()
         .mockRejectedValue(new Error("DB insert failed"));
+      deleteUserMock.mockResolvedValue({ data: {}, error: null });
 
       await expect(
         usuarioService.criarUsuario(
@@ -302,6 +325,61 @@ describe("UsuarioService", () => {
 
       // Rollback: deve apagar o usuário criado no Auth
       expect(deleteUserMock).toHaveBeenCalledWith("uuid-rollback");
+    });
+
+    it("deve preservar erro original quando rollback falhar", async () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      createUserMock.mockResolvedValue({
+        data: { user: { id: "uuid-rollback-falha" } },
+        error: null,
+      });
+      usuarioRepository.criarComAdmin = vi
+        .fn()
+        .mockRejectedValue(new Error("DB insert failed"));
+      deleteUserMock.mockRejectedValue(new Error("Rollback failed"));
+
+      await expect(
+        usuarioService.criarUsuario(
+          {
+            nome: "Rollback Falha",
+            email: "rollbackfalha@ubs.com",
+            senha: "abc",
+            funcao: "ACS",
+          },
+          authHeader,
+        ),
+      ).rejects.toThrow("Erro ao salvar perfil: DB insert failed");
+
+      expect(deleteUserMock).toHaveBeenCalledWith("uuid-rollback-falha");
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Falha ao compensar criação de usuário no Auth.",
+        expect.any(Error),
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("deve lançar erro claro quando SUPABASE_SERVICE_ROLE_KEY não estiver configurada", async () => {
+      delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      await expect(
+        usuarioService.criarUsuario(
+          {
+            nome: "Sem Service Role",
+            email: "sem-service-role@ubs.com",
+            senha: "abc",
+            funcao: "ADMIN",
+          },
+          authHeader,
+        ),
+      ).rejects.toThrow(
+        "SUPABASE_SERVICE_ROLE_KEY não configurada. Não é possível criar usuários no Auth.",
+      );
+
+      expect(createUserMock).not.toHaveBeenCalled();
     });
   });
 

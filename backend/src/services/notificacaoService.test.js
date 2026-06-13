@@ -113,6 +113,71 @@ describe("NotificacaoService", () => {
     });
   });
 
+  describe("verificarConexaoWhatsApp", () => {
+    beforeEach(() => {
+      process.env.EVOLUTION_API_URL = "https://evo.example.com";
+      process.env.EVOLUTION_API_KEY = "api-key-123";
+      process.env.EVOLUTION_INSTANCE_NAME = "ubs_test";
+    });
+
+    it('deve retornar sucesso quando o estado da instância for "open"', async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ instance: { state: "open" } }),
+        }),
+      );
+
+      const resultado = await notificacaoService.verificarConexaoWhatsApp();
+
+      expect(resultado).toEqual({ conectado: true, estado: "open" });
+      expect(fetch).toHaveBeenCalledWith(
+        "https://evo.example.com/instance/connectionState/ubs_test",
+        {
+          method: "GET",
+          headers: { apikey: "api-key-123" },
+        },
+      );
+    });
+
+    it('deve lançar "WHATSAPP_DESCONECTADO" quando o estado for diferente de "open"', async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: vi.fn().mockResolvedValue({ instance: { state: "close" } }),
+        }),
+      );
+
+      await expect(
+        notificacaoService.verificarConexaoWhatsApp(),
+      ).rejects.toThrow("WHATSAPP_DESCONECTADO");
+    });
+
+    it('deve lançar "WHATSAPP_DESCONECTADO" quando a Evolution retornar erro HTTP', async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: false,
+          json: vi.fn().mockResolvedValue({}),
+        }),
+      );
+
+      await expect(
+        notificacaoService.verificarConexaoWhatsApp(),
+      ).rejects.toThrow("WHATSAPP_DESCONECTADO");
+    });
+
+    it('deve lançar "WHATSAPP_DESCONECTADO" quando o fetch falhar', async () => {
+      vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
+
+      await expect(
+        notificacaoService.verificarConexaoWhatsApp(),
+      ).rejects.toThrow("WHATSAPP_DESCONECTADO");
+    });
+  });
+
   // ===========================================================================
   // processarFilaAssincrona
   // ===========================================================================

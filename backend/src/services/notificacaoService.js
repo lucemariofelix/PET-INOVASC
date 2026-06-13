@@ -82,6 +82,45 @@ class NotificacaoService {
     return telefoneLimpo.startsWith("55") ? telefoneLimpo : `55${telefoneLimpo}`;
   }
 
+  async verificarConexaoWhatsApp() {
+    const evolutionUrl = process.env.EVOLUTION_API_URL;
+    const apikey = process.env.EVOLUTION_API_KEY;
+    const instanceName = process.env.EVOLUTION_INSTANCE_NAME;
+
+    if (!evolutionUrl || !apikey || !instanceName) {
+      throw new Error("WHATSAPP_DESCONECTADO");
+    }
+
+    try {
+      const resposta = await fetch(
+        `${evolutionUrl}/instance/connectionState/${instanceName}`,
+        {
+          method: "GET",
+          headers: { apikey },
+        },
+      );
+
+      if (!resposta.ok) {
+        throw new Error("WHATSAPP_DESCONECTADO");
+      }
+
+      const jsonData = await resposta.json();
+      const estado = jsonData?.instance?.state || jsonData?.state;
+
+      if (estado !== "open") {
+        throw new Error("WHATSAPP_DESCONECTADO");
+      }
+
+      return { conectado: true, estado };
+    } catch (error) {
+      if (error.message === "WHATSAPP_DESCONECTADO") {
+        throw error;
+      }
+
+      throw new Error("WHATSAPP_DESCONECTADO");
+    }
+  }
+
   async enviarMensagemPaciente({ paciente, mensagem, usuario_id } = {}) {
     if (!paciente?.id || !paciente?.telefone || !mensagem) {
       throw new Error("Paciente inválido para envio de mensagem.");

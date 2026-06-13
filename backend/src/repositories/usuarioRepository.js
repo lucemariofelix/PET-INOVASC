@@ -1,4 +1,4 @@
-const { getSupabaseUsuario } = require("../config/supabase");
+const { getSupabaseUsuario, supabaseAdmin } = require("../config/supabase");
 
 class UsuarioRepository {
   async listarTodos(authHeader) {
@@ -27,6 +27,16 @@ class UsuarioRepository {
   async criar(dados, authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
     const { data, error } = await supabaseClient
+      .from("perfis_usuarios")
+      .insert([dados])
+      .select("id, nome, email, funcao");
+
+    if (error) throw error;
+    return data[0];
+  }
+
+  async criarComAdmin(dados) {
+    const { data, error } = await supabaseAdmin
       .from("perfis_usuarios")
       .insert([dados])
       .select("id, nome, email, funcao");

@@ -22,6 +22,8 @@ class GrupoAcompanhamentoService {
   }
 
   async dispararMensagens(grupoId, mensagem, usuarioId, authHeader) {
+    await notificacaoService.verificarConexaoWhatsApp();
+
     if (!grupoId) {
       throw new Error("Informe o grupo para iniciar o disparo.");
     }

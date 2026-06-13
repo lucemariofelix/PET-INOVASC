@@ -91,6 +91,9 @@ describe("GrupoAcompanhamentoService", () => {
       grupoAcompanhamentoRepository.listarPacientesDoGrupo = vi
         .fn()
         .mockResolvedValue(pacientes);
+      notificacaoService.verificarConexaoWhatsApp = vi
+        .fn()
+        .mockResolvedValue({ conectado: true, estado: "open" });
       notificacaoService.enviarMensagemPaciente = vi.fn().mockResolvedValue({});
       notificacaoService.registrarFalhaEnvio = vi.fn().mockResolvedValue({});
       notificacaoService.sanitizarTelefone = vi.fn((telefone) => {
@@ -121,6 +124,52 @@ describe("GrupoAcompanhamentoService", () => {
       expect(
         grupoAcompanhamentoRepository.listarPacientesDoGrupo,
       ).toHaveBeenCalledWith(grupoId, authHeader);
+    });
+
+    it("deve verificar conexão do WhatsApp antes de buscar pacientes", async () => {
+      const eventos = [];
+      notificacaoService.verificarConexaoWhatsApp.mockImplementation(
+        async () => {
+          eventos.push("preflight");
+          return { conectado: true, estado: "open" };
+        },
+      );
+      grupoAcompanhamentoRepository.listarPacientesDoGrupo.mockImplementation(
+        async () => {
+          eventos.push("buscar-pacientes");
+          return pacientes;
+        },
+      );
+
+      await grupoAcompanhamentoService.dispararMensagens(
+        grupoId,
+        "Mensagem do grupo",
+        usuarioId,
+        authHeader,
+      );
+
+      expect(eventos).toEqual(["preflight", "buscar-pacientes"]);
+    });
+
+    it("deve interromper sem buscar pacientes quando WhatsApp estiver desconectado", async () => {
+      notificacaoService.verificarConexaoWhatsApp.mockRejectedValueOnce(
+        new Error("WHATSAPP_DESCONECTADO"),
+      );
+
+      await expect(
+        grupoAcompanhamentoService.dispararMensagens(
+          grupoId,
+          "Mensagem do grupo",
+          usuarioId,
+          authHeader,
+        ),
+      ).rejects.toThrow("WHATSAPP_DESCONECTADO");
+
+      expect(
+        grupoAcompanhamentoRepository.listarPacientesDoGrupo,
+      ).not.toHaveBeenCalled();
+      expect(notificacaoService.enviarMensagemPaciente).not.toHaveBeenCalled();
+      expect(notificacaoService.registrarFalhaEnvio).not.toHaveBeenCalled();
     });
 
     it("deve enviar mensagens em sequência e aplicar sleep após cada sucesso", async () => {
