@@ -2,6 +2,16 @@ const usuarioRepository = require("../repositories/usuarioRepository");
 const { supabaseAdmin } = require('../config/supabase'); // Trazendo o cliente com poderes de Admin
 
 class UsuarioService {
+  validarSupabaseAdmin() {
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("SUPABASE_SERVICE_ROLE_KEY não configurada. Não é possível criar usuários no Auth.");
+    }
+
+    if (!supabaseAdmin?.auth?.admin?.createUser) {
+      throw new Error("Cliente administrativo do Supabase indisponível.");
+    }
+  }
+
   async listar(authHeader) {
     return await usuarioRepository.listarTodos(authHeader);
   }
@@ -15,9 +25,13 @@ class UsuarioService {
       throw new Error("Todos os campos são obrigatórios para criar um usuário.");
     }
 
+    this.validarSupabaseAdmin();
+
+    const emailNormalizado = dados.email.toLowerCase();
+
     // 1. Cria a conta no Supabase Auth (O cofre oficial)
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: dados.email.toLowerCase(),
+      email: emailNormalizado,
       password: dados.senha,
       email_confirm: true // Pula a etapa de confirmação de email
     });
@@ -26,21 +40,30 @@ class UsuarioService {
       throw new Error(`Erro ao criar credencial de login: ${authError.message}`);
     }
 
+    const authUserId = authData?.user?.id;
+    if (!authUserId) {
+      throw new Error("Erro ao criar credencial de login: ID do usuário não retornado pelo Supabase Auth.");
+    }
+
     // 2. Prepara o payload amarrando o ID oficial do Supabase Auth
     const payload = {
-      id: authData.user.id, // Pega o ID gerado pelo cofre!
+      id: authUserId, // Pega o ID gerado pelo cofre!
       nome: dados.nome,
-      email: dados.email.toLowerCase(),
+      email: emailNormalizado,
       funcao: dados.funcao
       // Não salvamos a senha aqui! O Supabase já cuidou da segurança dela no passo 1.
     };
 
     try {
-      // 3. Salva o perfil na nossa tabela
-      return await usuarioRepository.criar(payload, authHeader);
+      // 3. Salva o perfil na nossa tabela usando service role para evitar bloqueio por RLS
+      return await usuarioRepository.criarComAdmin(payload);
     } catch (dbError) {
       // ROLLBACK: Se o banco falhar, apaga a credencial criada no passo 1
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(authUserId);
+      } catch (rollbackError) {
+        console.error("Falha ao compensar criação de usuário no Auth.", rollbackError);
+      }
       throw new Error(`Erro ao salvar perfil: ${dbError.message}`);
     }
   }
