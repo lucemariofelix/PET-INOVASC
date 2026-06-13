@@ -316,6 +316,7 @@ describe("NotificacaoService", () => {
         texto_enviado: "Olá, Maria",
         status: "ERRO",
         usuario_id: 10,
+        mensagem_id: null,
       });
     });
 
@@ -339,6 +340,7 @@ describe("NotificacaoService", () => {
         texto_enviado: "Olá, Maria",
         status: "ERRO",
         usuario_id: 10,
+        mensagem_id: null,
       });
     });
 
@@ -368,6 +370,7 @@ describe("NotificacaoService", () => {
         texto_enviado: "Olá, Maria",
         status: "ERRO",
         usuario_id: 10,
+        mensagem_id: null,
       });
     });
 

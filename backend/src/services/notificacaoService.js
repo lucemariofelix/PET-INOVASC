@@ -39,72 +39,16 @@ class NotificacaoService {
         primeiroNome = nomeReal.split(" ")[0];
 
         textoFinal = mensagemBase.replace("{nome}", primeiroNome);
-
-        telefoneLimpo = paciente.telefone.replace(/\D/g, "");
-        if (!telefoneLimpo.startsWith("55")) {
-          telefoneLimpo = `55${telefoneLimpo}`;
-        }
-
-        const payloadEvolution = {
-          number: telefoneLimpo,
-          text: textoFinal,
-          textMessage: { text: textoFinal },
-        };
-
-        const respostaEvolution = await fetch(
-          `${process.env.EVOLUTION_API_URL}/message/sendText/${process.env.EVOLUTION_INSTANCE_NAME}`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: process.env.EVOLUTION_API_KEY,
-            },
-            body: JSON.stringify(payloadEvolution),
-          },
-        );
-
-        const textData = await respostaEvolution.text();
-
-        if (!respostaEvolution.ok) {
-          throw new Error(
-            `Status ${respostaEvolution.status} - Detalhe: ${textData}`,
-          );
-        }
-
-        const jsonData = JSON.parse(textData);
-        const idDaMensagem = jsonData?.key?.id || jsonData?.id || null;
-
-        console.log("[EVOLUTION_DIAG] mensagem_id extraído do sendText:", {
-          origem: "NotificacaoService",
-          paciente_id: paciente.id,
-          mensagem_id: idDaMensagem,
-          temKeyId: Boolean(jsonData?.key?.id),
-          temIdRaiz: Boolean(jsonData?.id),
+        telefoneLimpo = this.sanitizarTelefone(paciente.telefone);
+        const resultado = await this.enviarMensagemPaciente({
+          paciente,
+          mensagem: textoFinal,
+          usuario_id,
         });
-
-        // CORREÇÃO: Se a Evolution não devolveu um ID, o registro será salvo
-        // com mensagem_id=null. O webhook nunca encontrará esse registro pelo
-        // WHERE mensagem_id = '...' e o status jamais sairá de ENVIADO.
-        // O aviso abaixo sinaliza esse caso explicitamente nos logs.
-        if (!idDaMensagem) {
-          console.error(
-            "[NOTIFICACAO] ⚠️ mensagem_id ausente na resposta da Evolution. " +
-            "O status ENTREGUE/LIDO não será atualizado para esta mensagem. " +
-            "Resposta recebida: " + JSON.stringify(jsonData),
-          );
-        }
-
-        await notificacaoRepository.registrarEnvio({
-          paciente_id: paciente.id,
-          telefone_destino: telefoneLimpo,
-          texto_enviado: textoFinal,
-          status: "ENVIADO",
-          usuario_id: usuario_id || null,
-          mensagem_id: idDaMensagem,
-        });
+        telefoneLimpo = resultado.telefoneLimpo;
 
         console.log(
-          `[OK] Mensagem enviada para ${primeiroNome} (ID: ${idDaMensagem ?? "N/A"})`,
+          `[OK] Mensagem enviada para ${primeiroNome} (ID: ${resultado.mensagem_id ?? "N/A"})`,
         );
       } catch (error) {
         console.error(
@@ -112,16 +56,13 @@ class NotificacaoService {
           error.message,
         );
 
-        await notificacaoRepository
-          .registrarEnvio({
-            paciente_id: paciente.id,
-            telefone_destino: telefoneLimpo || paciente.telefone || "N/A",
-            texto_enviado: textoFinal || mensagemBase,
-            status: "ERRO",
-            usuario_id: usuario_id || null,
-            mensagem_id: null,
-          })
-          .catch(() => null);
+        await this.registrarFalhaEnvio({
+          paciente,
+          telefone: telefoneLimpo,
+          mensagem: textoFinal || mensagemBase,
+          usuario_id,
+          status: "ERRO",
+        }).catch(() => null);
       }
 
       const tempoAleatorio =
@@ -130,6 +71,99 @@ class NotificacaoService {
     }
 
     console.log(`[FIM] Fila das mensagens finalizada.`);
+  }
+
+  sanitizarTelefone(telefone) {
+    if (!telefone) {
+      throw new Error("Paciente sem telefone cadastrado.");
+    }
+
+    const telefoneLimpo = telefone.replace(/\D/g, "");
+    return telefoneLimpo.startsWith("55") ? telefoneLimpo : `55${telefoneLimpo}`;
+  }
+
+  async enviarMensagemPaciente({ paciente, mensagem, usuario_id }) {
+    const telefoneLimpo = this.sanitizarTelefone(paciente.telefone);
+
+    const payloadEvolution = {
+      number: telefoneLimpo,
+      text: mensagem,
+      textMessage: { text: mensagem },
+    };
+
+    const respostaEvolution = await fetch(
+      `${process.env.EVOLUTION_API_URL}/message/sendText/${process.env.EVOLUTION_INSTANCE_NAME}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: process.env.EVOLUTION_API_KEY,
+        },
+        body: JSON.stringify(payloadEvolution),
+      },
+    );
+
+    const textData = await respostaEvolution.text();
+
+    if (!respostaEvolution.ok) {
+      throw new Error(
+        `Status ${respostaEvolution.status} - Detalhe: ${textData}`,
+      );
+    }
+
+    const jsonData = JSON.parse(textData);
+    const idDaMensagem = jsonData?.key?.id || jsonData?.id || null;
+
+    console.log("[EVOLUTION_DIAG] mensagem_id extraído do sendText:", {
+      origem: "NotificacaoService",
+      paciente_id: paciente.id,
+      mensagem_id: idDaMensagem,
+      temKeyId: Boolean(jsonData?.key?.id),
+      temIdRaiz: Boolean(jsonData?.id),
+    });
+
+    if (!idDaMensagem) {
+      console.error(
+        "[NOTIFICACAO] ⚠️ mensagem_id ausente na resposta da Evolution. " +
+          "O status ENTREGUE/LIDO não será atualizado para esta mensagem. " +
+          "Resposta recebida: " +
+          JSON.stringify(jsonData),
+      );
+    }
+
+    await notificacaoRepository.registrarEnvio({
+      paciente_id: paciente.id,
+      telefone_destino: telefoneLimpo,
+      texto_enviado: mensagem,
+      status: "ENVIADO",
+      usuario_id: usuario_id || null,
+      mensagem_id: idDaMensagem,
+    });
+
+    return {
+      telefoneLimpo,
+      mensagem_id: idDaMensagem,
+      resposta: jsonData,
+    };
+  }
+
+  async registrarFalhaEnvio({
+    paciente,
+    telefone,
+    mensagem,
+    usuario_id,
+    status = "ERRO",
+  }) {
+    const telefoneDestino = telefone || paciente.telefone || "N/A";
+
+    return notificacaoRepository.registrarEnvio({
+      paciente_id: paciente.id,
+      telefone_destino: telefoneDestino,
+      texto_enviado: mensagem,
+      status,
+      usuario_id: usuario_id || null,
+      mensagem_id: null,
+    });
   }
 }
 

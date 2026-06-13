@@ -90,6 +90,21 @@ const api = {
     return res.json();
   },
 
+  dispararGrupo: async (grupoId, mensagem) => {
+    const res = await fetchComAutenticacao(
+      `/grupos-acompanhamento/${grupoId}/disparo`,
+      {
+        method: "POST",
+        body: JSON.stringify({ mensagem }),
+      },
+    );
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.erro || "Erro ao disparar mensagem do grupo");
+    }
+    return res.json();
+  },
+
   criarPaciente: async (payload) => {
     const res = await fetchComAutenticacao("/pacientes", {
       method: "POST",
