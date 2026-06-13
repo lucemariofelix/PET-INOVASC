@@ -138,11 +138,17 @@ export default function GestaoGrupos({ usuario }) {
           "Mensagem enviada para o grupo de acompanhamento.",
       });
     } catch (error) {
+      const whatsAppDesconectado =
+        error.message.includes("WhatsApp") &&
+        error.message.toLowerCase().includes("desconectado");
+
       setAlerta({
         isOpen: true,
         tipo: "erro",
         titulo: "Erro no disparo",
-        mensagem: error.message,
+        mensagem: whatsAppDesconectado
+          ? "Falha: O WhatsApp do sistema está desconectado. Conecte o aparelho antes de iniciar o disparo."
+          : error.message,
       });
     } finally {
       setDisparando(false);
