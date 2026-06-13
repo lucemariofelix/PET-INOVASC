@@ -162,7 +162,10 @@ describe("GrupoAcompanhamentoService", () => {
       expect(notificacaoService.enviarMensagemPaciente).toHaveBeenNthCalledWith(
         1,
         {
-          paciente: pacientes[0],
+          paciente: {
+            id: "paciente-1",
+            telefone: "(84) 9 9999-8888",
+          },
           mensagem: "Mensagem do grupo",
           usuario_id: usuarioId,
         },
@@ -170,7 +173,10 @@ describe("GrupoAcompanhamentoService", () => {
       expect(notificacaoService.enviarMensagemPaciente).toHaveBeenNthCalledWith(
         2,
         {
-          paciente: pacientes[1],
+          paciente: {
+            id: "paciente-2",
+            telefone: "85999997777",
+          },
           mensagem: "Mensagem do grupo",
           usuario_id: usuarioId,
         },
@@ -191,7 +197,10 @@ describe("GrupoAcompanhamentoService", () => {
 
       expect(notificacaoService.enviarMensagemPaciente).toHaveBeenCalledTimes(2);
       expect(notificacaoService.registrarFalhaEnvio).toHaveBeenCalledWith({
-        paciente: pacientes[0],
+        paciente: {
+          id: "paciente-1",
+          telefone: "(84) 9 9999-8888",
+        },
         telefone: "5584999998888",
         mensagem: "Mensagem do grupo",
         usuario_id: usuarioId,

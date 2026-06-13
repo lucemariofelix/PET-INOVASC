@@ -82,13 +82,16 @@ class NotificacaoService {
     return telefoneLimpo.startsWith("55") ? telefoneLimpo : `55${telefoneLimpo}`;
   }
 
-  async enviarMensagemPaciente({ paciente, mensagem, usuario_id }) {
+  async enviarMensagemPaciente({ paciente, mensagem, usuario_id } = {}) {
+    if (!paciente?.id || !paciente?.telefone || !mensagem) {
+      throw new Error("Paciente inválido para envio de mensagem.");
+    }
+
     const telefoneLimpo = this.sanitizarTelefone(paciente.telefone);
 
     const payloadEvolution = {
       number: telefoneLimpo,
       text: mensagem,
-      textMessage: { text: mensagem },
     };
 
     const respostaEvolution = await fetch(

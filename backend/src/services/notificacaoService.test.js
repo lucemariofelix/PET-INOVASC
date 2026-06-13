@@ -182,7 +182,6 @@ describe("NotificacaoService", () => {
       expect(body).toEqual({
         number: "5584999998888",
         text: "Olá, Maria",
-        textMessage: { text: "Olá, Maria" },
       });
     });
 
@@ -290,6 +289,30 @@ describe("NotificacaoService", () => {
           text: "Olá, Maria",
         }),
       );
+    });
+
+    it("deve lançar erro claro quando paciente vier undefined no envio individual", async () => {
+      await expect(
+        notificacaoService.enviarMensagemPaciente({
+          paciente: undefined,
+          mensagem: "Olá",
+          usuario_id: 10,
+        }),
+      ).rejects.toThrow("Paciente inválido para envio de mensagem.");
+
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it("deve lançar erro claro quando paciente.id estiver ausente no envio individual", async () => {
+      await expect(
+        notificacaoService.enviarMensagemPaciente({
+          paciente: { telefone: "84999998888" },
+          mensagem: "Olá",
+          usuario_id: 10,
+        }),
+      ).rejects.toThrow("Paciente inválido para envio de mensagem.");
+
+      expect(fetch).not.toHaveBeenCalled();
     });
 
     // -----------------------------------------------------------------------

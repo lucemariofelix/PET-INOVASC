@@ -52,7 +52,7 @@ class GrupoAcompanhamentoController {
       const resultado = await grupoAcompanhamentoService.dispararMensagens(
         request.params.id,
         request.body.mensagem,
-        request.user.id,
+        request.user?.id || null,
         authHeader,
       );
 
