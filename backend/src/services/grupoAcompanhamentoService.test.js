@@ -73,12 +73,10 @@ describe("GrupoAcompanhamentoService", () => {
     const pacientes = [
       {
         id: "paciente-1",
-        nome_completo: "Maria Silva",
         telefone: "(84) 9 9999-8888",
       },
       {
         id: "paciente-2",
-        nome_completo: "João Souza",
         telefone: "85999997777",
       },
     ];

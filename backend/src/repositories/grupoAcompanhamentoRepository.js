@@ -35,8 +35,6 @@ class GrupoAcompanhamentoRepository {
           paciente_id,
           pacientes!pacientes_grupos_paciente_id_fkey (
             id,
-            nome_completo,
-            nome,
             telefone
           )
         `,
