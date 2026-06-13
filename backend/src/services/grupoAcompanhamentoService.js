@@ -49,9 +49,14 @@ class GrupoAcompanhamentoService {
     };
 
     for (const paciente of pacientes) {
+      const pacienteEnvio = {
+        id: paciente?.id,
+        telefone: paciente?.telefone,
+      };
+
       try {
         await notificacaoService.enviarMensagemPaciente({
-          paciente,
+          paciente: pacienteEnvio,
           mensagem: mensagemFinal,
           usuario_id: usuarioId,
         });
@@ -63,14 +68,14 @@ class GrupoAcompanhamentoService {
         resumo.falhas += 1;
 
         console.error(
-          `[GRUPO_DISPARO] Falha ao enviar para paciente ID ${paciente.id}:`,
+          `[GRUPO_DISPARO] Falha ao enviar para paciente ID ${pacienteEnvio.id ?? "N/A"}:`,
           error.message,
         );
 
         let telefoneLimpo = "";
         try {
           telefoneLimpo = notificacaoService.sanitizarTelefone(
-            paciente.telefone,
+            pacienteEnvio.telefone,
           );
         } catch {
           telefoneLimpo = "";
@@ -78,7 +83,7 @@ class GrupoAcompanhamentoService {
 
         await notificacaoService
           .registrarFalhaEnvio({
-            paciente,
+            paciente: pacienteEnvio,
             telefone: telefoneLimpo,
             mensagem: mensagemFinal,
             usuario_id: usuarioId,
@@ -86,7 +91,7 @@ class GrupoAcompanhamentoService {
           })
           .catch((erroRegistro) => {
             console.error(
-              `[GRUPO_DISPARO] Falha ao registrar erro do paciente ID ${paciente.id}:`,
+              `[GRUPO_DISPARO] Falha ao registrar erro do paciente ID ${pacienteEnvio.id ?? "N/A"}:`,
               erroRegistro.message,
             );
           });
