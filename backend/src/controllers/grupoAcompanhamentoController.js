@@ -36,11 +36,35 @@ class GrupoAcompanhamentoController {
       ) {
         return reply
           .status(400)
-          .send({ erro: "Já existe um grupo de acompanhamento com este nome." });
+          .send({
+            erro: "Já existe um grupo de acompanhamento com este nome.",
+          });
       }
 
       const statusCode = error.message?.includes("nome do grupo") ? 400 : 500;
       return reply.status(statusCode).send({ erro: error.message });
+    }
+  }
+
+  async disparar(request, reply) {
+    try {
+      const authHeader = request.headers.authorization;
+      const resultado = await grupoAcompanhamentoService.dispararMensagens(
+        request.params.id,
+        request.body.mensagem,
+        request.user.id,
+        authHeader,
+      );
+
+      return reply.send(resultado);
+    } catch (error) {
+      request.log.error(error);
+
+      const erroCliente =
+        error.message?.includes("Informe") ||
+        error.message?.includes("Nenhum paciente");
+
+      return reply.status(erroCliente ? 400 : 500).send({ erro: error.message });
     }
   }
 }

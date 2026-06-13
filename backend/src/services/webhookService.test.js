@@ -12,7 +12,7 @@ const webhookService = require("./webhookService");
 const criarPayload = (status) => ({
   event: "messages.update",
   data: {
-    key: { id: "msg-123" },
+    keyId: "msg-123",
     update: { status },
   },
 });
@@ -112,10 +112,22 @@ describe("WebhookService", () => {
       );
     });
 
+    it('deve mapear status "DELIVERED" para "ENTREGUE"', async () => {
+      await webhookService.processarEvento(criarPayload("DELIVERED"));
+
+      expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
+        "msg-123",
+        "ENTREGUE",
+      );
+    });
+
     // -----------------------------------------------------------------------
-    // 6. Status 3 -> LIDO
+    // 6. Status 3 -> ENTREGUE
     // -----------------------------------------------------------------------
-    it('deve mapear status "3" para "LIDO"', async () => {
+    it('deve mapear status "3" para "ENTREGUE"', async () => {
       await webhookService.processarEvento(criarPayload("3"));
 
       expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledTimes(
@@ -123,7 +135,7 @@ describe("WebhookService", () => {
       );
       expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
         "msg-123",
-        "LIDO",
+        "ENTREGUE",
       );
     });
 
@@ -170,6 +182,64 @@ describe("WebhookService", () => {
         "msg-123",
         "LIDO",
       );
+    });
+
+    it('deve mapear status "VIEWED" para "LIDO"', async () => {
+      await webhookService.processarEvento(criarPayload("VIEWED"));
+
+      expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
+        "msg-123",
+        "LIDO",
+      );
+    });
+
+    it('deve processar "messages.update" mesmo com fromMe false', async () => {
+      await webhookService.processarEvento({
+        event: "messages.update",
+        data: {
+          keyId: "msg-from-me-false",
+          fromMe: false,
+          update: { status: "READ" },
+        },
+      });
+
+      expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
+        "msg-from-me-false",
+        "LIDO",
+      );
+    });
+
+    it("deve usar data.keyId e ignorar data.messageId em messages.update", async () => {
+      await webhookService.processarEvento({
+        event: "messages.update",
+        data: {
+          keyId: "key-id-correto",
+          messageId: "message-id-errado",
+          update: { status: "READ" },
+        },
+      });
+
+      expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
+        "key-id-correto",
+        "LIDO",
+      );
+    });
+
+    it("deve ignorar messages.update sem data.keyId mesmo com messageId", async () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      await webhookService.processarEvento({
+        event: "messages.update",
+        data: {
+          messageId: "message-id-nao-usado",
+          update: { status: "READ" },
+        },
+      });
+
+      expect(webhookRepository.atualizarStatusMensagem).not.toHaveBeenCalled();
     });
   });
 });

@@ -19,41 +19,29 @@ class WebhookService {
     console.log(JSON.stringify(payload, null, 2));
 
     try {
-      // BUG D CORRIGIDO: Normaliza o evento para maiúsculas e substitui "." por "_"
       const eventoNormalizado = String(payload.event || "")
         .toUpperCase()
         .replace(/\./g, "_");
+
+      if (eventoNormalizado === "MESSAGES_UPSERT") {
+        this.processarMessagesUpsert(payload);
+        return;
+      }
 
       if (eventoNormalizado !== "MESSAGES_UPDATE") {
         console.log(`[WEBHOOK] Evento ignorado: "${payload.event}"`);
         return;
       }
 
-      // O PULO DO GATO: Garantimos que iteramos sobre todos os itens agrupados pela AWS
       const itensArray = Array.isArray(payload.data)
         ? payload.data
         : [payload.data];
 
       for (const data of itensArray) {
-        // IGNORA ECOS/RECEBIDAS: Mensagens de pacientes não precisam de status de leitura no envio
-        const fromMe = data?.fromMe ?? data?.key?.fromMe ?? true;
-        if (fromMe === false) {
-          console.log(`[WEBHOOK] Ignorado: Mensagem recebida (fromMe: false)`);
-          continue; // Pula para a próxima iteração do loop sem travar o restante
-        }
-
-        // A extração do ID à prova de balas para a v2.3.7 (messageId da Evolution no final)
-        const messageId =
-          data?.keyId ||
-          data?.key?.id ||
-          data?.id ||
-          data?.message?.key?.id ||
-          data?.message?.id ||
-          data?.messageId;
+        const messageId = data?.keyId;
 
         const statusBruto = data?.update?.status ?? data?.status;
 
-        // Log de diagnóstico individual por item processado
         console.log(
           "[WEBHOOK_DIAG]",
           JSON.stringify({
@@ -61,36 +49,17 @@ class WebhookService {
             eventoNormalizado,
             messageId: messageId ?? null,
             statusBruto: statusBruto ?? null,
-            isFromMe: fromMe,
+            isFromMe: data?.fromMe ?? data?.key?.fromMe ?? null,
           }),
         );
 
-        const statusComparacao = String(statusBruto).toUpperCase();
-        let statusFormatado = null;
-
-        // Adicionado SERVER_ACK e o número 3 para cobrir todas as variações de "Entregue"
-        if (
-          statusComparacao === "SERVER_ACK" ||
-          statusComparacao === "DELIVERY_ACK" ||
-          statusComparacao === "RECEIVED" ||
-          statusComparacao === "2" ||
-          statusComparacao === "3"
-        ) {
-          statusFormatado = "ENTREGUE";
-        } else if (
-          statusComparacao === "READ" ||
-          statusComparacao === "PLAYED" ||
-          statusComparacao === "4" ||
-          statusComparacao === "5"
-        ) {
-          statusFormatado = "LIDO";
-        }
+        const statusFormatado = this.mapearStatusMensagem(statusBruto);
 
         if (!messageId) {
-          console.warn("[WEBHOOK] Ignorado: messageId ausente", {
+          console.warn("[WEBHOOK] Ignorado: keyId ausente", {
             statusBruto,
           });
-          continue; // Usa continue para não matar o array inteiro
+          continue;
         }
 
         if (!statusFormatado) {
@@ -112,6 +81,45 @@ class WebhookService {
       console.error("❌ Erro no webhookService:", error);
       throw error;
     }
+  }
+
+  processarMessagesUpsert(payload) {
+    const itensArray = Array.isArray(payload.data) ? payload.data : [payload.data];
+
+    for (const data of itensArray) {
+      const fromMe = data?.fromMe ?? data?.key?.fromMe ?? true;
+
+      if (fromMe === false) {
+        console.log(`[WEBHOOK] Ignorado: Mensagem recebida (fromMe: false)`);
+      }
+    }
+  }
+
+  mapearStatusMensagem(statusBruto) {
+    const statusComparacao = String(statusBruto).toUpperCase();
+
+    if (
+      statusComparacao === "DELIVERED" ||
+      statusComparacao === "SERVER_ACK" ||
+      statusComparacao === "DELIVERY_ACK" ||
+      statusComparacao === "RECEIVED" ||
+      statusComparacao === "2" ||
+      statusComparacao === "3"
+    ) {
+      return "ENTREGUE";
+    }
+
+    if (
+      statusComparacao === "READ" ||
+      statusComparacao === "VIEWED" ||
+      statusComparacao === "PLAYED" ||
+      statusComparacao === "4" ||
+      statusComparacao === "5"
+    ) {
+      return "LIDO";
+    }
+
+    return null;
   }
 }
 
