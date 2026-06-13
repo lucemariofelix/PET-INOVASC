@@ -90,12 +90,12 @@ const api = {
     return res.json();
   },
 
-  dispararGrupo: async (grupoId, mensagem) => {
+  dispararMensagemGrupo: async (grupoId, payload) => {
     const res = await fetchComAutenticacao(
       `/grupos-acompanhamento/${grupoId}/disparo`,
       {
         method: "POST",
-        body: JSON.stringify({ mensagem }),
+        body: JSON.stringify(payload),
       },
     );
     if (!res.ok) {
@@ -104,6 +104,9 @@ const api = {
     }
     return res.json();
   },
+
+  dispararGrupo: async (grupoId, mensagem) =>
+    api.dispararMensagemGrupo(grupoId, { mensagem }),
 
   criarPaciente: async (payload) => {
     const res = await fetchComAutenticacao("/pacientes", {
