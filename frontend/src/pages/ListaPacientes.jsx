@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   FaList,
+  FaUserPlus,
   FaChevronLeft,
   FaChevronRight,
   FaEdit,
@@ -10,8 +11,9 @@ import {
 import { api } from "../api/services";
 import { formatarDocumento } from "../utils/formatters";
 import ModalAlerta from "../components/ModalAlerta";
+import RoleGuard from "../components/RoleGuard";
 
-export default function ListaPacientes() {
+export default function ListaPacientes({ onNovoPaciente = () => {} }) {
   const [pacientesOptions, setPacientesOptions] = useState([]);
   const [loadingPacientes, setLoadingPacientes] = useState(false);
   const [agentesACS, setAgentesACS] = useState([]);
@@ -201,7 +203,7 @@ export default function ListaPacientes() {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in duration-300">
-      <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+      <div className="p-6 border-b border-slate-100 flex flex-col gap-4 bg-slate-50 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <FaList className="text-sky-700" /> Diretório de Pacientes
@@ -210,12 +212,23 @@ export default function ListaPacientes() {
             Visão geral e condições clínicas da unidade.
           </p>
         </div>
-        <button
-          onClick={fetchPacientes}
-          className="bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 px-4 py-2 rounded-lg text-sm font-semibold transition cursor-pointer"
-        >
-          Atualizar Lista
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO"]}>
+            <button
+              type="button"
+              onClick={onNovoPaciente}
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-sky-700 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-sky-800"
+            >
+              <FaUserPlus /> Novo Paciente
+            </button>
+          </RoleGuard>
+          <button
+            onClick={fetchPacientes}
+            className="bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 px-4 py-2 rounded-lg text-sm font-semibold transition cursor-pointer"
+          >
+            Atualizar Lista
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto min-h-[400px]">

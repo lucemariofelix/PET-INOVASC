@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   FaHeartbeat,
-  FaUserPlus,
   FaCalendarPlus,
   FaList,
   FaSignOutAlt,
@@ -10,7 +9,6 @@ import {
   FaTimes,
   FaCog,
   FaBullhorn,
-  FaLayerGroup,
 } from "react-icons/fa";
 import RoleGuard from "../components/RoleGuard";
 
@@ -52,55 +50,25 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
         <div className="hidden lg:flex items-center gap-6">
           <nav className="flex flex-wrap justify-center gap-2 bg-sky-900/50 p-1 rounded-lg">
             <button
-              onClick={() => handleTabClick("dashboard")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "dashboard" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
-            >
-              {/* CORAÇÃO DO MENU DESKTOP */}
-              <FaHeartbeat
-                className={
-                  activeTab === "dashboard" ? "text-red-500" : "text-red-400"
-                }
-              />{" "}
-              Alertas
-            </button>
-
-            <button
               onClick={() => handleTabClick("pacientes")}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "pacientes" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
             >
               <FaList /> Pacientes
             </button>
 
-            <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO"]}>
-              <button
-                onClick={() => handleTabClick("cadastro")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "cadastro" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
-              >
-                <FaUserPlus /> Novo Paciente
-              </button>
+            <button
+              onClick={() => handleTabClick("agenda")}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "agenda" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
+            >
+              <FaCalendarPlus /> Agenda
+            </button>
 
-              <button
-                onClick={() => handleTabClick("consulta")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "consulta" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
-              >
-                <FaCalendarPlus /> Agendar
-              </button>
-            </RoleGuard>
-
-            {/* ABA MENSAGERIA */}
             <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO", "ACS"]}>
               <button
-                onClick={() => handleTabClick("grupos")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "grupos" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
+                onClick={() => handleTabClick("comunicacao")}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "comunicacao" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
               >
-                <FaLayerGroup /> Grupos
-              </button>
-
-              <button
-                onClick={() => handleTabClick("notificacoes")}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "notificacoes" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
-              >
-                <FaBullhorn /> Mensageria
+                <FaBullhorn /> Comunicação
               </button>
             </RoleGuard>
 
@@ -146,19 +114,6 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
         <div className="lg:hidden bg-sky-800 border-t border-sky-700 px-4 pt-3 pb-5 shadow-inner animate-in slide-in-from-top-2 duration-200 ease-out">
           <nav className="flex flex-col gap-2">
             <button
-              onClick={() => handleTabClick("dashboard")}
-              className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "dashboard" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
-            >
-              {/* CORAÇÃO DO MENU MOBILE */}
-              <FaHeartbeat
-                className={
-                  activeTab === "dashboard" ? "text-red-500" : "text-red-400"
-                }
-              />
-              Alertas
-            </button>
-
-            <button
               onClick={() => handleTabClick("pacientes")}
               className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "pacientes" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
             >
@@ -170,58 +125,31 @@ export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
               Pacientes
             </button>
 
-            <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO"]}>
-              <button
-                onClick={() => handleTabClick("cadastro")}
-                className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "cadastro" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
-              >
-                <FaUserPlus
-                  className={
-                    activeTab === "cadastro" ? "text-sky-700" : "text-sky-300"
-                  }
-                />
-                Novo Paciente
-              </button>
+            <button
+              onClick={() => handleTabClick("agenda")}
+              className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "agenda" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
+            >
+              <FaCalendarPlus
+                className={
+                  activeTab === "agenda" ? "text-sky-700" : "text-sky-300"
+                }
+              />
+              Agenda
+            </button>
 
-              <button
-                onClick={() => handleTabClick("consulta")}
-                className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "consulta" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
-              >
-                <FaCalendarPlus
-                  className={
-                    activeTab === "consulta" ? "text-sky-700" : "text-sky-300"
-                  }
-                />
-                Agendar Consulta
-              </button>
-            </RoleGuard>
-
-            {/* ABA MENSAGERIA NO MOBILE */}
             <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO", "ACS"]}>
               <button
-                onClick={() => handleTabClick("grupos")}
-                className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "grupos" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
-              >
-                <FaLayerGroup
-                  className={
-                    activeTab === "grupos" ? "text-sky-700" : "text-sky-300"
-                  }
-                />
-                Grupos
-              </button>
-
-              <button
-                onClick={() => handleTabClick("notificacoes")}
-                className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "notificacoes" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
+                onClick={() => handleTabClick("comunicacao")}
+                className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "comunicacao" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}
               >
                 <FaBullhorn
                   className={
-                    activeTab === "notificacoes"
+                    activeTab === "comunicacao"
                       ? "text-sky-700"
                       : "text-sky-300"
                   }
                 />
-                Mensageria
+                Comunicação
               </button>
             </RoleGuard>
 

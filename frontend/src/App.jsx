@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
+import {
+  FaBullhorn,
+  FaCalendarPlus,
+  FaChartLine,
+  FaLayerGroup,
+} from "react-icons/fa";
 
 // Importação das Peças e Telas
 import Header from "./components/Header";
+import RoleGuard from "./components/RoleGuard";
 import Dashboard from "./pages/Dashboard";
 import ListaPacientes from "./pages/ListaPacientes";
 import CadastroPaciente from "./pages/CadastroPaciente";
@@ -14,7 +21,10 @@ import { api } from "./api/services";
 
 export default function App() {
   // ESTADOS DO SISTEMA
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState("pacientes");
+  const [pacientesView, setPacientesView] = useState("lista");
+  const [agendaView, setAgendaView] = useState("painel");
+  const [comunicacaoView, setComunicacaoView] = useState("grupos");
 
   // Estados de Autenticação
   const [usuario, setUsuario] = useState(null);
@@ -72,7 +82,10 @@ export default function App() {
   useEffect(() => {
     const handleSessaoExpirada = () => {
       setUsuario(null);
-      setActiveTab("dashboard");
+      setActiveTab("pacientes");
+      setPacientesView("lista");
+      setAgendaView("painel");
+      setComunicacaoView("grupos");
     };
 
     window.addEventListener("sgr:sessao-expirada", handleSessaoExpirada);
@@ -87,12 +100,54 @@ export default function App() {
     localStorage.removeItem("sgr_token");
     localStorage.removeItem("sgr_usuario");
     setUsuario(null);
-    setActiveTab("dashboard"); // Reseta a aba para a próxima vez que logar
+    setActiveTab("pacientes");
+    setPacientesView("lista");
+    setAgendaView("painel");
+    setComunicacaoView("grupos");
   };
 
   const handleLoginSucesso = (dadosUser) => {
     setUsuario(dadosUser);
-    setActiveTab("dashboard");
+    setActiveTab("pacientes");
+  };
+
+  const navegarPara = (tab) => {
+    if (tab === "cadastro") {
+      setPacientesView("cadastro");
+      setActiveTab("pacientes");
+      return;
+    }
+
+    if (tab === "consulta") {
+      const podeAgendar = ["ADMIN", "RECEPCAO"].includes(usuario?.funcao);
+      setAgendaView(podeAgendar ? "agendar" : "painel");
+      setActiveTab("agenda");
+      return;
+    }
+
+    if (tab === "dashboard") {
+      setAgendaView("painel");
+      setActiveTab("agenda");
+      return;
+    }
+
+    if (tab === "grupos") {
+      setComunicacaoView("grupos");
+      setActiveTab("comunicacao");
+      return;
+    }
+
+    if (tab === "notificacoes") {
+      setComunicacaoView("mensageria");
+      setActiveTab("comunicacao");
+      return;
+    }
+
+    setActiveTab(tab);
+
+    if (tab === "pacientes") setPacientesView("lista");
+    if (tab === "agenda") setAgendaView("painel");
+    if (tab === "comunicacao") setComunicacaoView("grupos");
   };
 
   // BARREIRA 1: A TELA DE CARREGAMENTO (Evita o piscar)
@@ -117,31 +172,79 @@ export default function App() {
       {/* O Header recebe o usuário e a função de logout */}
       <Header
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={navegarPara}
         usuario={usuario}
         onLogout={handleLogout}
       />
 
       <main className="max-w-7xl mx-auto py-6 px-2 sm:px-6 lg:px-8 w-full">
-        {activeTab === "dashboard" && <Dashboard />}
-
-        {activeTab === "pacientes" && <ListaPacientes />}
-
-        {activeTab === "cadastro" && (
-          <CadastroPaciente onSuccess={() => setActiveTab("consulta")} />
+        {activeTab === "pacientes" && (
+          <>
+            {pacientesView === "lista" && (
+              <ListaPacientes onNovoPaciente={() => setPacientesView("cadastro")} />
+            )}
+            {pacientesView === "cadastro" && (
+              <CadastroPaciente onSuccess={() => setPacientesView("lista")} />
+            )}
+          </>
         )}
 
-        {activeTab === "consulta" && (
-          <AgendarConsulta onSuccess={() => setActiveTab("dashboard")} />
+        {activeTab === "agenda" && (
+          <div className="space-y-5">
+            <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setAgendaView("painel")}
+                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition ${agendaView === "painel" ? "bg-sky-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"}`}
+              >
+                <FaChartLine /> Painel
+              </button>
+              <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO"]}>
+                <button
+                  type="button"
+                  onClick={() => setAgendaView("agendar")}
+                  className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition ${agendaView === "agendar" ? "bg-sky-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"}`}
+                >
+                  <FaCalendarPlus /> Agendar
+                </button>
+              </RoleGuard>
+            </div>
+
+            {agendaView === "painel" && <Dashboard />}
+            {agendaView === "agendar" && (
+              <AgendarConsulta onSuccess={() => setAgendaView("painel")} />
+            )}
+          </div>
         )}
 
-        {activeTab === "grupos" && <GestaoGrupos usuario={usuario} />}
+        {activeTab === "comunicacao" && (
+          <div className="space-y-5">
+            <div className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setComunicacaoView("grupos")}
+                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition ${comunicacaoView === "grupos" ? "bg-sky-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"}`}
+              >
+                <FaLayerGroup /> Grupos
+              </button>
+              <button
+                type="button"
+                onClick={() => setComunicacaoView("mensageria")}
+                className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition ${comunicacaoView === "mensageria" ? "bg-sky-700 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"}`}
+              >
+                <FaBullhorn /> Mensageria
+              </button>
+            </div>
+
+            {comunicacaoView === "grupos" && <GestaoGrupos usuario={usuario} />}
+            {comunicacaoView === "mensageria" && (
+              <Notificacoes usuario={usuario} />
+            )}
+          </div>
+        )}
 
         {/* NOVA CONDICIONAL: Renderiza a tela de configurações se a aba estiver ativa */}
         {activeTab === "configuracoes" && <Configuracoes />}
-
-        {/* NOVA CONDICIONAL: A tela de disparos em massa da Evolution API */}
-        {activeTab === "notificacoes" && <Notificacoes usuario={usuario} />}
       </main>
     </div>
   );
