@@ -32,10 +32,11 @@ class GrupoAcompanhamentoService {
       throw new Error("Informe a mensagem para iniciar o disparo.");
     }
 
-    const pacientes = await grupoAcompanhamentoRepository.listarPacientesDoGrupo(
-      grupoId,
-      authHeader,
-    );
+    const pacientes =
+      await grupoAcompanhamentoRepository.listarPacientesDoGrupo(
+        grupoId,
+        authHeader,
+      );
 
     if (!pacientes || pacientes.length === 0) {
       throw new Error("Nenhum paciente vinculado a este grupo.");
