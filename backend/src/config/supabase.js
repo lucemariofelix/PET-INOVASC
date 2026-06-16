@@ -26,7 +26,7 @@ const getSupabaseUsuario = (authHeader) => {
   return createClient(supabaseUrl, supabaseAnonKey, {
     global: {
       headers: {
-        Authorization: authHeader // Repassa o 'Bearer eyJ...' vindo do frontend
+        Authorization: authHeader // Token reconstruído pelo middleware a partir do cookie HttpOnly
       }
     }
   });

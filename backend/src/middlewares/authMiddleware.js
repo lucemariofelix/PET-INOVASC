@@ -1,18 +1,24 @@
-const { getSupabaseUsuario } = require("../config/supabase");
+const supabaseConfig = require("../config/supabase");
 
 exports.verificarPermissao = (rolesPermitidas) => {
   return async (request, reply) => {
     try {
-      // 1. Verifica se o React enviou o crachá (Token)
-      const authHeader = request.headers.authorization;
-      if (!authHeader) {
+      // 1. Verifica se o navegador enviou o cookie HttpOnly da sessão
+      const token = request.cookies?.access_token;
+      if (!token) {
         return reply
           .status(401)
           .send({ erro: "Token de autenticação ausente." });
       }
 
+      const authHeader = `Bearer ${token}`;
+      request.authHeader = authHeader;
+      if (!request.headers.authorization) {
+        request.headers.authorization = authHeader;
+      }
+
       // 2. Usa o Supabase para ler o token e garantir que ele é válido e verdadeiro
-      const supabaseClient = getSupabaseUsuario(authHeader);
+      const supabaseClient = supabaseConfig.getSupabaseUsuario(authHeader);
       const {
         data: { user },
         error: authError,

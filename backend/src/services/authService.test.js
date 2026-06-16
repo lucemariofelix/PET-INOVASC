@@ -41,11 +41,11 @@ beforeEach(() => {
 // =============================================================================
 describe("AuthService", () => {
   describe("login", () => {
-    it("deve fazer login com sucesso e retornar token e usuário", async () => {
+    it("deve fazer login com sucesso e retornar accessToken interno e usuário", async () => {
       signInWithPasswordMock.mockResolvedValue({
         data: {
           user: { id: "uuid-abc-123" },
-          session: { access_token: "jwt-token-xyz" },
+          session: { access_token: "jwt-token-xyz", expires_in: 3600 },
         },
         error: null,
       });
@@ -68,13 +68,32 @@ describe("AuthService", () => {
       expect(eqMock).toHaveBeenCalledWith("id", "uuid-abc-123");
       expect(singleMock).toHaveBeenCalledTimes(1);
       expect(resultado).toEqual({
-        token: "jwt-token-xyz",
+        accessToken: "jwt-token-xyz",
+        expiresIn: 3600,
         usuario: {
           id: "uuid-abc-123",
           nome: "Administrador",
           funcao: "ADMIN",
         },
       });
+    });
+
+    it("deve lançar erro quando a sessão não retornar access_token", async () => {
+      signInWithPasswordMock.mockResolvedValue({
+        data: {
+          user: { id: "uuid-sem-token" },
+          session: {},
+        },
+        error: null,
+      });
+      singleMock.mockResolvedValue({
+        data: { nome: "Sem Token", funcao: "ADMIN" },
+        error: null,
+      });
+
+      await expect(authService.login("s@x.com", "x")).rejects.toThrow(
+        "Sessão não retornada pelo Supabase Auth.",
+      );
     });
 
     it("deve lançar erro quando as credenciais forem inválidas", async () => {
@@ -129,7 +148,8 @@ describe("AuthService", () => {
 
       expect(eqMock).toHaveBeenCalledWith("id", "uuid-999");
       expect(resultado).toEqual({
-        token: "j",
+        accessToken: "j",
+        expiresIn: undefined,
         usuario: { id: "uuid-999", nome: "Recepcao", funcao: "RECEPCAO" },
       });
     });

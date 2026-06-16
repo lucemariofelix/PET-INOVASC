@@ -1,12 +1,19 @@
 import { useState } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
 import { FaHeartbeat, FaLock, FaEnvelope } from "react-icons/fa";
-import { api } from "../api/services";
+import { useAuth } from "../hooks/useAuth";
 
-export default function Login({ onLoginSucesso }) {
+export default function Login() {
+  const navigate = useNavigate();
+  const { login, loading: authLoading, usuario } = useAuth();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState("");
+
+  if (!authLoading && usuario) {
+    return <Navigate to="/pacientes" replace />;
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -14,14 +21,8 @@ export default function Login({ onLoginSucesso }) {
     setLoading(true);
 
     try {
-      const resposta = await api.login({ email, senha });
-
-      // Salva os dados no navegador para não deslogar se a pessoa apertar F5
-      localStorage.setItem("sgr_token", resposta.token);
-      localStorage.setItem("sgr_usuario", JSON.stringify(resposta.usuario));
-
-      // Avisa o App.jsx que deu certo e passa os dados do usuário
-      onLoginSucesso(resposta.usuario);
+      await login({ email, senha });
+      navigate("/pacientes", { replace: true });
     } catch (err) {
       setErro(err.message);
     } finally {

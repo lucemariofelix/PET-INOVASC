@@ -1,6 +1,7 @@
 require("dotenv").config();
 const Fastify = require("fastify");
 const cors = require("@fastify/cors"); // <- O Porteiro do CORS
+const cookie = require("@fastify/cookie");
 const errorHandler = require("./middlewares/errorHandler");
 
 const fastify = Fastify({
@@ -17,7 +18,10 @@ fastify.setErrorHandler(errorHandler);
 fastify.register(cors, {
   origin: ["https://pet-inovasc.vercel.app", "http://localhost:5173"], // Permite que o Vercel ou localhost conversem com essa API
   methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true,
 });
+
+fastify.register(cookie);
 
 // 🔵 Rota principal (humana / debug)
 fastify.get("/", async (request, reply) => {

@@ -1,6 +1,14 @@
 const authService = require('../services/authService');
 const logRepository = require("../repositories/logRepository"); // <-- IMPORTADO
 
+const getAuthCookieOptions = (maxAge) => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  path: "/",
+  ...(maxAge ? { maxAge } : {}),
+});
+
 class AuthController {
   async login(request, reply) {
     try {
@@ -17,7 +25,13 @@ class AuthController {
         `Sessão iniciada pelo email: ${email}`
       );
 
-      return reply.send(resultado);
+      return reply
+        .setCookie(
+          "access_token",
+          resultado.accessToken,
+          getAuthCookieOptions(resultado.expiresIn),
+        )
+        .send({ usuario: resultado.usuario });
     } catch (error) {
       request.log.error(error);
 
@@ -30,6 +44,12 @@ class AuthController {
 
       return reply.status(401).send({ erro: error.message });
     }
+  }
+
+  async logout(request, reply) {
+    return reply
+      .clearCookie("access_token", getAuthCookieOptions())
+      .send({ sucesso: true });
   }
 }
 

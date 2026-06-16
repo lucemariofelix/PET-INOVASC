@@ -1,52 +1,70 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-// 1. Pega o crachá
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("sgr_token");
-  return {
-    "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
-};
-
-const limparSessaoLocal = () => {
-  localStorage.removeItem("sgr_token");
-  localStorage.removeItem("sgr_usuario");
-
+const notificarSessaoExpirada = () => {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new Event("sgr:sessao-expirada"));
   }
 };
 
-// 2. O NOVO VIGIA GLOBAL: Toda requisição passa por aqui primeiro
 const fetchComAutenticacao = async (endpoint, options = {}) => {
+  const headers = {
+    "Content-Type": "application/json",
+    ...options.headers,
+  };
+
   const res = await fetch(`${API_URL}${endpoint}`, {
     ...options,
-    headers: {
-      ...getAuthHeaders(),
-      ...options.headers, // Mescla com outros headers se houver
-    },
+    credentials: "include",
+    headers,
   });
 
-  // A TRAVA GLOBAL: Se bater 401 em QUALQUER lugar do sistema, cai aqui!
   if (res.status === 401) {
-    limparSessaoLocal();
-
-    // Trava a execução para não quebrar o React
+    notificarSessaoExpirada();
     throw new Error("Sessão expirada. Redirecionando para login...");
   }
 
   return res;
 };
 
-// 3. Suas rotas agora ficam super limpas, chamando o vigia
-// MUDANÇA 1: Tiramos o "export" daqui, virou apenas "const api ="
+const lerErro = async (res, fallback) => {
+  const errorData = await res.json().catch(() => ({}));
+  return errorData.erro || fallback;
+};
+
 const api = {
   getMe: async () => {
-    const res = await fetchComAutenticacao("/auth/me");
+    const res = await fetch(`${API_URL}/auth/me`, {
+      method: "GET",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    });
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao validar sessão");
+      throw new Error(await lerErro(res, "Erro ao validar sessão"));
+    }
+    return res.json();
+  },
+
+  login: async (credenciais) => {
+    const res = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(credenciais),
+    });
+    if (!res.ok) {
+      throw new Error(await lerErro(res, "Falha na autenticação"));
+    }
+    return res.json();
+  },
+
+  logout: async () => {
+    const res = await fetch(`${API_URL}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) {
+      throw new Error(await lerErro(res, "Erro ao encerrar sessão"));
     }
     return res.json();
   },
@@ -54,8 +72,7 @@ const api = {
   getConsultasAtrasadas: async () => {
     const res = await fetchComAutenticacao("/consultas/atrasadas");
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao buscar consultas atrasadas");
+      throw new Error(await lerErro(res, "Erro ao buscar consultas atrasadas"));
     }
     return res.json();
   },
@@ -84,8 +101,7 @@ const api = {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao criar grupo de acompanhamento");
+      throw new Error(await lerErro(res, "Erro ao criar grupo de acompanhamento"));
     }
     return res.json();
   },
@@ -99,8 +115,7 @@ const api = {
       },
     );
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao disparar mensagem do grupo");
+      throw new Error(await lerErro(res, "Erro ao disparar mensagem do grupo"));
     }
     return res.json();
   },
@@ -114,8 +129,7 @@ const api = {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao cadastrar paciente");
+      throw new Error(await lerErro(res, "Erro ao cadastrar paciente"));
     }
     return res.json();
   },
@@ -126,8 +140,7 @@ const api = {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao atualizar paciente");
+      throw new Error(await lerErro(res, "Erro ao atualizar paciente"));
     }
     return res.json();
   },
@@ -138,8 +151,7 @@ const api = {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao agendar consulta");
+      throw new Error(await lerErro(res, "Erro ao agendar consulta"));
     }
     return res.json();
   },
@@ -150,37 +162,18 @@ const api = {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao disparar mensagem");
+      throw new Error(await lerErro(res, "Erro ao disparar mensagem"));
     }
     return res.json();
   },
 
-  // ==========================================
-  // NOTIFICAÇÕES E MENSAGERIA
-  // ==========================================
   dispararMensagensLote: async (payload) => {
     const res = await fetchComAutenticacao("/notificacoes/lote", {
       method: "POST",
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao iniciar os disparos");
-    }
-    return res.json();
-  },
-
-  login: async (credenciais) => {
-    // O login continua usando o fetch normal porque ele não tem token ainda
-    const res = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(credenciais),
-    });
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Falha na autenticação");
+      throw new Error(await lerErro(res, "Erro ao iniciar os disparos"));
     }
     return res.json();
   },
@@ -188,15 +181,11 @@ const api = {
   getWhatsAppStatus: async () => {
     const res = await fetchComAutenticacao("/whatsapp/status");
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao verificar status do WhatsApp");
+      throw new Error(await lerErro(res, "Erro ao verificar status do WhatsApp"));
     }
     return res.json();
   },
 
-  // ==========================================
-  // GESTÃO DE USUÁRIOS (EQUIPE DA UBS)
-  // ==========================================
   getUsuarios: async () => {
     const res = await fetchComAutenticacao("/usuarios");
     if (!res.ok) throw new Error("Erro ao buscar usuários");
@@ -215,8 +204,7 @@ const api = {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao criar usuário");
+      throw new Error(await lerErro(res, "Erro ao criar usuário"));
     }
     return res.json();
   },
@@ -227,8 +215,7 @@ const api = {
       body: JSON.stringify(payload),
     });
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao atualizar usuário");
+      throw new Error(await lerErro(res, "Erro ao atualizar usuário"));
     }
     return res.json();
   },
@@ -236,23 +223,15 @@ const api = {
   excluirUsuario: async (id) => {
     const res = await fetchComAutenticacao(`/usuarios/${id}`, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      // ENVIANDO UM CORPO VAZIO PARA PASSAR PELO VALIDATOR DO FASTIFY
       body: JSON.stringify({}),
     });
 
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.erro || "Erro ao excluir usuário");
+      throw new Error(await lerErro(res, "Erro ao excluir usuário"));
     }
     return res.json();
   },
 
-  // ==========================================
-  // AUDITORIA E LOGS (ADMIN)
-  // ==========================================
   getLogs: async () => {
     const res = await fetchComAutenticacao("/logs");
     if (!res.ok) throw new Error("Erro ao buscar logs do sistema");
@@ -260,6 +239,5 @@ const api = {
   },
 };
 
-// MUDANÇA 2: Adicionamos a exportação "Default" no final do arquivo
 export { api };
 export default api;

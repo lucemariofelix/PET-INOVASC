@@ -3,6 +3,7 @@ const { verificarPermissao } = require('../middlewares/authMiddleware');
 
 async function rotasAuth(fastify, options) {
   fastify.post('/auth/login', authController.login);
+  fastify.post('/auth/logout', authController.logout);
   fastify.get(
     '/auth/me',
     { preHandler: [verificarPermissao(['ADMIN', 'RECEPCAO', 'ACS'])] },

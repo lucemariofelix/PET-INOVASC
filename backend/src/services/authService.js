@@ -24,9 +24,15 @@ class AuthService {
       throw new Error("Perfil de usuário não configurado no sistema.");
     }
 
-    // Retorna os dados essenciais para o Frontend salvar no estado
+    const accessToken = authData.session?.access_token;
+    if (!accessToken) {
+      throw new Error("Sessão não retornada pelo Supabase Auth.");
+    }
+
+    // Retorna o token apenas para o controller gravar no cookie HttpOnly.
     return {
-      token: authData.session.access_token,
+      accessToken,
+      expiresIn: authData.session?.expires_in,
       usuario: {
         id: authData.user.id,
         nome: perfilData.nome,

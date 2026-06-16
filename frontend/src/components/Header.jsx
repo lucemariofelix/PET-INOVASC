@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   FaHeartbeat,
   FaCalendarPlus,
@@ -12,11 +13,28 @@ import {
 } from "react-icons/fa";
 import RoleGuard from "../components/RoleGuard";
 
-export default function Header({ activeTab, setActiveTab, usuario, onLogout }) {
+const getActiveTab = (pathname) => {
+  if (pathname.startsWith("/agenda")) return "agenda";
+  if (pathname.startsWith("/comunicacao")) return "comunicacao";
+  if (pathname.startsWith("/configuracoes")) return "configuracoes";
+  return "pacientes";
+};
+
+export default function Header({ usuario, onLogout }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const activeTab = getActiveTab(location.pathname);
 
   const handleTabClick = (tab) => {
-    setActiveTab(tab);
+    const rotas = {
+      pacientes: "/pacientes",
+      agenda: "/agenda",
+      comunicacao: "/comunicacao/grupos",
+      configuracoes: "/configuracoes",
+    };
+
+    navigate(rotas[tab] || "/pacientes");
     setIsMobileMenuOpen(false);
   };
 
