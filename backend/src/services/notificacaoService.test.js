@@ -16,6 +16,7 @@ const pacientesBase = [
     id: 1,
     nome_completo: "Maria Silva",
     telefone: "84999998888",
+    consentimento_msg: true,
   },
 ];
 
@@ -261,14 +262,15 @@ describe("NotificacaoService", () => {
       );
 
       expect(notificacaoRepository.registrarEnvio).toHaveBeenCalledTimes(1);
-      expect(notificacaoRepository.registrarEnvio).toHaveBeenCalledWith({
+      expect(notificacaoRepository.registrarEnvio).toHaveBeenCalledWith(expect.objectContaining({
         paciente_id: 1,
         telefone_destino: "5584999998888",
         texto_enviado: "Olá, Maria",
         status: "ENVIADO",
         usuario_id: 10,
         mensagem_id: "msg-123",
-      });
+        tipo_mensagem: "AVISO_GERAL",
+      }));
     });
 
     // -----------------------------------------------------------------------
@@ -280,6 +282,7 @@ describe("NotificacaoService", () => {
           id: 1,
           nome_completo: "Maria Silva",
           telefone: "(84) 9 9999-8888",
+          consentimento_msg: true,
         },
       ];
 
@@ -320,6 +323,7 @@ describe("NotificacaoService", () => {
           id: 1,
           nome_completo: "Maria Silva",
           telefone: "5584999998888",
+          consentimento_msg: true,
         },
       ];
 
@@ -398,14 +402,15 @@ describe("NotificacaoService", () => {
       );
 
       expect(notificacaoRepository.registrarEnvio).toHaveBeenCalledTimes(1);
-      expect(notificacaoRepository.registrarEnvio).toHaveBeenCalledWith({
+      expect(notificacaoRepository.registrarEnvio).toHaveBeenCalledWith(expect.objectContaining({
         paciente_id: 1,
         telefone_destino: "5584999998888",
         texto_enviado: "Olá, Maria",
         status: "ERRO",
         usuario_id: 10,
         mensagem_id: null,
-      });
+        tipo_mensagem: "AVISO_GERAL",
+      }));
     });
 
     // -----------------------------------------------------------------------
@@ -422,14 +427,15 @@ describe("NotificacaoService", () => {
       );
 
       expect(notificacaoRepository.registrarEnvio).toHaveBeenCalledTimes(1);
-      expect(notificacaoRepository.registrarEnvio).toHaveBeenCalledWith({
+      expect(notificacaoRepository.registrarEnvio).toHaveBeenCalledWith(expect.objectContaining({
         paciente_id: 1,
         telefone_destino: "5584999998888",
         texto_enviado: "Olá, Maria",
         status: "ERRO",
         usuario_id: 10,
         mensagem_id: null,
-      });
+        tipo_mensagem: "AVISO_GERAL",
+      }));
     });
 
     // -----------------------------------------------------------------------
@@ -452,14 +458,15 @@ describe("NotificacaoService", () => {
 
       expect(fetch).not.toHaveBeenCalled();
       expect(notificacaoRepository.registrarEnvio).toHaveBeenCalledTimes(1);
-      expect(notificacaoRepository.registrarEnvio).toHaveBeenCalledWith({
+      expect(notificacaoRepository.registrarEnvio).toHaveBeenCalledWith(expect.objectContaining({
         paciente_id: 1,
         telefone_destino: "N/A",
         texto_enviado: "Olá, Maria",
         status: "ERRO",
         usuario_id: 10,
         mensagem_id: null,
-      });
+        tipo_mensagem: "AVISO_GERAL",
+      }));
     });
 
     // -----------------------------------------------------------------------
@@ -471,11 +478,13 @@ describe("NotificacaoService", () => {
           id: 1,
           nome_completo: "Maria Silva",
           telefone: "84999998888",
+          consentimento_msg: true,
         },
         {
           id: 2,
           nome_completo: "João Souza",
           telefone: "85999997777",
+          consentimento_msg: true,
         },
       ];
 
@@ -511,11 +520,13 @@ describe("NotificacaoService", () => {
           id: 1,
           nome_completo: "Maria Silva",
           telefone: "84999998888",
+          consentimento_msg: true,
         },
         {
           id: 2,
           nome_completo: "João Souza",
           telefone: "85999997777",
+          consentimento_msg: true,
         },
       ];
 
@@ -537,11 +548,13 @@ describe("NotificacaoService", () => {
           id: 1,
           nome_completo: "Maria Silva",
           telefone: "84999998888",
+          consentimento_msg: true,
         },
         {
           id: 2,
           nome_completo: "João Souza",
           telefone: "85999997777",
+          consentimento_msg: true,
         },
       ];
 
@@ -552,22 +565,24 @@ describe("NotificacaoService", () => {
       );
 
       expect(notificacaoRepository.registrarEnvio).toHaveBeenCalledTimes(2);
-      expect(notificacaoRepository.registrarEnvio).toHaveBeenNthCalledWith(1, {
+      expect(notificacaoRepository.registrarEnvio).toHaveBeenNthCalledWith(1, expect.objectContaining({
         paciente_id: 1,
         telefone_destino: "5584999998888",
         texto_enviado: "Olá, Maria",
         status: "ENVIADO",
         usuario_id: 10,
         mensagem_id: "msg-123",
-      });
-      expect(notificacaoRepository.registrarEnvio).toHaveBeenNthCalledWith(2, {
+        tipo_mensagem: "AVISO_GERAL",
+      }));
+      expect(notificacaoRepository.registrarEnvio).toHaveBeenNthCalledWith(2, expect.objectContaining({
         paciente_id: 2,
         telefone_destino: "5585999997777",
         texto_enviado: "Olá, João",
         status: "ENVIADO",
         usuario_id: 10,
         mensagem_id: "msg-123",
-      });
+        tipo_mensagem: "AVISO_GERAL",
+      }));
     });
 
     // -----------------------------------------------------------------------

@@ -1,5 +1,6 @@
 const grupoAcompanhamentoRepository = require("../repositories/grupoAcompanhamentoRepository");
 const notificacaoService = require("./notificacaoService");
+const { TIPOS_MENSAGEM } = require("./mensageriaService");
 
 class GrupoAcompanhamentoService {
   async listarGrupos(authHeader) {
@@ -54,6 +55,7 @@ class GrupoAcompanhamentoService {
       const pacienteEnvio = {
         id: paciente?.id,
         telefone: paciente?.telefone,
+        consentimento_msg: paciente?.consentimento_msg,
       };
 
       try {
@@ -61,6 +63,7 @@ class GrupoAcompanhamentoService {
           paciente: pacienteEnvio,
           mensagem: mensagemFinal,
           usuario_id: usuarioId,
+          tipo: TIPOS_MENSAGEM.GRUPO_ACOMPANHAMENTO,
         });
 
         resumo.enviados += 1;

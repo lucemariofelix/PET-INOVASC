@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { FaBullhorn, FaLayerGroup, FaPlus, FaSave, FaTimes } from "react-icons/fa";
-import { api } from "../api/services";
+import { gruposApi } from "../api/grupos";
 import ModalAlerta from "./ModalAlerta";
 
 export default function GestaoGrupos({ usuario }) {
@@ -25,7 +25,7 @@ export default function GestaoGrupos({ usuario }) {
     setLoading(true);
 
     try {
-      const data = await api.getGrupos();
+      const data = await gruposApi.getGrupos();
       setGrupos(data.grupos || data || []);
     } catch (error) {
       console.error("Erro ao carregar grupos:", error);
@@ -69,7 +69,7 @@ export default function GestaoGrupos({ usuario }) {
 
     try {
       setSalvando(true);
-      await api.criarGrupo({
+      await gruposApi.criarGrupo({
         nome: nome.trim(),
         descricao: descricao.trim() || null,
       });
@@ -121,7 +121,7 @@ export default function GestaoGrupos({ usuario }) {
 
     try {
       setDisparando(true);
-      const resultado = await api.dispararGrupo(
+      const resultado = await gruposApi.dispararGrupo(
         grupoDisparo.id,
         mensagemDisparo.trim(),
       );

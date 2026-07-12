@@ -18,6 +18,7 @@ const esquemaDisparoLote = {
             id: { type: "string" },
             telefone: { type: "string", minLength: 10 },
             nome_completo: { type: "string" },
+            consentimento_msg: { type: "boolean" },
           },
         },
       },

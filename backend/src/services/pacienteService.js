@@ -44,13 +44,17 @@ class PacienteService {
       cpf_cns: dados.cpf_cns,
       data_nascimento: dados.data_nascimento,
       telefone: dados.telefone || null,
+      contato_emergencia_nome: dados.contato_emergencia_nome || null,
+      contato_emergencia_telefone: dados.contato_emergencia_telefone || null,
+      contato_emergencia_parentesco:
+        dados.contato_emergencia_parentesco || null,
       endereco: dados.endereco || null,
       acs: dados.acs || null,
       agente_id: dados.agente_id || null,
       condicao: dados.condicao ? dados.condicao.toUpperCase() : null,
       status_telefone: dados.status_telefone || "VALIDO",
       consentimento_msg:
-        dados.consentimento_msg !== undefined ? dados.consentimento_msg : true,
+        dados.consentimento_msg !== undefined ? dados.consentimento_msg : false,
     };
 
     const gruposIds = this.normalizarGruposIds(dados);
@@ -97,6 +101,25 @@ class PacienteService {
 
     if (temPropriedade(dados, "telefone")) {
       pacienteParaAtualizar.telefone = dados.telefone || null;
+    }
+
+    if (temPropriedade(dados, "contato_emergencia_nome")) {
+      pacienteParaAtualizar.contato_emergencia_nome =
+        dados.contato_emergencia_nome || null;
+    }
+
+    if (temPropriedade(dados, "contato_emergencia_telefone")) {
+      pacienteParaAtualizar.contato_emergencia_telefone =
+        dados.contato_emergencia_telefone || null;
+    }
+
+    if (temPropriedade(dados, "contato_emergencia_parentesco")) {
+      pacienteParaAtualizar.contato_emergencia_parentesco =
+        dados.contato_emergencia_parentesco || null;
+    }
+
+    if (temPropriedade(dados, "consentimento_msg")) {
+      pacienteParaAtualizar.consentimento_msg = Boolean(dados.consentimento_msg);
     }
 
     if (temPropriedade(dados, "endereco")) {

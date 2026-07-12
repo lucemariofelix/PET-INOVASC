@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { FaCalendarPlus } from 'react-icons/fa';
-import { api } from '../api/services';
+import { consultasApi } from '../api/consultas';
+import { mensageriaApi } from '../api/mensageria';
+import { pacientesApi } from '../api/pacientes';
 import { formatarDocumento } from '../utils/formatters';
 // IMPORTAÇÃO DOS MODAIS
 import ModalConfirmacao from '../components/ModalConfirmacao'; 
@@ -19,6 +21,7 @@ export default function AgendarConsulta({ onSuccess }) {
   // Estados da Busca Dinâmica
   const [buscaTermo, setBuscaTermo] = useState('');
   const [pacienteSelecionadoNome, setPacienteSelecionadoNome] = useState('');
+  const [pacienteSelecionado, setPacienteSelecionado] = useState(null);
   const [mostrarListaBusca, setMostrarListaBusca] = useState(false);
 
   // ESTADOS DE CONTROLE DOS MODAIS
@@ -29,7 +32,7 @@ export default function AgendarConsulta({ onSuccess }) {
   useEffect(() => {
     const fetchPacientes = async () => {
       try {
-        const data = await api.getPacientes();
+        const data = await pacientesApi.getPacientes();
         setPacientesOptions(data.pacientes || data || []);
       } catch (err) {
         console.error("Erro ao buscar pacientes para o agendamento:", err);
@@ -48,6 +51,7 @@ export default function AgendarConsulta({ onSuccess }) {
 
   const selecionarPaciente = (paciente) => {
     setConsultaPacienteId(paciente.id);
+    setPacienteSelecionado(paciente);
     setPacienteSelecionadoNome(`${paciente.nome_completo} (Doc: ${formatarDocumento(paciente.cpf_cns)})`);
     setBuscaTermo('');
     setMostrarListaBusca(false);
@@ -55,6 +59,7 @@ export default function AgendarConsulta({ onSuccess }) {
 
   const deselecionarPaciente = () => {
     setConsultaPacienteId('');
+    setPacienteSelecionado(null);
     setPacienteSelecionadoNome('');
     setBuscaTermo('');
   };
@@ -90,7 +95,23 @@ export default function AgendarConsulta({ onSuccess }) {
     };
 
     try {
-      await api.criarConsulta(payload);
+      const respostaConsulta = await consultasApi.criarConsulta(payload);
+      const consultaCriada = respostaConsulta.consulta || respostaConsulta;
+
+      if (pacienteSelecionado?.telefone && pacienteSelecionado?.consentimento_msg) {
+        await mensageriaApi.dispararWhatsApp({
+          paciente_id: pacienteSelecionado.id,
+          consulta_id: consultaCriada.id,
+          telefone: pacienteSelecionado.telefone,
+          consentimento_msg: pacienteSelecionado.consentimento_msg,
+          nome: pacienteSelecionado.nome_completo,
+          profissional: tipoProfissional,
+          status_consulta: "AGENDADA",
+          data_referencia: dataProximaConsulta,
+          tipo: "AGENDAMENTO_CONSULTA",
+          usarBotaoConfirmacao: true,
+        });
+      }
       
       // SUBSTITUÍDO O ALERT NATIVO PELO SEU MODAL TAILWIND
       setAlerta({

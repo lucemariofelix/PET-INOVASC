@@ -210,25 +210,27 @@ describe("GrupoAcompanhamentoService", () => {
 
       expect(notificacaoService.enviarMensagemPaciente).toHaveBeenNthCalledWith(
         1,
-        {
-          paciente: {
+        expect.objectContaining({
+          paciente: expect.objectContaining({
             id: "paciente-1",
             telefone: "(84) 9 9999-8888",
-          },
+          }),
           mensagem: "Mensagem do grupo",
           usuario_id: usuarioId,
-        },
+          tipo: "GRUPO_ACOMPANHAMENTO",
+        }),
       );
       expect(notificacaoService.enviarMensagemPaciente).toHaveBeenNthCalledWith(
         2,
-        {
-          paciente: {
+        expect.objectContaining({
+          paciente: expect.objectContaining({
             id: "paciente-2",
             telefone: "85999997777",
-          },
+          }),
           mensagem: "Mensagem do grupo",
           usuario_id: usuarioId,
-        },
+          tipo: "GRUPO_ACOMPANHAMENTO",
+        }),
       );
     });
 

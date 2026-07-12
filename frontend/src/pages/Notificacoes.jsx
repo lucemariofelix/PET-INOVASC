@@ -7,8 +7,8 @@ import {
   FaInfoCircle,
   FaSpinner,
 } from "react-icons/fa";
-// Ajuste o caminho de importação da sua API conforme a estrutura do seu projeto
-import api from "../api/services";
+import { mensageriaApi } from "../api/mensageria";
+import { pacientesApi } from "../api/pacientes";
 
 const obterNomeAgente = (paciente) => {
   return paciente?.agente?.nome || paciente?.acs || "";
@@ -30,7 +30,7 @@ export default function Notificacoes({ usuario }) {
     const carregarPacientes = async () => {
       try {
         setLoading(true);
-        const dados = await api.getPacientes();
+        const dados = await pacientesApi.getPacientes();
 
         // TRAVA DE SEGURANÇA: Verifica o formato antes de salvar no estado
         if (Array.isArray(dados)) {
@@ -80,7 +80,8 @@ export default function Notificacoes({ usuario }) {
         : true;
       // Garante que só envia para quem tem telefone cadastrado
       const temTelefone = p.telefone && p.telefone.trim() !== "";
-      return bateAcs && bateCondicao && temTelefone;
+      const temConsentimento = p.consentimento_msg === true;
+      return bateAcs && bateCondicao && temTelefone && temConsentimento;
     });
   }, [pacientes, filtroAcs, filtroCondicao]);
 
@@ -104,7 +105,7 @@ export default function Notificacoes({ usuario }) {
       setEnviando(true);
       setFeedback(null);
 
-      await api.dispararMensagensLote({
+      await mensageriaApi.dispararMensagensLote({
         pacientes: pacientesFiltrados,
         mensagemBase: mensagem,
         usuario_id: usuario?.id, // Pega o ID de quem está logado

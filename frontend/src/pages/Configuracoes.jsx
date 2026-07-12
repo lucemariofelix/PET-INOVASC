@@ -13,7 +13,9 @@ import {
   FaSave,
   FaHistory, // <-- Ícone novo para a Auditoria
 } from "react-icons/fa";
-import { api } from "../api/services";
+import { mensageriaApi } from "../api/mensageria";
+import { sessaoApi } from "../api/sessao";
+import { usuariosApi } from "../api/usuarios";
 import ModalAlerta from "../components/ModalAlerta";
 
 export default function Configuracoes() {
@@ -61,7 +63,7 @@ export default function Configuracoes() {
   // ==========================================
   const checarConexao = async () => {
     try {
-      const data = await api.getWhatsAppStatus();
+      const data = await mensageriaApi.getWhatsAppStatus();
       setStatusWpp(data.status);
       if (data.status === "qrcode") setQrCodeBase64(data.qrcode);
     } catch {
@@ -81,7 +83,7 @@ export default function Configuracoes() {
   const carregarUsuarios = async () => {
     setLoadingUsuarios(true);
     try {
-      const data = await api.getUsuarios();
+      const data = await usuariosApi.getUsuarios();
       setUsuarios(data.usuarios || data || []);
     } catch (error) {
       console.error("Erro ao carregar usuários:", error);
@@ -93,7 +95,7 @@ export default function Configuracoes() {
   const carregarLogs = async () => {
     setLoadingLogs(true);
     try {
-      const data = await api.getLogs();
+      const data = await sessaoApi.getLogs();
       setLogs(data);
     } catch (error) {
       console.error("Erro ao carregar logs:", error);
@@ -136,7 +138,7 @@ export default function Configuracoes() {
       if (isEditando) {
         const payload = { ...usuarioAtual };
         if (!payload.senha) delete payload.senha;
-        await api.atualizarUsuario(usuarioAtual.id, payload);
+        await usuariosApi.atualizarUsuario(usuarioAtual.id, payload);
         setAlerta({
           isOpen: true,
           tipo: "sucesso",
@@ -144,7 +146,7 @@ export default function Configuracoes() {
           mensagem: "Usuário atualizado com sucesso!",
         });
       } else {
-        await api.criarUsuario(usuarioAtual);
+        await usuariosApi.criarUsuario(usuarioAtual);
         setAlerta({
           isOpen: true,
           tipo: "sucesso",
@@ -166,7 +168,7 @@ export default function Configuracoes() {
 
   const excluirUsuario = async () => {
     try {
-      await api.excluirUsuario(usuarioAtual.id);
+      await usuariosApi.excluirUsuario(usuarioAtual.id);
       setModalExcluirAberto(false);
       carregarUsuarios();
       setAlerta({

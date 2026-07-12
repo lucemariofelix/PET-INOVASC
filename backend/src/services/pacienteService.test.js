@@ -57,7 +57,7 @@ describe("PacienteService", () => {
         nome_completo: "Maria Souza",
         cpf_cns: "98765432100",
         status_telefone: "VALIDO",
-        consentimento_msg: true,
+        consentimento_msg: false,
       };
       pacienteRepository.criar = vi.fn().mockResolvedValue(pacienteSalvo);
 
@@ -77,7 +77,7 @@ describe("PacienteService", () => {
           nome_completo: "Maria Souza",
           cpf_cns: "98765432100",
           status_telefone: "VALIDO",
-          consentimento_msg: true,
+          consentimento_msg: false,
         }),
         undefined,
         authHeader,

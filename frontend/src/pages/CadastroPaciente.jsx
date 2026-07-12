@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { FaUserPlus } from "react-icons/fa";
-import { api } from "../api/services";
+import { gruposApi } from "../api/grupos";
+import { pacientesApi } from "../api/pacientes";
+import { usuariosApi } from "../api/usuarios";
 import { formatarDocumento } from "../utils/formatters";
 import ModalAlerta from "../components/ModalAlerta";
 
@@ -10,6 +12,12 @@ export default function CadastroPaciente({ onSuccess }) {
   const [cpf, setCpf] = useState("");
   const [nascimento, setNascimento] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [consentimentoMsg, setConsentimentoMsg] = useState(false);
+  const [contatoEmergenciaNome, setContatoEmergenciaNome] = useState("");
+  const [contatoEmergenciaTelefone, setContatoEmergenciaTelefone] =
+    useState("");
+  const [contatoEmergenciaParentesco, setContatoEmergenciaParentesco] =
+    useState("");
   const [endereco, setEndereco] = useState("");
   const [agenteId, setAgenteId] = useState("");
   const [gruposIds, setGruposIds] = useState([]);
@@ -32,8 +40,8 @@ export default function CadastroPaciente({ onSuccess }) {
 
       try {
         const [respostaACS, respostaGrupos] = await Promise.all([
-          api.getACS(),
-          api.getGrupos(),
+          usuariosApi.getACS(),
+          gruposApi.getGrupos(),
         ]);
 
         setAgentesACS(respostaACS.usuarios || respostaACS || []);
@@ -80,6 +88,10 @@ export default function CadastroPaciente({ onSuccess }) {
     setTelefone(aplicarMascaraTelefone(e.target.value));
   };
 
+  const handleContatoEmergenciaTelefoneChange = (e) => {
+    setContatoEmergenciaTelefone(aplicarMascaraTelefone(e.target.value));
+  };
+
   const toggleGrupo = (grupoId) => {
     setGruposIds((idsAtuais) =>
       idsAtuais.includes(grupoId)
@@ -110,6 +122,10 @@ export default function CadastroPaciente({ onSuccess }) {
       cpf_cns: documentoLimpo,
       data_nascimento: nascimento,
       telefone: telefone,
+      consentimento_msg: consentimentoMsg,
+      contato_emergencia_nome: contatoEmergenciaNome || null,
+      contato_emergencia_telefone: contatoEmergenciaTelefone || null,
+      contato_emergencia_parentesco: contatoEmergenciaParentesco || null,
       endereco,
       agente_id: agenteId || null,
       grupos_ids: gruposIds,
@@ -117,13 +133,17 @@ export default function CadastroPaciente({ onSuccess }) {
     };
 
     try {
-      await api.criarPaciente(payload);
+      await pacientesApi.criarPaciente(payload);
 
       // Limpa os campos após o sucesso
       setNome("");
       setCpf("");
       setNascimento("");
       setTelefone("");
+      setConsentimentoMsg(false);
+      setContatoEmergenciaNome("");
+      setContatoEmergenciaTelefone("");
+      setContatoEmergenciaParentesco("");
       setEndereco("");
       setAgenteId("");
       setGruposIds([]);
@@ -257,6 +277,76 @@ export default function CadastroPaciente({ onSuccess }) {
               className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition"
               placeholder="(84) 99999-9999"
             />
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+          <label className="flex items-start gap-3 text-sm font-semibold text-slate-700">
+            <input
+              type="checkbox"
+              checked={consentimentoMsg}
+              onChange={(e) => setConsentimentoMsg(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-slate-300 text-sky-700 focus:ring-sky-500"
+            />
+            <span>Paciente autoriza receber mensagens via WhatsApp</span>
+          </label>
+          <p className="text-xs leading-relaxed text-slate-600">
+            Declaro que o paciente autorizou o recebimento de mensagens pelo
+            WhatsApp informado, incluindo lembretes de consulta, avisos de
+            acompanhamento e comunicações da unidade de saúde.
+          </p>
+        </div>
+
+        <div className="space-y-3 rounded-lg border border-slate-200 p-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-700">
+              Contato de Emergência
+            </h3>
+            <p className="text-xs text-slate-500">
+              Informação cadastral. O sistema não envia mensagens automáticas
+              para este contato.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-slate-700">
+                Nome
+              </label>
+              <input
+                type="text"
+                value={contatoEmergenciaNome}
+                onChange={(e) => setContatoEmergenciaNome(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition"
+                placeholder="Nome do contato"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-slate-700">
+                Telefone
+              </label>
+              <input
+                type="tel"
+                value={contatoEmergenciaTelefone}
+                onChange={handleContatoEmergenciaTelefoneChange}
+                maxLength={15}
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition"
+                placeholder="(84) 99999-9999"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-slate-700">
+                Parentesco
+              </label>
+              <input
+                type="text"
+                value={contatoEmergenciaParentesco}
+                onChange={(e) =>
+                  setContatoEmergenciaParentesco(e.target.value)
+                }
+                className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition"
+                placeholder="Ex: Filha, irmão"
+              />
+            </div>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 const authService = require('../services/authService');
-const logRepository = require("../repositories/logRepository"); // <-- IMPORTADO
+const { executarController } = require("./controllerExecutor");
 
 const getAuthCookieOptions = (maxAge) => ({
   httpOnly: true,
@@ -11,39 +11,29 @@ const getAuthCookieOptions = (maxAge) => ({
 
 class AuthController {
   async login(request, reply) {
-    try {
-      const { email, senha } = request.body;
-      const resultado = await authService.login(email, senha);
+    const { email, senha } = request.body;
 
-      // REGISTO DE AUDITORIA - Login com sucesso
-      // Se a sua função de login devolver o ID do utilizador, podemos capturá-lo
-      const usuario_id = resultado.usuario?.id || null;
-      
-      await logRepository.registrar(
-        usuario_id, 
-        'LOGIN', 
-        `Sessão iniciada pelo email: ${email}`
-      );
-
-      return reply
+    return executarController(request, reply, {
+      executar: () => authService.login(email, senha),
+      auditoria: ({ resultado }) => ({
+        usuario_id: resultado.usuario?.id || null,
+        acao: "LOGIN",
+        detalhes: `Sessão iniciada pelo email: ${email}`,
+      }),
+      auditoriaFalha: () => ({
+        usuario_id: null,
+        acao: "FALHA_LOGIN",
+        detalhes: `Tentativa de acesso falhada para o email: ${email}`,
+      }),
+      responder: (resultado) =>
+        reply
         .setCookie(
           "access_token",
           resultado.accessToken,
           getAuthCookieOptions(resultado.expiresIn),
         )
-        .send({ usuario: resultado.usuario });
-    } catch (error) {
-      request.log.error(error);
-
-      // Opcional: Registar também tentativas falhadas (ajuda a detetar intrusões)
-      await logRepository.registrar(
-        null, 
-        'FALHA_LOGIN', 
-        `Tentativa de acesso falhada para o email: ${request.body.email}`
-      );
-
-      return reply.status(401).send({ erro: error.message });
-    }
+        .send({ usuario: resultado.usuario }),
+    });
   }
 
   async logout(request, reply) {

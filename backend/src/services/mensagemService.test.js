@@ -17,6 +17,7 @@ const dadosBase = {
   profissional: "Médico",
   status_consulta: "AGENDADA",
   data_referencia: "2026-07-15",
+  consentimento_msg: true,
 };
 
 const authHeader = "Bearer token-abc";
@@ -224,6 +225,92 @@ describe("MensagemService", () => {
 
       // Não deve salvar histórico em caso de falha
       expect(mensagemRepository.salvarHistorico).not.toHaveBeenCalled();
+    });
+
+    it("deve bloquear envio quando o paciente não tiver consentimento", async () => {
+      await expect(
+        mensagemService.dispararMensagem(
+          {
+            ...dadosBase,
+            consentimento_msg: false,
+          },
+          authHeader,
+        ),
+      ).rejects.toThrow(
+        "Paciente não autorizou o recebimento de mensagens via WhatsApp.",
+      );
+
+      expect(fetch).not.toHaveBeenCalled();
+      expect(mensagemRepository.salvarHistorico).not.toHaveBeenCalled();
+    });
+
+    it("deve usar template de agendamento quando tipo for AGENDAMENTO_CONSULTA", async () => {
+      const evolutionResponse = {
+        key: { id: "MSG-AGENDAMENTO" },
+        status: "PENDING",
+      };
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify(evolutionResponse)),
+      });
+
+      await mensagemService.dispararMensagem(
+        {
+          ...dadosBase,
+          tipo: "AGENDAMENTO_CONSULTA",
+        },
+        authHeader,
+      );
+
+      const [, options] = fetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+
+      expect(body.text).toContain("foi agendada para *15/07/2026*");
+      expect(mensagemRepository.salvarHistorico).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tipo_mensagem: "AGENDAMENTO_CONSULTA",
+        }),
+        authHeader,
+      );
+    });
+
+    it("deve enviar botao de confirmação quando solicitado", async () => {
+      const evolutionResponse = {
+        key: { id: "MSG-BOTAO" },
+        status: "PENDING",
+      };
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify(evolutionResponse)),
+      });
+
+      await mensagemService.dispararMensagem(
+        {
+          ...dadosBase,
+          usarBotaoConfirmacao: true,
+        },
+        authHeader,
+      );
+
+      const [url, options] = fetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+
+      expect(url).toBe("https://evo.example.com/message/sendButtons/ubs_test");
+      expect(body.buttons[0]).toEqual(
+        expect.objectContaining({
+          displayText: "Confirmar presença",
+          id: "CONFIRMAR_PRESENCA:20",
+        }),
+      );
+      expect(mensagemRepository.salvarHistorico).toHaveBeenCalledWith(
+        expect.objectContaining({
+          confirmacao_status: "PENDENTE",
+          botao_id: "CONFIRMAR_PRESENCA:20",
+        }),
+        authHeader,
+      );
     });
   });
 });

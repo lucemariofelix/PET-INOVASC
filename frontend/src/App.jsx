@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -18,15 +19,16 @@ import Header from "./components/Header";
 import PrivateRoute from "./components/PrivateRoute";
 import RoleGuard from "./components/RoleGuard";
 import AuthProvider from "./contexts/AuthContext";
-import Dashboard from "./pages/Dashboard";
-import ListaPacientes from "./pages/ListaPacientes";
-import CadastroPaciente from "./pages/CadastroPaciente";
-import AgendarConsulta from "./pages/AgendarConsulta";
-import Configuracoes from "./pages/Configuracoes";
-import Notificacoes from "./pages/Notificacoes";
-import Login from "./pages/Login";
-import GestaoGrupos from "./components/GestaoGrupos";
 import { useAuth } from "./hooks/useAuth";
+
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const ListaPacientes = lazy(() => import("./pages/ListaPacientes"));
+const CadastroPaciente = lazy(() => import("./pages/CadastroPaciente"));
+const AgendarConsulta = lazy(() => import("./pages/AgendarConsulta"));
+const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+const Notificacoes = lazy(() => import("./pages/Notificacoes"));
+const Login = lazy(() => import("./pages/Login"));
+const GestaoGrupos = lazy(() => import("./components/GestaoGrupos"));
 
 const tabClass = ({ isActive }) =>
   `inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition ${
@@ -34,6 +36,14 @@ const tabClass = ({ isActive }) =>
       ? "bg-sky-700 text-white shadow-sm"
       : "text-slate-600 hover:bg-slate-100"
   }`;
+
+function PageFallback() {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-6 text-sm font-semibold text-slate-600 shadow-sm">
+      Carregando...
+    </div>
+  );
+}
 
 function RequireRole({ roles, children }) {
   const { usuario } = useAuth();
@@ -134,51 +144,53 @@ function ComunicacaoRoute({ view }) {
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
+    <Suspense fallback={<PageFallback />}>
+      <Routes>
+        <Route path="/login" element={<Login />} />
 
-      <Route element={<PrivateRoute />}>
-        <Route element={<AppLayout />}>
-          <Route index element={<Navigate to="/pacientes" replace />} />
-          <Route path="/pacientes" element={<PacientesListaRoute />} />
-          <Route
-            path="/pacientes/novo"
-            element={
-              <RequireRole roles={["ADMIN", "RECEPCAO"]}>
-                <CadastroPacienteRoute />
-              </RequireRole>
-            }
-          />
-          <Route path="/agenda" element={<AgendaRoute view="painel" />} />
-          <Route
-            path="/agenda/agendar"
-            element={<AgendaRoute view="agendar" />}
-          />
-          <Route
-            path="/comunicacao"
-            element={<Navigate to="/comunicacao/grupos" replace />}
-          />
-          <Route
-            path="/comunicacao/grupos"
-            element={<ComunicacaoRoute view="grupos" />}
-          />
-          <Route
-            path="/comunicacao/mensageria"
-            element={<ComunicacaoRoute view="mensageria" />}
-          />
-          <Route
-            path="/configuracoes"
-            element={
-              <RequireRole roles={["ADMIN"]}>
-                <Configuracoes />
-              </RequireRole>
-            }
-          />
+        <Route element={<PrivateRoute />}>
+          <Route element={<AppLayout />}>
+            <Route index element={<Navigate to="/pacientes" replace />} />
+            <Route path="/pacientes" element={<PacientesListaRoute />} />
+            <Route
+              path="/pacientes/novo"
+              element={
+                <RequireRole roles={["ADMIN", "RECEPCAO"]}>
+                  <CadastroPacienteRoute />
+                </RequireRole>
+              }
+            />
+            <Route path="/agenda" element={<AgendaRoute view="painel" />} />
+            <Route
+              path="/agenda/agendar"
+              element={<AgendaRoute view="agendar" />}
+            />
+            <Route
+              path="/comunicacao"
+              element={<Navigate to="/comunicacao/grupos" replace />}
+            />
+            <Route
+              path="/comunicacao/grupos"
+              element={<ComunicacaoRoute view="grupos" />}
+            />
+            <Route
+              path="/comunicacao/mensageria"
+              element={<ComunicacaoRoute view="mensageria" />}
+            />
+            <Route
+              path="/configuracoes"
+              element={
+                <RequireRole roles={["ADMIN"]}>
+                  <Configuracoes />
+                </RequireRole>
+              }
+            />
+          </Route>
         </Route>
-      </Route>
 
-      <Route path="*" element={<Navigate to="/pacientes" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/pacientes" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 

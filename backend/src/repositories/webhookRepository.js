@@ -28,6 +28,28 @@ class WebhookRepository {
 
     return data;
   }
+
+  async registrarConfirmacaoMensagem(botaoId) {
+    const { data, error } = await supabaseAdmin
+      .from("historico_mensagens")
+      .update({
+        confirmacao_status: "CONFIRMADO",
+        confirmado_em: new Date().toISOString(),
+      })
+      .eq("botao_id", botaoId)
+      .select();
+
+    if (error) {
+      console.error("❌ Supabase erro ao registrar confirmação:", error.message);
+      throw error;
+    }
+
+    if (!data || data.length === 0) {
+      console.warn(`⚠️ Nenhuma confirmação atualizada (${botaoId})`);
+    }
+
+    return data;
+  }
 }
 
 module.exports = new WebhookRepository();

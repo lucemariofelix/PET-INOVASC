@@ -1,18 +1,16 @@
 const notificacaoService = require("../services/notificacaoService");
+const { executarController } = require("./controllerExecutor");
 
 class NotificacaoController {
   async disparar(request, reply) {
-    try {
-      const authHeader = request.headers.authorization;
-      const resultado = await notificacaoService.iniciarDisparoLote(
+    const authHeader = request.headers.authorization;
+    return executarController(request, reply, {
+      executar: () => notificacaoService.iniciarDisparoLote(
         request.body,
         authHeader,
-      );
-      return reply.send(resultado);
-    } catch (error) {
-      request.log.error(error);
-      return reply.status(400).send({ erro: error.message });
-    }
+      ),
+      responder: (resultado) => reply.send(resultado),
+    });
   }
 
   // CORREÇÃO: O método receberWebhook foi removido deste controller.

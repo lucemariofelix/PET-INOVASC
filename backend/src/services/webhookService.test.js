@@ -24,6 +24,7 @@ describe("WebhookService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     webhookRepository.atualizarStatusMensagem = vi.fn().mockResolvedValue([]);
+    webhookRepository.registrarConfirmacaoMensagem = vi.fn().mockResolvedValue([]);
     vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
@@ -239,6 +240,25 @@ describe("WebhookService", () => {
         },
       });
 
+      expect(webhookRepository.atualizarStatusMensagem).not.toHaveBeenCalled();
+    });
+
+    it("deve registrar confirmação quando messages.upsert receber resposta de botão", async () => {
+      await webhookService.processarEvento({
+        event: "messages.upsert",
+        data: {
+          fromMe: false,
+          message: {
+            buttonsResponseMessage: {
+              selectedButtonId: "CONFIRMAR_PRESENCA:consulta-123",
+            },
+          },
+        },
+      });
+
+      expect(webhookRepository.registrarConfirmacaoMensagem).toHaveBeenCalledWith(
+        "CONFIRMAR_PRESENCA:consulta-123",
+      );
       expect(webhookRepository.atualizarStatusMensagem).not.toHaveBeenCalled();
     });
   });

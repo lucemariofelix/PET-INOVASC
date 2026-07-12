@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api } from "../api/services";
+import { authApi } from "../api/auth";
 import { AuthContext } from "./authContext";
 
 export default function AuthProvider({ children }) {
@@ -7,7 +7,7 @@ export default function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   const refreshSession = useCallback(async () => {
-    const resposta = await api.getMe();
+    const resposta = await authApi.getMe();
     setUsuario(resposta.usuario);
     return resposta.usuario;
   }, []);
@@ -17,7 +17,7 @@ export default function AuthProvider({ children }) {
 
     const validarSessao = async () => {
       try {
-        const resposta = await api.getMe();
+        const resposta = await authApi.getMe();
         if (!cancelado) {
           setUsuario(resposta.usuario);
         }
@@ -52,14 +52,14 @@ export default function AuthProvider({ children }) {
   }, []);
 
   const login = useCallback(async (credenciais) => {
-    const resposta = await api.login(credenciais);
+    const resposta = await authApi.login(credenciais);
     setUsuario(resposta.usuario);
     return resposta.usuario;
   }, []);
 
   const logout = useCallback(async () => {
     try {
-      await api.logout();
+      await authApi.logout();
     } finally {
       setUsuario(null);
     }

@@ -8,7 +8,9 @@ import {
   FaTimes,
   FaSave,
 } from "react-icons/fa";
-import { api } from "../api/services";
+import { gruposApi } from "../api/grupos";
+import { pacientesApi } from "../api/pacientes";
+import { usuariosApi } from "../api/usuarios";
 import { formatarDocumento } from "../utils/formatters";
 import ModalAlerta from "../components/ModalAlerta";
 import RoleGuard from "../components/RoleGuard";
@@ -37,7 +39,7 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
   const fetchPacientes = async () => {
     setLoadingPacientes(true);
     try {
-      const data = await api.getPacientes();
+      const data = await pacientesApi.getPacientes();
       const lista = data.pacientes || data || [];
       setPacientesOptions(lista);
       setPaginaAtual(1);
@@ -53,8 +55,8 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
 
     try {
       const [respostaACS, respostaGrupos] = await Promise.all([
-        api.getACS(),
-        api.getGrupos(),
+        usuariosApi.getACS(),
+        gruposApi.getGrupos(),
       ]);
 
       setAgentesACS(respostaACS.usuarios || respostaACS || []);
@@ -172,6 +174,13 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
       cpf_cns: documentoLimpo,
       data_nascimento: pacienteEditando.data_nascimento,
       telefone: pacienteEditando.telefone,
+      consentimento_msg: Boolean(pacienteEditando.consentimento_msg),
+      contato_emergencia_nome:
+        pacienteEditando.contato_emergencia_nome || null,
+      contato_emergencia_telefone:
+        pacienteEditando.contato_emergencia_telefone || null,
+      contato_emergencia_parentesco:
+        pacienteEditando.contato_emergencia_parentesco || null,
       endereco: pacienteEditando.endereco,
       agente_id: pacienteEditando.agente_id || null,
       grupos_ids: pacienteEditando.grupos_ids || [],
@@ -179,7 +188,7 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
     };
 
     try {
-      await api.atualizarPaciente(pacienteEditando.id, payload);
+      await pacientesApi.atualizarPaciente(pacienteEditando.id, payload);
       setModalEdicaoAberto(false);
 
       // Atualiza a lista por baixo dos panos para refletir a mudança
@@ -332,11 +341,20 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
                         })()}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-bold border ${pac.status_telefone === "VALIDO" ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}
-                        >
-                          {pac.status_telefone || "N/A"}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-bold border ${pac.status_telefone === "VALIDO" ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}`}
+                          >
+                            {pac.status_telefone || "N/A"}
+                          </span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${pac.consentimento_msg ? "bg-sky-50 text-sky-700 border-sky-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}
+                          >
+                            {pac.consentimento_msg
+                              ? "WhatsApp autorizado"
+                              : "Sem autorização"}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-center">
                         <button
@@ -393,6 +411,20 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
                       <span className="text-slate-700 truncate">
                         {pac.telefone || "Sem contato"}
                       </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                      WhatsApp
+                    </span>
+                    <span
+                      className={
+                        pac.consentimento_msg
+                          ? "text-sky-700 font-semibold"
+                          : "text-amber-700 font-semibold"
+                      }
+                    >
+                      {pac.consentimento_msg ? "Autorizado" : "Sem autorização"}
+                    </span>
                   </div>
                 </div>
 
@@ -562,6 +594,81 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
                     onChange={handleChangeEdicao}
                     className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none"
                   />
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <label className="flex items-start gap-3 text-sm font-semibold text-slate-700">
+                  <input
+                    type="checkbox"
+                    name="consentimento_msg"
+                    checked={Boolean(pacienteEditando.consentimento_msg)}
+                    onChange={(e) =>
+                      setPacienteEditando((prev) => ({
+                        ...prev,
+                        consentimento_msg: e.target.checked,
+                      }))
+                    }
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-sky-700 focus:ring-sky-500"
+                  />
+                  <span>Paciente autoriza receber mensagens via WhatsApp</span>
+                </label>
+                <p className="text-xs leading-relaxed text-slate-600">
+                  Declaro que o paciente autorizou o recebimento de mensagens
+                  pelo WhatsApp informado, incluindo lembretes de consulta,
+                  avisos de acompanhamento e comunicações da unidade de saúde.
+                </p>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-slate-200 p-4">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-700">
+                    Contato de Emergência
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Informação cadastral. O sistema não envia mensagens
+                    automáticas para este contato.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-sm font-semibold text-slate-700">
+                      Nome
+                    </label>
+                    <input
+                      type="text"
+                      name="contato_emergencia_nome"
+                      value={pacienteEditando.contato_emergencia_nome || ""}
+                      onChange={handleChangeEdicao}
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-semibold text-slate-700">
+                      Telefone
+                    </label>
+                    <input
+                      type="tel"
+                      name="contato_emergencia_telefone"
+                      value={pacienteEditando.contato_emergencia_telefone || ""}
+                      onChange={handleChangeEdicao}
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-semibold text-slate-700">
+                      Parentesco
+                    </label>
+                    <input
+                      type="text"
+                      name="contato_emergencia_parentesco"
+                      value={
+                        pacienteEditando.contato_emergencia_parentesco || ""
+                      }
+                      onChange={handleChangeEdicao}
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { api } from "../api/services";
-import { supabase } from "../api/supabase.js";
+import { consultasApi } from "../api/consultas";
+import { mensageriaApi } from "../api/mensageria";
+import { useHistoricoMensagensRealtime } from "../hooks/useHistoricoMensagensRealtime";
 import { getBadgeInfo } from "../utils/dateHelpers";
 import { formatarTelefone } from "../utils/formatters";
 import ModalConfirmacao from "../components/ModalConfirmacao";
@@ -42,7 +43,7 @@ export default function Dashboard() {
   useEffect(() => {
     const carregarDados = async () => {
       try {
-        const data = await api.getTodasConsultas();
+        const data = await consultasApi.getTodasConsultas();
         setConsultas(data.consultas || data || []);
       } catch (err) {
         console.error(err);
@@ -54,66 +55,7 @@ export default function Dashboard() {
     carregarDados();
   }, []);
 
-  // =======================================================================
-  // OUVINTE DO SUPABASE REALTIME (A mágica dos tiques azuis)
-  // =======================================================================
-  useEffect(() => {
-    const canalRealtime = supabase
-      .channel("mudancas-status-whatsapp")
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "historico_mensagens",
-        },
-        (payload) => {
-          const msgAtualizada = payload.new;
-
-          setConsultas((consultasAtuais) =>
-            consultasAtuais.map((consulta) => {
-              // Confirma se a atualização é para a consulta que estamos a mapear
-              if (
-                consulta.id === msgAtualizada.consulta_id ||
-                consulta.pacientes?.id === msgAtualizada.paciente_id
-              ) {
-                const historico = [...(consulta.historico_mensagens || [])];
-
-                // Tenta achar a mensagem exata pelo ID que acabámos de criar no backend
-                const msgIndex = historico.findIndex(
-                  (m) => m.mensagem_id === msgAtualizada.mensagem_id,
-                );
-
-                if (msgIndex !== -1) {
-                  // Se encontrou a mensagem exata, atualiza o status dela
-                  historico[msgIndex] = {
-                    ...historico[msgIndex],
-                    status: msgAtualizada.status,
-                  };
-                } else if (historico.length > 0) {
-                  // Se não encontrou o ID (porque a injeção local manual ainda não o tem),
-                  // assume que a atualização é para a mensagem mais recente enviada (a 1ª da lista)
-                  historico[0] = {
-                    ...historico[0],
-                    status: msgAtualizada.status,
-                  };
-                }
-
-                return { ...consulta, historico_mensagens: historico };
-              }
-              return consulta;
-            }),
-          );
-        },
-      )
-      .subscribe();
-
-    // Limpeza: remove o "megafone" se o utilizador mudar de página
-    return () => {
-      supabase.removeChannel(canalRealtime);
-    };
-  }, []);
-  // =======================================================================
+  useHistoricoMensagensRealtime(setConsultas);
 
   // LÓGICA DE FILTRAGEM COMBINADA (Status + Busca Universal)
   const obterNomeAgente = (paciente) => {
@@ -262,6 +204,17 @@ export default function Dashboard() {
       });
       return;
     }
+
+    if (!paciente?.consentimento_msg) {
+      setAlerta({
+        isOpen: true,
+        tipo: "aviso",
+        titulo: "WhatsApp não autorizado",
+        mensagem:
+          "Este paciente não autorizou o recebimento de mensagens via WhatsApp no cadastro.",
+      });
+      return;
+    }
     setModalConfirmacao({ isOpen: true, consulta });
   };
 
@@ -272,13 +225,16 @@ export default function Dashboard() {
     setModalConfirmacao({ isOpen: false, consulta: null });
 
     try {
-      await api.dispararWhatsApp({
+      await mensageriaApi.dispararWhatsApp({
         paciente_id: paciente.id,
         consulta_id: consulta.id, // O ID vital da consulta foi mantido
         telefone: paciente.telefone,
+        consentimento_msg: paciente.consentimento_msg,
         nome: paciente.nome_completo,
         profissional: consulta.tipo_profissional,
         status_consulta: consulta.status_consulta,
+        tipo: "LEMBRETE_CONSULTA",
+        usarBotaoConfirmacao: true,
         data_referencia:
           consulta.data_proxima_consulta || consulta.data_ultima_consulta,
       });
@@ -475,6 +431,13 @@ export default function Dashboard() {
                                 {formatarTelefone(paciente?.telefone) ||
                                   "Sem contato"}
                               </p>
+                              <p
+                                className={`text-[11px] font-semibold ${paciente?.consentimento_msg ? "text-sky-700" : "text-amber-700"}`}
+                              >
+                                {paciente?.consentimento_msg
+                                  ? "WhatsApp autorizado"
+                                  : "WhatsApp sem autorização"}
+                              </p>
 
                               {/* INDICADOR VISUAL DE MENSAGEM COM TIQUES */}
                               {ultimaMensagem ? (
@@ -556,6 +519,13 @@ export default function Dashboard() {
                           </h3>
                           <p className="text-xs text-slate-500 mt-1">
                             {paciente?.telefone || "Sem contato"}
+                          </p>
+                          <p
+                            className={`text-[10px] font-semibold mt-1 ${paciente?.consentimento_msg ? "text-sky-700" : "text-amber-700"}`}
+                          >
+                            {paciente?.consentimento_msg
+                              ? "WhatsApp autorizado"
+                              : "WhatsApp sem autorização"}
                           </p>
 
                           {/* INDICADOR VISUAL DE MENSAGEM MOBILE COM TIQUES */}

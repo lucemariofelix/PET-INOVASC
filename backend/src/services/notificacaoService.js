@@ -1,6 +1,5 @@
-const notificacaoRepository = require("../repositories/notificacaoRepository");
-
-const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const mensageriaService = require("./mensageriaService");
+const { TIPOS_MENSAGEM } = require("./mensageriaService");
 
 class NotificacaoService {
   async iniciarDisparoLote(dadosDisparo, authHeader) {
@@ -25,168 +24,43 @@ class NotificacaoService {
   }
 
   async processarFilaAssincrona(pacientes, mensagemBase, usuario_id) {
-    console.log(
-      `[START] Iniciando fila de mensagens para ${pacientes.length} contatos.`,
-    );
-
-    for (const paciente of pacientes) {
-      let primeiroNome = "";
-      let textoFinal = "";
-      let telefoneLimpo = "";
-
-      try {
-        const nomeReal = paciente.nome_completo || paciente.nome || "Paciente";
-        primeiroNome = nomeReal.split(" ")[0];
-
-        textoFinal = mensagemBase.replace("{nome}", primeiroNome);
-        telefoneLimpo = this.sanitizarTelefone(paciente.telefone);
-        const resultado = await this.enviarMensagemPaciente({
-          paciente,
-          mensagem: textoFinal,
-          usuario_id,
-        });
-        telefoneLimpo = resultado.telefoneLimpo;
-
-        console.log(
-          `[OK] Mensagem enviada para ${primeiroNome} (ID: ${resultado.mensagem_id ?? "N/A"})`,
-        );
-      } catch (error) {
-        console.error(
-          `[ERRO] Falha ao enviar para paciente ID ${paciente.id}:`,
-          error.message,
-        );
-
-        await this.registrarFalhaEnvio({
-          paciente,
-          telefone: telefoneLimpo,
-          mensagem: textoFinal || mensagemBase,
-          usuario_id,
-          status: "ERRO",
-        }).catch(() => null);
-      }
-
-      const tempoAleatorio =
-        Math.floor(Math.random() * (9000 - 4000 + 1)) + 4000;
-      await delay(tempoAleatorio);
-    }
-
-    console.log(`[FIM] Fila das mensagens finalizada.`);
+    return mensageriaService.processarLote({
+      pacientes,
+      mensagemBase,
+      usuario_id,
+      tipo: TIPOS_MENSAGEM.AVISO_GERAL,
+    });
   }
 
   sanitizarTelefone(telefone) {
-    if (!telefone) {
-      throw new Error("Paciente sem telefone cadastrado.");
-    }
-
-    const telefoneLimpo = telefone.replace(/\D/g, "");
-    return telefoneLimpo.startsWith("55") ? telefoneLimpo : `55${telefoneLimpo}`;
+    return mensageriaService.sanitizarTelefone(telefone);
   }
 
   async verificarConexaoWhatsApp() {
-    const evolutionUrl = process.env.EVOLUTION_API_URL;
-    const apikey = process.env.EVOLUTION_API_KEY;
-    const instanceName = process.env.EVOLUTION_INSTANCE_NAME;
-
-    if (!evolutionUrl || !apikey || !instanceName) {
-      throw new Error("WHATSAPP_DESCONECTADO");
-    }
-
-    try {
-      const resposta = await fetch(
-        `${evolutionUrl}/instance/connectionState/${instanceName}`,
-        {
-          method: "GET",
-          headers: { apikey },
-        },
-      );
-
-      if (!resposta.ok) {
-        throw new Error("WHATSAPP_DESCONECTADO");
-      }
-
-      const jsonData = await resposta.json();
-      const estado = jsonData?.instance?.state || jsonData?.state;
-
-      if (estado !== "open") {
-        throw new Error("WHATSAPP_DESCONECTADO");
-      }
-
-      return { conectado: true, estado };
-    } catch (error) {
-      if (error.message === "WHATSAPP_DESCONECTADO") {
-        throw error;
-      }
-
-      throw new Error("WHATSAPP_DESCONECTADO");
-    }
+    return mensageriaService.verificarConexaoWhatsApp();
   }
 
-  async enviarMensagemPaciente({ paciente, mensagem, usuario_id } = {}) {
+  async enviarMensagemPaciente({
+    paciente,
+    mensagem,
+    usuario_id,
+    tipo = TIPOS_MENSAGEM.AVISO_GERAL,
+    usarBotaoConfirmacao = false,
+  } = {}) {
     if (!paciente?.id || !paciente?.telefone || !mensagem) {
       throw new Error("Paciente inválido para envio de mensagem.");
     }
 
-    const telefoneLimpo = this.sanitizarTelefone(paciente.telefone);
-
-    const payloadEvolution = {
-      number: telefoneLimpo,
-      text: mensagem,
-    };
-
-    const respostaEvolution = await fetch(
-      `${process.env.EVOLUTION_API_URL}/message/sendText/${process.env.EVOLUTION_INSTANCE_NAME}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: process.env.EVOLUTION_API_KEY,
-        },
-        body: JSON.stringify(payloadEvolution),
+    return mensageriaService.enviarMensagem({
+      paciente: {
+        ...paciente,
+        consentimento_msg: paciente.consentimento_msg === true,
       },
-    );
-
-    const textData = await respostaEvolution.text();
-
-    if (!respostaEvolution.ok) {
-      throw new Error(
-        `Status ${respostaEvolution.status} - Detalhe: ${textData}`,
-      );
-    }
-
-    const jsonData = JSON.parse(textData);
-    const idDaMensagem = jsonData?.key?.id || jsonData?.id || null;
-
-    console.log("[EVOLUTION_DIAG] mensagem_id extraído do sendText:", {
-      origem: "NotificacaoService",
-      paciente_id: paciente.id,
-      mensagem_id: idDaMensagem,
-      temKeyId: Boolean(jsonData?.key?.id),
-      temIdRaiz: Boolean(jsonData?.id),
+      mensagem,
+      usuario_id,
+      tipo,
+      usarBotaoConfirmacao,
     });
-
-    if (!idDaMensagem) {
-      console.error(
-        "[NOTIFICACAO] ⚠️ mensagem_id ausente na resposta da Evolution. " +
-          "O status ENTREGUE/LIDO não será atualizado para esta mensagem. " +
-          "Resposta recebida: " +
-          JSON.stringify(jsonData),
-      );
-    }
-
-    await notificacaoRepository.registrarEnvio({
-      paciente_id: paciente.id,
-      telefone_destino: telefoneLimpo,
-      texto_enviado: mensagem,
-      status: "ENVIADO",
-      usuario_id: usuario_id || null,
-      mensagem_id: idDaMensagem,
-    });
-
-    return {
-      telefoneLimpo,
-      mensagem_id: idDaMensagem,
-      resposta: jsonData,
-    };
   }
 
   async registrarFalhaEnvio({
@@ -196,15 +70,13 @@ class NotificacaoService {
     usuario_id,
     status = "ERRO",
   }) {
-    const telefoneDestino = telefone || paciente.telefone || "N/A";
-
-    return notificacaoRepository.registrarEnvio({
-      paciente_id: paciente.id,
-      telefone_destino: telefoneDestino,
-      texto_enviado: mensagem,
+    return mensageriaService.registrarFalhaEnvio({
+      paciente,
+      telefone,
+      mensagem,
       status,
-      usuario_id: usuario_id || null,
-      mensagem_id: null,
+      usuario_id,
+      tipo: TIPOS_MENSAGEM.AVISO_GERAL,
     });
   }
 }

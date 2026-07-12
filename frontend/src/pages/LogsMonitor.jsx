@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import api from "../api/services"; // Ajuste o caminho se necessário
+import { sessaoApi } from "../api/sessao";
 import { FaHistory, FaUserShield } from "react-icons/fa";
 
 export default function LogsMonitor() {
@@ -9,7 +9,7 @@ export default function LogsMonitor() {
   useEffect(() => {
     const carregarLogs = async () => {
       try {
-        const dados = await api.getLogs();
+        const dados = await sessaoApi.getLogs();
         setLogs(dados);
       } catch (error) {
         console.error(error);
