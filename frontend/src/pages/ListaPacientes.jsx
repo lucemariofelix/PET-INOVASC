@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FaList,
   FaUserPlus,
   FaChevronLeft,
   FaChevronRight,
   FaEdit,
+  FaSearch,
   FaTimes,
   FaSave,
 } from "react-icons/fa";
@@ -12,6 +13,7 @@ import { gruposApi } from "../api/grupos";
 import { pacientesApi } from "../api/pacientes";
 import { usuariosApi } from "../api/usuarios";
 import { formatarDocumento } from "../utils/formatters";
+import { filtrarPacientesPorBusca } from "../utils/pacienteSearch";
 import ModalAlerta from "../components/ModalAlerta";
 import RoleGuard from "../components/RoleGuard";
 
@@ -21,6 +23,7 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
   const [agentesACS, setAgentesACS] = useState([]);
   const [grupos, setGrupos] = useState([]);
   const [loadingMetadados, setLoadingMetadados] = useState(false);
+  const [termoBusca, setTermoBusca] = useState("");
 
   // Estados da Paginação
   const [paginaAtual, setPaginaAtual] = useState(1);
@@ -73,14 +76,29 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
     fetchMetadados();
   }, []);
 
+  const pacientesFiltrados = useMemo(
+    () => filtrarPacientesPorBusca(pacientesOptions, termoBusca),
+    [pacientesOptions, termoBusca],
+  );
+
   // Lógica de Paginação
   const indexOfLastItem = paginaAtual * itensPorPagina;
   const indexOfFirstItem = indexOfLastItem - itensPorPagina;
-  const pacientesAtuais = pacientesOptions.slice(
+  const pacientesAtuais = pacientesFiltrados.slice(
     indexOfFirstItem,
     indexOfLastItem,
   );
-  const totalPaginas = Math.ceil(pacientesOptions.length / itensPorPagina);
+  const totalPaginas = Math.ceil(pacientesFiltrados.length / itensPorPagina);
+
+  const atualizarTermoBusca = (evento) => {
+    setTermoBusca(evento.target.value);
+    setPaginaAtual(1);
+  };
+
+  const limparBusca = () => {
+    setTermoBusca("");
+    setPaginaAtual(1);
+  };
 
   const irParaProximaPagina = () => {
     if (paginaAtual < totalPaginas) setPaginaAtual(paginaAtual + 1);
@@ -240,10 +258,77 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
         </div>
       </div>
 
+      <div className="flex flex-col gap-3 border-b border-slate-100 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="relative w-full max-w-2xl">
+          <label htmlFor="busca-paciente" className="sr-only">
+            Buscar paciente por nome, CPF ou CNS
+          </label>
+          <FaSearch
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            id="busca-paciente"
+            type="search"
+            value={termoBusca}
+            onChange={atualizarTermoBusca}
+            placeholder="Buscar por nome, CPF ou CNS"
+            className="w-full rounded-lg border border-slate-300 bg-slate-50 py-2.5 pl-10 pr-11 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-sky-500 focus:bg-white focus:ring-2 focus:ring-sky-100"
+          />
+          {termoBusca && (
+            <button
+              type="button"
+              onClick={limparBusca}
+              aria-label="Limpar busca"
+              title="Limpar busca"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
+            >
+              <FaTimes size={14} />
+            </button>
+          )}
+        </div>
+        {termoBusca.trim() && !loadingPacientes && (
+          <p
+            className="shrink-0 text-sm font-medium text-slate-500"
+            aria-live="polite"
+          >
+            {pacientesFiltrados.length}{" "}
+            {pacientesFiltrados.length === 1
+              ? "paciente encontrado"
+              : "pacientes encontrados"}
+          </p>
+        )}
+      </div>
+
       <div className="overflow-x-auto min-h-[400px]">
         {loadingPacientes ? (
           <div className="py-20 flex justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-700"></div>
+          </div>
+        ) : pacientesFiltrados.length === 0 ? (
+          <div className="flex min-h-[400px] flex-col items-center justify-center px-6 py-16 text-center">
+            <div className="mb-4 rounded-full bg-sky-50 p-4 text-sky-700">
+              <FaSearch size={24} aria-hidden="true" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800">
+              {termoBusca.trim()
+                ? "Nenhum paciente encontrado"
+                : "Nenhum paciente cadastrado"}
+            </h3>
+            <p className="mt-1 max-w-md text-sm text-slate-500">
+              {termoBusca.trim()
+                ? "Tente buscar por outro nome, CPF ou CNS."
+                : "Os pacientes cadastrados aparecerão neste diretório."}
+            </p>
+            {termoBusca.trim() && (
+              <button
+                type="button"
+                onClick={limparBusca}
+                className="mt-5 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                Limpar busca
+              </button>
+            )}
           </div>
         ) : (
           <>
@@ -445,7 +530,7 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
           </div>
 
             {/* CONTROLES DE PAGINAÇÃO */}
-            {pacientesOptions.length > 0 && (
+            {pacientesFiltrados.length > 0 && (
               <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
                 <p className="text-sm text-slate-500">
                   Mostrando{" "}
@@ -454,11 +539,11 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
                   </span>{" "}
                   a{" "}
                   <span className="font-bold text-slate-700">
-                    {Math.min(indexOfLastItem, pacientesOptions.length)}
+                    {Math.min(indexOfLastItem, pacientesFiltrados.length)}
                   </span>{" "}
                   de{" "}
                   <span className="font-bold text-slate-700">
-                    {pacientesOptions.length}
+                    {pacientesFiltrados.length}
                   </span>{" "}
                   pacientes
                 </p>
