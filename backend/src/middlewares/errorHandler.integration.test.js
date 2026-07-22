@@ -92,4 +92,23 @@ describe("errorHandler HTTP", () => {
     });
     await app.close();
   });
+
+  it("deve preservar 400 quando uma requisição declara JSON mas envia corpo vazio", async () => {
+    const app = Fastify({ logger: false });
+    app.setErrorHandler(errorHandler);
+    app.delete("/grupos-acompanhamento/:id", async () => ({ sucesso: true }));
+
+    const resposta = await app.inject({
+      method: "DELETE",
+      url: "/grupos-acompanhamento/22222222-2222-2222-2222-222222222222",
+      headers: { "content-type": "application/json" },
+    });
+
+    expect(resposta.statusCode).toBe(400);
+    expect(resposta.json()).toEqual({
+      code: "VALIDATION_ERROR",
+      erro: "O corpo JSON da requisição não pode estar vazio.",
+    });
+    await app.close();
+  });
 });

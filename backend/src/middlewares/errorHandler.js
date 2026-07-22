@@ -14,6 +14,13 @@ function errorHandler(error, request, reply) {
     });
   }
 
+  if (error.code === "FST_ERR_CTP_EMPTY_JSON_BODY") {
+    return reply.status(400).send({
+      code: "VALIDATION_ERROR",
+      erro: "O corpo JSON da requisição não pode estar vazio.",
+    });
+  }
+
   // 2. Trata erros do Supabase / PostgreSQL (Segurança & Integridade)
 
   // Código 42501 - Erro de RLS / Permissões insuficientes

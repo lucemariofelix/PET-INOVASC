@@ -42,7 +42,6 @@ const usuariosApi = {
   excluirUsuario: async (id) => {
     const res = await fetchComAutenticacao(`/usuarios/${id}`, {
       method: "DELETE",
-      body: JSON.stringify({}),
     });
 
     if (!res.ok) {

@@ -1,4 +1,19 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL = import.meta.env?.VITE_API_URL || "http://localhost:3000";
+
+const montarHeaders = (options = {}) => {
+  const headers = { ...options.headers };
+  const possuiContentType = Object.keys(headers).some(
+    (nome) => nome.toLowerCase() === "content-type",
+  );
+  const possuiCorpo =
+    options.body !== undefined && options.body !== null && options.body !== "";
+
+  if (possuiCorpo && !possuiContentType) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  return headers;
+};
 
 const notificarSessaoExpirada = () => {
   if (typeof window !== "undefined") {
@@ -7,10 +22,7 @@ const notificarSessaoExpirada = () => {
 };
 
 const fetchComAutenticacao = async (endpoint, options = {}) => {
-  const headers = {
-    "Content-Type": "application/json",
-    ...options.headers,
-  };
+  const headers = montarHeaders(options);
 
   const res = await fetch(`${API_URL}${endpoint}`, {
     ...options,
@@ -30,10 +42,7 @@ const fetchPublico = async (endpoint, options = {}) => {
   return fetch(`${API_URL}${endpoint}`, {
     ...options,
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers: montarHeaders(options),
   });
 };
 
