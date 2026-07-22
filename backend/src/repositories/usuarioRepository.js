@@ -24,6 +24,18 @@ class UsuarioRepository {
     return data;
   }
 
+  async buscarPorId(id, authHeader) {
+    const supabaseClient = getSupabaseUsuario(authHeader);
+    const { data, error } = await supabaseClient
+      .from("perfis_usuarios")
+      .select("id, nome, email, funcao")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
+  }
+
   async criar(dados, authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
     const { data, error } = await supabaseClient
@@ -48,15 +60,9 @@ class UsuarioRepository {
   async atualizar(id, dados, authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
 
-    // 1. A TRAVA DE LIMPEZA: Clonamos os dados e removemos campos intocáveis 
-    // que o React possa estar enviando acidentalmente no pacote
     const payloadLimpo = { ...dados };
     delete payloadLimpo.id;
     delete payloadLimpo.created_at;
-
-    // 2. DEBUG DE RAIO-X: Isso vai imprimir no terminal do Render exatamente o que sobrou.
-    // Verifique se as chaves aqui são EXATAMENTE 'nome', 'email' e 'funcao'.
-    console.log(`[UPDATE USUÁRIO ${id}] Payload limpo:`, payloadLimpo);
 
     const { data, error } = await supabaseClient
       .from("perfis_usuarios")
@@ -64,10 +70,7 @@ class UsuarioRepository {
       .eq("id", id)
       .select("id, nome, email, funcao");
 
-    if (error) {
-      console.error("Erro no Supabase ao atualizar:", error);
-      throw error;
-    }
+    if (error) throw error;
     
     // Se o array vier vazio, o RLS do Supabase bloqueou ou o ID não existe
     if (!data || data.length === 0) throw new Error("Usuário não encontrado ou sem permissão para atualizar.");
@@ -77,12 +80,18 @@ class UsuarioRepository {
 
   async excluir(id, authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
-    const { error } = await supabaseClient
+    const { data, error } = await supabaseClient
       .from("perfis_usuarios")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .select("id");
 
     if (error) throw error;
+    if (!data || data.length === 0) {
+      const error = new Error("Usuário não encontrado.");
+      error.code = "USER_NOT_FOUND";
+      throw error;
+    }
     return true;
   }
 }

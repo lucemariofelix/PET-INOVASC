@@ -1,13 +1,38 @@
 const usuarioRepository = require("../repositories/usuarioRepository");
-const { supabaseAdmin } = require('../config/supabase'); // Trazendo o cliente com poderes de Admin
+const { supabaseAdmin } = require("../config/supabase");
+const {
+  AppError,
+  ValidationError,
+  NotFoundError,
+} = require("../errors/AppError");
+
+const FUNCOES_PERMITIDAS = new Set(["ADMIN", "RECEPCAO", "ACS"]);
+
+const emailJaCadastrado = (error) => {
+  const mensagem = error?.message?.toLowerCase() || "";
+  return (
+    error?.code === "email_exists" ||
+    error?.code === "user_already_exists" ||
+    mensagem.includes("already been registered") ||
+    mensagem.includes("user already exists") ||
+    mensagem.includes("email already")
+  );
+};
+
+const conflitoEmail = () =>
+  new AppError(
+    "Este e-mail já está cadastrado.",
+    409,
+    "EMAIL_ALREADY_REGISTERED",
+  );
 
 class UsuarioService {
-  validarSupabaseAdmin() {
+  validarSupabaseAdmin(metodo = "createUser") {
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
       throw new Error("SUPABASE_SERVICE_ROLE_KEY não configurada. Não é possível criar usuários no Auth.");
     }
 
-    if (!supabaseAdmin?.auth?.admin?.createUser) {
+    if (!supabaseAdmin?.auth?.admin?.[metodo]) {
       throw new Error("Cliente administrativo do Supabase indisponível.");
     }
   }
@@ -21,23 +46,41 @@ class UsuarioService {
   }
 
   async criarUsuario(dados, authHeader) {
-    if (!dados.nome || !dados.email || !dados.senha || !dados.funcao) {
-      throw new Error("Todos os campos são obrigatórios para criar um usuário.");
+    if (!dados || typeof dados !== "object") {
+      throw new ValidationError("Informe os dados do usuário.");
+    }
+
+    const nome = typeof dados.nome === "string" ? dados.nome.trim() : "";
+    const email =
+      typeof dados.email === "string" ? dados.email.trim().toLowerCase() : "";
+    const senha = typeof dados.senha === "string" ? dados.senha : "";
+    const funcao =
+      typeof dados.funcao === "string"
+        ? dados.funcao.trim().toUpperCase()
+        : "";
+
+    if (!nome || !email || !senha.trim() || !funcao) {
+      throw new ValidationError("Todos os campos são obrigatórios para criar um usuário.");
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      throw new ValidationError("Informe um e-mail válido.");
+    }
+    if (!FUNCOES_PERMITIDAS.has(funcao)) {
+      throw new ValidationError("Função de usuário inválida.");
     }
 
     this.validarSupabaseAdmin();
 
-    const emailNormalizado = dados.email.toLowerCase();
-
     // 1. Cria a conta no Supabase Auth (O cofre oficial)
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: emailNormalizado,
-      password: dados.senha,
+      email,
+      password: senha,
       email_confirm: true // Pula a etapa de confirmação de email
     });
 
     if (authError) {
-      throw new Error(`Erro ao criar credencial de login: ${authError.message}`);
+      if (emailJaCadastrado(authError)) throw conflitoEmail();
+      throw authError;
     }
 
     const authUserId = authData?.user?.id;
@@ -48,9 +91,9 @@ class UsuarioService {
     // 2. Prepara o payload amarrando o ID oficial do Supabase Auth
     const payload = {
       id: authUserId, // Pega o ID gerado pelo cofre!
-      nome: dados.nome,
-      email: emailNormalizado,
-      funcao: dados.funcao
+      nome,
+      email,
+      funcao
       // Não salvamos a senha aqui! O Supabase já cuidou da segurança dela no passo 1.
     };
 
@@ -60,48 +103,109 @@ class UsuarioService {
     } catch (dbError) {
       // ROLLBACK: Se o banco falhar, apaga a credencial criada no passo 1
       try {
-        await supabaseAdmin.auth.admin.deleteUser(authUserId);
+        const { error: rollbackError } =
+          await supabaseAdmin.auth.admin.deleteUser(authUserId);
+        if (rollbackError) {
+          console.error(
+            "Falha ao compensar criação de usuário no Auth.",
+            rollbackError,
+          );
+        }
       } catch (rollbackError) {
-        console.error("Falha ao compensar criação de usuário no Auth.", rollbackError);
+        console.error(
+          "Falha ao compensar criação de usuário no Auth.",
+          rollbackError,
+        );
       }
-      throw new Error(`Erro ao salvar perfil: ${dbError.message}`);
+      if (dbError?.code === "23505") throw conflitoEmail();
+      throw dbError;
     }
   }
 
   async atualizarUsuario(id, dados, authHeader) {
-    if (!id) throw new Error("ID do usuário é obrigatório.");
-
-    const payload = {
-      nome: dados.nome,
-      email: dados.email?.toLowerCase(),
-      funcao: dados.funcao,
-    };
-
-    // Se o admin mandou uma senha nova, atualizamos lá no Supabase Auth
-    if (dados.senha && dados.senha.trim() !== "") {
-      const { error: authUpdateError } = await supabaseAdmin.auth.admin.updateUserById(id, {
-        password: dados.senha
-      });
-      if (authUpdateError) throw new Error(`Erro ao atualizar senha no sistema: ${authUpdateError.message}`);
+    if (!id) throw new ValidationError("ID do usuário é obrigatório.");
+    if (!dados || typeof dados !== "object") {
+      throw new ValidationError("Informe os dados do usuário.");
     }
 
-    // Nota: Se quiser permitir a mudança de email de login, precisa de um update no auth.admin também, 
-    // mas por hora atualizar apenas o perfil e a senha já resolve 99% dos casos da UBS.
-    return await usuarioRepository.atualizar(id, payload, authHeader);
+    const nome = typeof dados.nome === "string" ? dados.nome.trim() : "";
+    const email =
+      typeof dados.email === "string" ? dados.email.trim().toLowerCase() : "";
+    const funcao =
+      typeof dados.funcao === "string"
+        ? dados.funcao.trim().toUpperCase()
+        : "";
+    if (!nome || !email || !funcao) {
+      throw new ValidationError("Nome, e-mail e função são obrigatórios.");
+    }
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      throw new ValidationError("Informe um e-mail válido.");
+    }
+    if (!FUNCOES_PERMITIDAS.has(funcao)) {
+      throw new ValidationError("Função de usuário inválida.");
+    }
+
+    const perfilAnterior = await usuarioRepository.buscarPorId(id, authHeader);
+    if (!perfilAnterior) throw new NotFoundError("Usuário não encontrado.");
+
+    const payload = { nome, email, funcao };
+    const authPayload = {};
+    if (email !== perfilAnterior.email?.trim().toLowerCase()) {
+      authPayload.email = email;
+      authPayload.email_confirm = true;
+    }
+    if (typeof dados.senha === "string" && dados.senha.trim()) {
+      authPayload.password = dados.senha;
+    }
+    if (Object.keys(authPayload).length) {
+      this.validarSupabaseAdmin("updateUserById");
+    }
+
+    let perfilAtualizado;
+    try {
+      perfilAtualizado = await usuarioRepository.atualizar(id, payload, authHeader);
+    } catch (error) {
+      if (error?.code === "23505") throw conflitoEmail();
+      throw error;
+    }
+
+    if (Object.keys(authPayload).length) {
+      const { error: authUpdateError } =
+        await supabaseAdmin.auth.admin.updateUserById(id, authPayload);
+      if (authUpdateError) {
+        try {
+          await usuarioRepository.atualizar(
+            id,
+            {
+              nome: perfilAnterior.nome,
+              email: perfilAnterior.email,
+              funcao: perfilAnterior.funcao,
+            },
+            authHeader,
+          );
+        } catch (rollbackError) {
+          console.error("Falha ao restaurar perfil após erro no Auth.", rollbackError);
+        }
+        if (emailJaCadastrado(authUpdateError)) throw conflitoEmail();
+        throw authUpdateError;
+      }
+    }
+
+    return perfilAtualizado;
   }
 
   async excluirUsuario(id, authHeader) {
-    if (!id) throw new Error("ID do usuário é obrigatório para exclusão.");
-    
-    // 1. Apaga do nosso banco de dados (perfis_usuarios)
-    await usuarioRepository.excluir(id, authHeader);
+    if (!id) throw new ValidationError("ID do usuário é obrigatório para exclusão.");
 
-    // 2. Apaga definitivamente o acesso no Supabase Auth
+    this.validarSupabaseAdmin("deleteUser");
     const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
-    if (error) {
-      console.error("Aviso: Usuário apagado do perfil, mas falhou ao apagar do Auth.", error);
-    }
-    
+    const authJaAusente =
+      error?.code === "user_not_found" ||
+      error?.status === 404 ||
+      error?.message?.toLowerCase().includes("user not found");
+    if (error && !authJaAusente) throw error;
+
+    await usuarioRepository.excluir(id, authHeader);
     return true;
   }
 }

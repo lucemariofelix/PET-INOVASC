@@ -92,34 +92,19 @@ describe("UsuarioService", () => {
       expect(resultado).toBe(true);
     });
 
-    it("deve manter comportamento best effort quando deleteUser falhar na exclusão, sem lançar erro", async () => {
-      usuarioRepository.excluir = vi.fn().mockResolvedValue(true);
+    it("deve não remover o perfil quando falhar ao revogar a credencial", async () => {
+      usuarioRepository.excluir = vi.fn();
       deleteUserMock.mockResolvedValue({
         data: null,
-        error: { message: "User not found in Auth" },
+        error: { code: "unexpected_failure", message: "Auth unavailable" },
       });
 
-      // Spy no console.error para não poluir o output
-      const consoleErrorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
+      await expect(
+        usuarioService.excluirUsuario("uuid-falha-auth", authHeader),
+      ).rejects.toMatchObject({ code: "unexpected_failure" });
 
-      // Não deve lançar erro
-      const resultado = await usuarioService.excluirUsuario(
-        "uuid-best-effort",
-        authHeader,
-      );
-
-      expect(usuarioRepository.excluir).toHaveBeenCalledTimes(1);
-      expect(deleteUserMock).toHaveBeenCalledWith("uuid-best-effort");
-      expect(resultado).toBe(true);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "Aviso: Usuário apagado do perfil, mas falhou ao apagar do Auth.",
-        { message: "User not found in Auth" },
-      );
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-
-      consoleErrorSpy.mockRestore();
+      expect(deleteUserMock).toHaveBeenCalledWith("uuid-falha-auth");
+      expect(usuarioRepository.excluir).not.toHaveBeenCalled();
     });
   });
 
@@ -136,6 +121,26 @@ describe("UsuarioService", () => {
       ).rejects.toThrow(
         "Todos os campos são obrigatórios para criar um usuário.",
       );
+    });
+
+    it("deve rejeitar corpo ausente e função inválida como erro de validação", async () => {
+      await expect(
+        usuarioService.criarUsuario(undefined, authHeader),
+      ).rejects.toMatchObject({ statusCode: 400, code: "VALIDATION_ERROR" });
+
+      await expect(
+        usuarioService.criarUsuario(
+          {
+            nome: "Ana",
+            email: "ana@ubs.com",
+            senha: "abc",
+            funcao: "SUPERADMIN",
+          },
+          authHeader,
+        ),
+      ).rejects.toMatchObject({ statusCode: 400, code: "VALIDATION_ERROR" });
+
+      expect(createUserMock).not.toHaveBeenCalled();
     });
 
     it("deve criar usuário com sucesso", async () => {
@@ -230,14 +235,17 @@ describe("UsuarioService", () => {
       });
     });
 
-    it("deve lançar erro quando o Supabase Auth falhar ao criar usuário", async () => {
+    it("deve representar email já cadastrado no Auth como conflito amigável", async () => {
       createUserMock.mockResolvedValue({
         data: null,
-        error: { message: "User already exists" },
+        error: {
+          code: "email_exists",
+          status: 422,
+          message: "A user with this email address has already been registered",
+        },
       });
 
-      await expect(
-        usuarioService.criarUsuario(
+      const promessa = usuarioService.criarUsuario(
           {
             nome: "Duplicado",
             email: "dup@ubs.com",
@@ -245,9 +253,34 @@ describe("UsuarioService", () => {
             funcao: "ACS",
           },
           authHeader,
-        ),
-      ).rejects.toThrow(
-        "Erro ao criar credencial de login: User already exists",
+        );
+
+      await expect(promessa).rejects.toMatchObject({
+        statusCode: 409,
+        code: "EMAIL_ALREADY_REGISTERED",
+        message: "Este e-mail já está cadastrado.",
+      });
+    });
+
+    it("deve normalizar espaços e maiúsculas do email", async () => {
+      createUserMock.mockResolvedValue({
+        data: { user: { id: "uuid-trim" } },
+        error: null,
+      });
+      usuarioRepository.criarComAdmin = vi.fn().mockResolvedValue({ id: "uuid-trim" });
+
+      await usuarioService.criarUsuario(
+        {
+          nome: "Ana",
+          email: "  ANA@UBS.COM  ",
+          senha: "abc",
+          funcao: "ACS",
+        },
+        authHeader,
+      );
+
+      expect(createUserMock).toHaveBeenCalledWith(
+        expect.objectContaining({ email: "ana@ubs.com" }),
       );
     });
 
@@ -274,6 +307,55 @@ describe("UsuarioService", () => {
       expect(usuarioRepository.criarComAdmin).not.toHaveBeenCalled();
       // Rollback NÃO deve ser chamado pois o usuário nunca foi criado
       expect(deleteUserMock).not.toHaveBeenCalled();
+    });
+
+    it("deve preservar código de erro inesperado do Supabase Auth", async () => {
+      const erroAuth = {
+        code: "hook_timeout",
+        status: 500,
+        message: "Internal auth hook timeout",
+      };
+      createUserMock.mockResolvedValue({ data: null, error: erroAuth });
+
+      await expect(
+        usuarioService.criarUsuario(
+          {
+            nome: "Falha",
+            email: "falha@ubs.com",
+            senha: "abc",
+            funcao: "ACS",
+          },
+          authHeader,
+        ),
+      ).rejects.toBe(erroAuth);
+    });
+
+    it("deve compensar a credencial e mapear conflito único do perfil para email cadastrado", async () => {
+      createUserMock.mockResolvedValue({
+        data: { user: { id: "uuid-conflito-db" } },
+        error: null,
+      });
+      usuarioRepository.criarComAdmin = vi.fn().mockRejectedValue({
+        code: "23505",
+        message: "duplicate key perfis_usuarios_email_key",
+      });
+      deleteUserMock.mockResolvedValue({ data: {}, error: null });
+
+      await expect(
+        usuarioService.criarUsuario(
+          {
+            nome: "Duplicado",
+            email: "duplicado@ubs.com",
+            senha: "abc",
+            funcao: "ACS",
+          },
+          authHeader,
+        ),
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        code: "EMAIL_ALREADY_REGISTERED",
+      });
+      expect(deleteUserMock).toHaveBeenCalledWith("uuid-conflito-db");
     });
 
     it("deve lançar erro claro quando Supabase Auth não retornar user.id", async () => {
@@ -321,7 +403,7 @@ describe("UsuarioService", () => {
           },
           authHeader,
         ),
-      ).rejects.toThrow("Erro ao salvar perfil: DB insert failed");
+      ).rejects.toThrow("DB insert failed");
 
       // Rollback: deve apagar o usuário criado no Auth
       expect(deleteUserMock).toHaveBeenCalledWith("uuid-rollback");
@@ -351,7 +433,7 @@ describe("UsuarioService", () => {
           },
           authHeader,
         ),
-      ).rejects.toThrow("Erro ao salvar perfil: DB insert failed");
+      ).rejects.toThrow("DB insert failed");
 
       expect(deleteUserMock).toHaveBeenCalledWith("uuid-rollback-falha");
       expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -394,6 +476,7 @@ describe("UsuarioService", () => {
         email: "joao@ubs.com",
         funcao: "RECEPCAO",
       };
+      usuarioRepository.buscarPorId = vi.fn().mockResolvedValue(perfilAtualizado);
       usuarioRepository.atualizar = vi.fn().mockResolvedValue(perfilAtualizado);
 
       const resultado = await usuarioService.atualizarUsuario(
@@ -428,6 +511,10 @@ describe("UsuarioService", () => {
         email: "maria@ubs.com",
         funcao: "ADMIN",
       };
+      usuarioRepository.buscarPorId = vi.fn().mockResolvedValue({
+        ...perfilAtualizado,
+        nome: "Maria",
+      });
       usuarioRepository.atualizar = vi.fn().mockResolvedValue(perfilAtualizado);
 
       const resultado = await usuarioService.atualizarUsuario(
@@ -456,6 +543,68 @@ describe("UsuarioService", () => {
         authHeader,
       );
       expect(resultado).toEqual(perfilAtualizado);
+    });
+
+    it("deve sincronizar alteração de email no perfil e no Auth", async () => {
+      usuarioRepository.buscarPorId = vi.fn().mockResolvedValue({
+        id: "uuid-email",
+        nome: "Ana",
+        email: "antigo@ubs.com",
+        funcao: "ACS",
+      });
+      usuarioRepository.atualizar = vi.fn().mockResolvedValue({
+        id: "uuid-email",
+        nome: "Ana",
+        email: "novo@ubs.com",
+        funcao: "ACS",
+      });
+      updateUserByIdMock.mockResolvedValue({ data: {}, error: null });
+
+      await usuarioService.atualizarUsuario(
+        "uuid-email",
+        { nome: "Ana", email: "  NOVO@UBS.COM ", funcao: "ACS" },
+        authHeader,
+      );
+
+      expect(updateUserByIdMock).toHaveBeenCalledWith("uuid-email", {
+        email: "novo@ubs.com",
+        email_confirm: true,
+      });
+    });
+
+    it("deve restaurar o perfil quando a sincronização com o Auth falhar", async () => {
+      const perfilAnterior = {
+        id: "uuid-compensa",
+        nome: "Antes",
+        email: "antes@ubs.com",
+        funcao: "ACS",
+      };
+      usuarioRepository.buscarPorId = vi.fn().mockResolvedValue(perfilAnterior);
+      usuarioRepository.atualizar = vi
+        .fn()
+        .mockResolvedValueOnce({ ...perfilAnterior, email: "depois@ubs.com" })
+        .mockResolvedValueOnce(perfilAnterior);
+      updateUserByIdMock.mockResolvedValue({
+        data: null,
+        error: { code: "email_exists", message: "Email already exists" },
+      });
+
+      await expect(
+        usuarioService.atualizarUsuario(
+          "uuid-compensa",
+          { nome: "Antes", email: "depois@ubs.com", funcao: "ACS" },
+          authHeader,
+        ),
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        code: "EMAIL_ALREADY_REGISTERED",
+      });
+
+      expect(usuarioRepository.atualizar).toHaveBeenLastCalledWith(
+        "uuid-compensa",
+        { nome: "Antes", email: "antes@ubs.com", funcao: "ACS" },
+        authHeader,
+      );
     });
   });
 });

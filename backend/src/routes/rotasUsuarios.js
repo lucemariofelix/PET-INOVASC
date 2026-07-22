@@ -1,18 +1,20 @@
 const usuarioController = require("../controllers/usuarioController");
 const { verificarPermissao } = require("../middlewares/authMiddleware");
 
-async function rotasUsuarios(fastify, options) {
+async function rotasUsuarios(fastify, options = {}) {
+  const controller = options.usuarioController || usuarioController;
+  const criarVerificacao = options.verificarPermissao || verificarPermissao;
   // Apenas ADMIN tem permissão para gerenciar a equipe
-  const soAdmin = { preHandler: [verificarPermissao(["ADMIN"])] };
+  const soAdmin = { preHandler: [criarVerificacao(["ADMIN"])] };
   const todosAutenticados = {
-    preHandler: [verificarPermissao(["ADMIN", "RECEPCAO", "ACS"])],
+    preHandler: [criarVerificacao(["ADMIN", "RECEPCAO", "ACS"])],
   };
 
-  fastify.get("/usuarios/acs", todosAutenticados, usuarioController.listarACS);
-  fastify.get("/usuarios", soAdmin, usuarioController.listar);
-  fastify.post("/usuarios", soAdmin, usuarioController.criar);
-  fastify.put("/usuarios/:id", soAdmin, usuarioController.atualizar);
-  fastify.delete("/usuarios/:id", soAdmin, usuarioController.excluir);
+  fastify.get("/usuarios/acs", todosAutenticados, controller.listarACS);
+  fastify.get("/usuarios", soAdmin, controller.listar);
+  fastify.post("/usuarios", soAdmin, controller.criar);
+  fastify.put("/usuarios/:id", soAdmin, controller.atualizar);
+  fastify.delete("/usuarios/:id", soAdmin, controller.excluir);
 }
 
 module.exports = rotasUsuarios;
