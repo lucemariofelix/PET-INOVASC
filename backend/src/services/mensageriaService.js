@@ -1,6 +1,7 @@
 const mensagemRepository = require("../repositories/mensagemRepository");
 const notificacaoRepository = require("../repositories/notificacaoRepository");
 const webhookRepository = require("../repositories/webhookRepository");
+const { AppError } = require("../errors/AppError");
 
 const TIPOS_MENSAGEM = Object.freeze({
   LEMBRETE_CONSULTA: "LEMBRETE_CONSULTA",
@@ -10,6 +11,25 @@ const TIPOS_MENSAGEM = Object.freeze({
 });
 
 const BOTAO_CONFIRMAR_PRESENCA = "CONFIRMAR_PRESENCA";
+const MENSAGEM_WHATSAPP_DESCONECTADO =
+  "O WhatsApp do posto está desconectado. Vá à aba de configurações e leia o QR Code antes de enviar mensagens.";
+
+const erroWhatsAppDesconectado = () =>
+  new AppError(
+    MENSAGEM_WHATSAPP_DESCONECTADO,
+    409,
+    "WHATSAPP_DESCONECTADO",
+  );
+
+const respostaIndicaDesconexao = (texto) => {
+  const mensagem = String(texto || "").toLowerCase();
+  return (
+    mensagem.includes("not connected") ||
+    mensagem.includes("instance disconnected") ||
+    mensagem.includes("connection closed") ||
+    mensagem.includes("connection state is close")
+  );
+};
 
 class MensageriaService {
   async retry(fn, tentativas = 3, intervaloMs = 300) {
@@ -167,7 +187,7 @@ class MensageriaService {
     const statusZap = await this.statusConexaoWhatsApp();
 
     if (statusZap.status !== "connected") {
-      throw new Error("WHATSAPP_DESCONECTADO");
+      throw erroWhatsAppDesconectado();
     }
 
     return { conectado: true, estado: "open" };
@@ -193,7 +213,7 @@ class MensageriaService {
         footer: "Unidade de saúde",
         buttons: [
           {
-            title: "Confirmar presença",
+            type: "reply",
             displayText: "Confirmar presença",
             id: botaoId,
           },
@@ -227,7 +247,18 @@ class MensageriaService {
     const textData = await resposta.text();
 
     if (!resposta.ok) {
-      throw new Error(`Falha Evolution (${resposta.status}): ${textData}`);
+      console.error("[EVOLUTION] Falha ao enviar mensagem.", {
+        status: resposta.status,
+        resposta: textData,
+      });
+      if (respostaIndicaDesconexao(textData)) {
+        throw erroWhatsAppDesconectado();
+      }
+      throw new AppError(
+        "Não foi possível enviar a mensagem pelo WhatsApp. Tente novamente mais tarde.",
+        502,
+        "WHATSAPP_PROVIDER_ERROR",
+      );
     }
 
     return JSON.parse(textData);

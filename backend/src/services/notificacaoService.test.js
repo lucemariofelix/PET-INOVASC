@@ -41,6 +41,13 @@ describe("NotificacaoService", () => {
   // iniciarDisparoLote
   // ===========================================================================
   describe("iniciarDisparoLote", () => {
+    beforeEach(() => {
+      vi.spyOn(notificacaoService, "verificarConexaoWhatsApp").mockResolvedValue({
+        conectado: true,
+        estado: "open",
+      });
+    });
+
     // -----------------------------------------------------------------------
     // 1. Lista de pacientes vazia
     // -----------------------------------------------------------------------
@@ -112,6 +119,30 @@ describe("NotificacaoService", () => {
       expect(spy).toHaveBeenCalledTimes(1);
       expect(spy).toHaveBeenCalledWith(pacientesBase, "Olá, {nome}", 10);
     });
+
+    it("deve não iniciar a fila quando o WhatsApp estiver desconectado", async () => {
+      const erro = Object.assign(new Error("WhatsApp desconectado"), {
+        statusCode: 409,
+        code: "WHATSAPP_DESCONECTADO",
+      });
+      notificacaoService.verificarConexaoWhatsApp.mockRejectedValue(erro);
+      const processar = vi
+        .spyOn(notificacaoService, "processarFilaAssincrona")
+        .mockResolvedValue();
+
+      await expect(
+        notificacaoService.iniciarDisparoLote(
+          {
+            pacientes: pacientesBase,
+            mensagemBase: "Olá, {nome}",
+            usuario_id: 10,
+          },
+          authHeader,
+        ),
+      ).rejects.toBe(erro);
+
+      expect(processar).not.toHaveBeenCalled();
+    });
   });
 
   describe("verificarConexaoWhatsApp", () => {
@@ -142,7 +173,7 @@ describe("NotificacaoService", () => {
       );
     });
 
-    it('deve lançar "WHATSAPP_DESCONECTADO" quando o estado for diferente de "open"', async () => {
+    it("deve retornar conflito amigável quando o estado for diferente de open", async () => {
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue({
@@ -153,10 +184,15 @@ describe("NotificacaoService", () => {
 
       await expect(
         notificacaoService.verificarConexaoWhatsApp(),
-      ).rejects.toThrow("WHATSAPP_DESCONECTADO");
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        code: "WHATSAPP_DESCONECTADO",
+        message:
+          "O WhatsApp do posto está desconectado. Vá à aba de configurações e leia o QR Code antes de enviar mensagens.",
+      });
     });
 
-    it('deve lançar "WHATSAPP_DESCONECTADO" quando a Evolution retornar erro HTTP', async () => {
+    it("deve retornar conflito de desconexão quando a Evolution retornar erro HTTP", async () => {
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue({
@@ -167,15 +203,22 @@ describe("NotificacaoService", () => {
 
       await expect(
         notificacaoService.verificarConexaoWhatsApp(),
-      ).rejects.toThrow("WHATSAPP_DESCONECTADO");
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        code: "WHATSAPP_DESCONECTADO",
+      });
     });
 
-    it('deve lançar "WHATSAPP_DESCONECTADO" quando o fetch falhar', async () => {
+    it("deve retornar conflito de desconexão quando a consulta de estado falhar", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
       vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
 
       await expect(
         notificacaoService.verificarConexaoWhatsApp(),
-      ).rejects.toThrow("WHATSAPP_DESCONECTADO");
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        code: "WHATSAPP_DESCONECTADO",
+      });
     });
   });
 

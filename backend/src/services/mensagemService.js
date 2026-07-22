@@ -27,6 +27,12 @@ class MensagemService {
         "Este paciente não possui um número de telefone cadastrado.",
       );
 
+    const { evolutionUrl, apikey, instanceName } =
+      mensageriaService.obterConfigEvolution();
+    if (evolutionUrl && apikey && instanceName) {
+      await mensageriaService.verificarConexaoWhatsApp();
+    }
+
     const resultado = await mensageriaService.enviarMensagem({
       paciente: {
         id: paciente_id,

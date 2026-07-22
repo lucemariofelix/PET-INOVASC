@@ -97,29 +97,42 @@ export default function AgendarConsulta({ onSuccess }) {
     try {
       const respostaConsulta = await consultasApi.criarConsulta(payload);
       const consultaCriada = respostaConsulta.consulta || respostaConsulta;
+      let falhaWhatsApp = null;
 
       if (pacienteSelecionado?.telefone && pacienteSelecionado?.consentimento_msg) {
-        await mensageriaApi.dispararWhatsApp({
-          paciente_id: pacienteSelecionado.id,
-          consulta_id: consultaCriada.id,
-          telefone: pacienteSelecionado.telefone,
-          consentimento_msg: pacienteSelecionado.consentimento_msg,
-          nome: pacienteSelecionado.nome_completo,
-          profissional: tipoProfissional,
-          status_consulta: "AGENDADA",
-          data_referencia: dataProximaConsulta,
-          tipo: "AGENDAMENTO_CONSULTA",
-          usarBotaoConfirmacao: true,
+        try {
+          await mensageriaApi.dispararWhatsApp({
+            paciente_id: pacienteSelecionado.id,
+            consulta_id: consultaCriada.id,
+            telefone: pacienteSelecionado.telefone,
+            consentimento_msg: pacienteSelecionado.consentimento_msg,
+            nome: pacienteSelecionado.nome_completo,
+            profissional: tipoProfissional,
+            status_consulta: "AGENDADA",
+            data_referencia: dataProximaConsulta,
+            tipo: "AGENDAMENTO_CONSULTA",
+            usarBotaoConfirmacao: true,
+          });
+        } catch (error) {
+          falhaWhatsApp = error;
+        }
+      }
+
+      if (falhaWhatsApp) {
+        setAlerta({
+          isOpen: true,
+          tipo: 'aviso',
+          titulo: 'Consulta agendada',
+          mensagem: `A consulta foi salva, mas a mensagem não foi enviada. ${falhaWhatsApp.message}`
+        });
+      } else {
+        setAlerta({
+          isOpen: true,
+          tipo: 'sucesso',
+          titulo: 'Agendamento Concluído',
+          mensagem: 'A consulta foi agendada e vinculada ao paciente com sucesso!'
         });
       }
-      
-      // SUBSTITUÍDO O ALERT NATIVO PELO SEU MODAL TAILWIND
-      setAlerta({
-        isOpen: true,
-        tipo: 'sucesso',
-        titulo: 'Agendamento Concluído',
-        mensagem: 'A consulta foi agendada e vinculada ao paciente com sucesso!'
-      });
       
       // Limpa os campos
       deselecionarPaciente();

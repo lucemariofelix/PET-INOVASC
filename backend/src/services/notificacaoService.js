@@ -15,6 +15,8 @@ class NotificacaoService {
       );
     }
 
+    await this.verificarConexaoWhatsApp();
+
     this.processarFilaAssincrona(pacientes, mensagemBase, usuario_id);
 
     return {

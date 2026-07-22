@@ -4,6 +4,7 @@
 vi.mock("../repositories/mensagemRepository");
 
 const mensagemRepository = require("../repositories/mensagemRepository");
+const mensageriaService = require("./mensageriaService");
 const mensagemService = require("./mensagemService");
 
 // =============================================================================
@@ -39,10 +40,9 @@ beforeEach(() => {
   // Mock do fetch global
   vi.stubGlobal("fetch", vi.fn());
 
-  // Mock do statusConexaoWhatsApp para bypass
-  mensagemService.statusConexaoWhatsApp = vi
-    .fn()
-    .mockResolvedValue({ status: "connected" });
+  // A conexão real é coberta separadamente; aqui isolamos o envio.
+  vi.spyOn(mensageriaService, "verificarConexaoWhatsApp")
+    .mockResolvedValue({ conectado: true, estado: "open" });
 
   // Mock do repository
   mensagemRepository.salvarHistorico = vi.fn().mockResolvedValue({ id: 1 });
@@ -50,6 +50,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   process.env = originalEnv;
 });
 
@@ -75,6 +76,25 @@ describe("MensagemService", () => {
       ).rejects.toThrow(
         "Este paciente não possui um número de telefone cadastrado.",
       );
+    });
+
+    it("deve impedir o envio e retornar conflito quando o WhatsApp estiver desconectado", async () => {
+      mensageriaService.verificarConexaoWhatsApp.mockRejectedValue(
+        Object.assign(new Error("WhatsApp desconectado"), {
+          statusCode: 409,
+          code: "WHATSAPP_DESCONECTADO",
+        }),
+      );
+
+      await expect(
+        mensagemService.dispararMensagem(dadosBase, authHeader),
+      ).rejects.toMatchObject({
+        statusCode: 409,
+        code: "WHATSAPP_DESCONECTADO",
+      });
+
+      expect(fetch).not.toHaveBeenCalled();
+      expect(mensagemRepository.salvarHistorico).not.toHaveBeenCalled();
     });
 
     // -----------------------------------------------------------------------
@@ -210,18 +230,27 @@ describe("MensagemService", () => {
     // -----------------------------------------------------------------------
     // 7. Falha da Evolution API
     // -----------------------------------------------------------------------
-    it("deve lançar erro quando a Evolution API retornar falha", async () => {
+    it("deve ocultar detalhes quando a Evolution rejeitar um payload inválido", async () => {
       // Arrange
+      vi.spyOn(console, "error").mockImplementation(() => {});
       fetch.mockResolvedValue({
         ok: false,
-        status: 500,
-        text: () => Promise.resolve("Internal Server Error"),
+        status: 400,
+        text: () =>
+          Promise.resolve(
+            '{"response":{"message":[["buttons[0] requires property type"]]}}',
+          ),
       });
 
       // Act & Assert
       await expect(
         mensagemService.dispararMensagem(dadosBase, authHeader),
-      ).rejects.toThrow("Falha Evolution (500): Internal Server Error");
+      ).rejects.toMatchObject({
+        statusCode: 502,
+        code: "WHATSAPP_PROVIDER_ERROR",
+        message:
+          "Não foi possível enviar a mensagem pelo WhatsApp. Tente novamente mais tarde.",
+      });
 
       // Não deve salvar histórico em caso de falha
       expect(mensagemRepository.salvarHistorico).not.toHaveBeenCalled();
@@ -298,12 +327,13 @@ describe("MensagemService", () => {
       const body = JSON.parse(options.body);
 
       expect(url).toBe("https://evo.example.com/message/sendButtons/ubs_test");
-      expect(body.buttons[0]).toEqual(
-        expect.objectContaining({
+      expect(body.buttons).toEqual([
+        {
+          type: "reply",
           displayText: "Confirmar presença",
           id: "CONFIRMAR_PRESENCA:20",
-        }),
-      );
+        },
+      ]);
       expect(mensagemRepository.salvarHistorico).toHaveBeenCalledWith(
         expect.objectContaining({
           confirmacao_status: "PENDENTE",

@@ -44,4 +44,52 @@ describe("errorHandler HTTP", () => {
 
     await app.close();
   });
+
+  it("deve responder desconexão do WhatsApp como conflito amigável", async () => {
+    const app = Fastify({ logger: false });
+    app.setErrorHandler(errorHandler);
+    app.post("/mensagens/enviar", async () => {
+      throw new AppError(
+        "O WhatsApp do posto está desconectado. Vá à aba de configurações e leia o QR Code antes de enviar mensagens.",
+        409,
+        "WHATSAPP_DESCONECTADO",
+      );
+    });
+
+    const resposta = await app.inject({
+      method: "POST",
+      url: "/mensagens/enviar",
+    });
+
+    expect(resposta.statusCode).toBe(409);
+    expect(resposta.json()).toMatchObject({
+      code: "WHATSAPP_DESCONECTADO",
+      erro: expect.stringContaining("WhatsApp do posto está desconectado"),
+    });
+    await app.close();
+  });
+
+  it("deve responder falha técnica do provedor sem detalhes internos", async () => {
+    const app = Fastify({ logger: false });
+    app.setErrorHandler(errorHandler);
+    app.post("/mensagens/enviar", async () => {
+      throw new AppError(
+        "Não foi possível enviar a mensagem pelo WhatsApp. Tente novamente mais tarde.",
+        502,
+        "WHATSAPP_PROVIDER_ERROR",
+      );
+    });
+
+    const resposta = await app.inject({
+      method: "POST",
+      url: "/mensagens/enviar",
+    });
+
+    expect(resposta.statusCode).toBe(502);
+    expect(resposta.json()).toEqual({
+      code: "WHATSAPP_PROVIDER_ERROR",
+      erro: "Não foi possível enviar a mensagem pelo WhatsApp. Tente novamente mais tarde.",
+    });
+    await app.close();
+  });
 });
