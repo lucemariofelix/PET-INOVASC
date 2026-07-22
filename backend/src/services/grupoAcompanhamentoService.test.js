@@ -67,6 +67,46 @@ describe("GrupoAcompanhamentoService", () => {
     });
   });
 
+  describe("excluirGrupo", () => {
+    it("deve excluir e retornar o grupo removido", async () => {
+      const grupoRemovido = {
+        id: "22222222-2222-2222-2222-222222222222",
+        nome: "Hipertensos",
+        descricao: "Acompanhamento HAS",
+        criado_em: "2026-07-21T12:00:00Z",
+      };
+      grupoAcompanhamentoRepository.excluir = vi
+        .fn()
+        .mockResolvedValue(grupoRemovido);
+
+      const resultado = await grupoAcompanhamentoService.excluirGrupo(
+        grupoRemovido.id,
+        authHeader,
+      );
+
+      expect(resultado).toEqual(grupoRemovido);
+      expect(grupoAcompanhamentoRepository.excluir).toHaveBeenCalledWith(
+        grupoRemovido.id,
+        authHeader,
+      );
+    });
+
+    it("deve retornar erro 404 quando o grupo não existir", async () => {
+      grupoAcompanhamentoRepository.excluir = vi.fn().mockResolvedValue(null);
+
+      await expect(
+        grupoAcompanhamentoService.excluirGrupo(
+          "33333333-3333-3333-3333-333333333333",
+          authHeader,
+        ),
+      ).rejects.toMatchObject({
+        statusCode: 404,
+        code: "NOT_FOUND_ERROR",
+        message: "Grupo de acompanhamento não encontrado.",
+      });
+    });
+  });
+
   describe("dispararMensagens", () => {
     const grupoId = "22222222-2222-2222-2222-222222222222";
     const usuarioId = "11111111-1111-1111-1111-111111111111";

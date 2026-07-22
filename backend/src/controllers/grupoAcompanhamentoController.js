@@ -24,6 +24,24 @@ class GrupoAcompanhamentoController {
     });
   }
 
+  async excluir(request, reply) {
+    const authHeader = request.headers.authorization;
+    return executarController(request, reply, {
+      executar: () => grupoAcompanhamentoService.excluirGrupo(
+        request.params.id,
+        authHeader,
+      ),
+      auditoria: ({ resultado }) => ({
+        acao: "EXCLUIU_GRUPO_ACOMPANHAMENTO",
+        detalhes: `Excluiu o grupo de acompanhamento: ${resultado.nome} (${resultado.id})`,
+      }),
+      responder: (grupo) => reply.status(200).send({
+        mensagem: "Grupo de acompanhamento excluído com sucesso!",
+        grupo,
+      }),
+    });
+  }
+
   async disparar(request, reply) {
     const authHeader = request.headers.authorization;
     return executarController(request, reply, {

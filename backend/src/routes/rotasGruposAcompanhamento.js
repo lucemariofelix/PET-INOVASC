@@ -13,14 +13,16 @@ const esquemaGrupoAcompanhamento = {
   },
 };
 
-const esquemaDisparoGrupo = {
-  params: {
-    type: "object",
-    required: ["id"],
-    properties: {
-      id: { type: "string", minLength: 36, maxLength: 36 },
-    },
+const esquemaIdGrupo = {
+  type: "object",
+  required: ["id"],
+  properties: {
+    id: { type: "string", minLength: 36, maxLength: 36 },
   },
+};
+
+const esquemaDisparoGrupo = {
+  params: esquemaIdGrupo,
   body: {
     type: "object",
     required: ["mensagem"],
@@ -31,19 +33,26 @@ const esquemaDisparoGrupo = {
   },
 };
 
-async function rotasGruposAcompanhamento(fastify, options) {
+async function rotasGruposAcompanhamento(fastify, options = {}) {
+  const controller =
+    options.grupoAcompanhamentoController || grupoAcompanhamentoController;
+  const criarVerificacao = options.verificarPermissao || verificarPermissao;
   const todosAutenticados = {
-    preHandler: [verificarPermissao(["ADMIN", "RECEPCAO", "ACS"])],
+    preHandler: [criarVerificacao(["ADMIN", "RECEPCAO", "ACS"])],
   };
 
   const adminERecepcao = {
-    preHandler: [verificarPermissao(["ADMIN", "RECEPCAO"])],
+    preHandler: [criarVerificacao(["ADMIN", "RECEPCAO"])],
+  };
+
+  const somenteAdmin = {
+    preHandler: [criarVerificacao(["ADMIN"])],
   };
 
   fastify.get(
     "/grupos-acompanhamento",
     todosAutenticados,
-    grupoAcompanhamentoController.listar,
+    controller.listar,
   );
 
   fastify.post(
@@ -52,7 +61,16 @@ async function rotasGruposAcompanhamento(fastify, options) {
       ...adminERecepcao,
       schema: esquemaGrupoAcompanhamento,
     },
-    grupoAcompanhamentoController.criar,
+    controller.criar,
+  );
+
+  fastify.delete(
+    "/grupos-acompanhamento/:id",
+    {
+      ...somenteAdmin,
+      schema: { params: esquemaIdGrupo },
+    },
+    controller.excluir,
   );
 
   fastify.post(
@@ -61,7 +79,7 @@ async function rotasGruposAcompanhamento(fastify, options) {
       ...adminERecepcao,
       schema: esquemaDisparoGrupo,
     },
-    grupoAcompanhamentoController.disparar,
+    controller.disparar,
   );
 }
 

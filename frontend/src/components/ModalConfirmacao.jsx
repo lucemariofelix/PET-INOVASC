@@ -1,4 +1,13 @@
-export default function ModalConfirmacao({ isOpen, titulo, mensagem, onConfirm, onCancel }) {
+export default function ModalConfirmacao({
+  isOpen,
+  titulo,
+  mensagem,
+  onConfirm,
+  onCancel,
+  confirmLabel = "Confirmar",
+  cancelLabel = "Cancelar",
+  loading = false,
+}) {
   if (!isOpen) return null;
 
   return (
@@ -10,19 +19,21 @@ export default function ModalConfirmacao({ isOpen, titulo, mensagem, onConfirm, 
         <p className="text-gray-600 mb-6">{mensagem}</p>
         
         <div className="flex justify-end space-x-3">
-          <button 
+          <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors cursor-pointer"
+            disabled={loading}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Cancelar
+            {cancelLabel}
           </button>
           
           {/* Mantive o seu botão Confirmar vermelho (ótimo padrão para ações de disparo/alerta) */}
-          <button 
+          <button
             onClick={onConfirm}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors cursor-pointer"
+            disabled={loading}
+            className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors cursor-pointer disabled:cursor-not-allowed disabled:opacity-70"
           >
-            Confirmar
+            {loading ? "Excluindo..." : confirmLabel}
           </button>
         </div>
       </div>

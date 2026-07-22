@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
-import { FaBullhorn, FaLayerGroup, FaPlus, FaSave, FaTimes } from "react-icons/fa";
+import {
+  FaBullhorn,
+  FaLayerGroup,
+  FaPlus,
+  FaSave,
+  FaTimes,
+  FaTrash,
+} from "react-icons/fa";
 import { gruposApi } from "../api/grupos";
 import ModalAlerta from "./ModalAlerta";
+import ModalConfirmacao from "./ModalConfirmacao";
 
 export default function GestaoGrupos({ usuario }) {
   const [grupos, setGrupos] = useState([]);
@@ -12,6 +20,8 @@ export default function GestaoGrupos({ usuario }) {
   const [grupoDisparo, setGrupoDisparo] = useState(null);
   const [mensagemDisparo, setMensagemDisparo] = useState("");
   const [disparando, setDisparando] = useState(false);
+  const [grupoExclusao, setGrupoExclusao] = useState(null);
+  const [excluindo, setExcluindo] = useState(false);
   const [alerta, setAlerta] = useState({
     isOpen: false,
     tipo: "",
@@ -20,6 +30,7 @@ export default function GestaoGrupos({ usuario }) {
   });
 
   const podeCriar = ["ADMIN", "RECEPCAO"].includes(usuario?.funcao);
+  const podeExcluir = usuario?.funcao === "ADMIN";
 
   const carregarGrupos = async () => {
     setLoading(true);
@@ -155,6 +166,33 @@ export default function GestaoGrupos({ usuario }) {
     }
   };
 
+  const confirmarExclusao = async () => {
+    if (!grupoExclusao || excluindo) return;
+
+    try {
+      setExcluindo(true);
+      await gruposApi.excluirGrupo(grupoExclusao.id);
+      setGrupoExclusao(null);
+      await carregarGrupos();
+      setAlerta({
+        isOpen: true,
+        tipo: "sucesso",
+        titulo: "Grupo excluído",
+        mensagem: "O grupo de acompanhamento foi excluído com sucesso.",
+      });
+    } catch (error) {
+      setGrupoExclusao(null);
+      setAlerta({
+        isOpen: true,
+        tipo: "erro",
+        titulo: "Erro ao excluir grupo",
+        mensagem: error.message,
+      });
+    } finally {
+      setExcluindo(false);
+    }
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
       <div>
@@ -271,7 +309,7 @@ export default function GestaoGrupos({ usuario }) {
                       {formatarData(grupo.criado_em)}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2">
                         <button
                           type="button"
                           onClick={() => abrirModalDisparo(grupo)}
@@ -285,6 +323,16 @@ export default function GestaoGrupos({ usuario }) {
                         >
                           <FaBullhorn />
                         </button>
+                        {podeExcluir && (
+                          <button
+                            type="button"
+                            onClick={() => setGrupoExclusao(grupo)}
+                            title="Excluir grupo"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-red-200 bg-red-50 text-red-700 transition hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
+                          >
+                            <FaTrash />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -348,6 +396,18 @@ export default function GestaoGrupos({ usuario }) {
           </div>
         </div>
       )}
+
+      <ModalConfirmacao
+        isOpen={Boolean(grupoExclusao)}
+        titulo="Excluir grupo"
+        mensagem={`Deseja excluir o grupo “${grupoExclusao?.nome || ""}”? Os pacientes não serão excluídos, apenas deixarão de estar vinculados a este grupo.`}
+        confirmLabel="Excluir grupo"
+        loading={excluindo}
+        onCancel={() => {
+          if (!excluindo) setGrupoExclusao(null);
+        }}
+        onConfirm={confirmarExclusao}
+      />
 
       <ModalAlerta
         isOpen={alerta.isOpen}

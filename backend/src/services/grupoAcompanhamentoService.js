@@ -1,6 +1,7 @@
 const grupoAcompanhamentoRepository = require("../repositories/grupoAcompanhamentoRepository");
 const notificacaoService = require("./notificacaoService");
 const { TIPOS_MENSAGEM } = require("./mensageriaService");
+const { ValidationError, NotFoundError } = require("../errors/AppError");
 
 class GrupoAcompanhamentoService {
   async listarGrupos(authHeader) {
@@ -20,6 +21,22 @@ class GrupoAcompanhamentoService {
     };
 
     return await grupoAcompanhamentoRepository.criar(payload, authHeader);
+  }
+
+  async excluirGrupo(grupoId, authHeader) {
+    if (!grupoId) {
+      throw new ValidationError("Informe o grupo que deseja excluir.");
+    }
+
+    const grupoRemovido = await grupoAcompanhamentoRepository.excluir(
+      grupoId,
+      authHeader,
+    );
+    if (!grupoRemovido) {
+      throw new NotFoundError("Grupo de acompanhamento não encontrado.");
+    }
+
+    return grupoRemovido;
   }
 
   async dispararMensagens(grupoId, mensagem, usuarioId, authHeader) {

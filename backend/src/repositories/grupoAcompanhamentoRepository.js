@@ -25,6 +25,19 @@ class GrupoAcompanhamentoRepository {
     return data[0];
   }
 
+  async excluir(grupoId, authHeader) {
+    const supabaseClient = getSupabaseUsuario(authHeader);
+
+    const { data, error } = await supabaseClient
+      .from("grupos_acompanhamento")
+      .delete()
+      .eq("id", grupoId)
+      .select("id, nome, descricao, criado_em");
+
+    if (error) throw error;
+    return data?.[0] || null;
+  }
+
   async listarPacientesDoGrupo(grupoId, authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
 

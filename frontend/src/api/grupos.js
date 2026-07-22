@@ -20,6 +20,17 @@ const gruposApi = {
     return res.json();
   },
 
+  excluirGrupo: async (grupoId) => {
+    const res = await fetchComAutenticacao(
+      `/grupos-acompanhamento/${grupoId}`,
+      { method: "DELETE" },
+    );
+    if (!res.ok) {
+      throw new Error(await lerErro(res, "Erro ao excluir grupo de acompanhamento"));
+    }
+    return res.json();
+  },
+
   dispararMensagemGrupo: async (grupoId, payload) => {
     const res = await fetchComAutenticacao(
       `/grupos-acompanhamento/${grupoId}/disparo`,
