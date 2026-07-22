@@ -211,31 +211,31 @@ export default function Configuracoes() {
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col md:flex-row min-h-[500px]">
         {/* Menu Lateral / Superior */}
-        <div className="w-full md:w-64 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-4 flex flex-row md:flex-col gap-2 overflow-x-auto">
+        <div className="w-full md:w-64 md:min-w-64 md:flex-none bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-4 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-x-visible">
           <button
             onClick={() => setAbaAtiva("whatsapp")}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${abaAtiva === "whatsapp" ? "bg-sky-100 text-sky-800 shadow-sm border border-sky-200" : "text-slate-600 hover:bg-slate-200"}`}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap md:w-full ${abaAtiva === "whatsapp" ? "bg-sky-100 text-sky-800 shadow-sm border border-sky-200" : "text-slate-600 hover:bg-slate-200"}`}
           >
             <FaWhatsapp size={18} /> Servidor WhatsApp
           </button>
 
           <button
             onClick={() => setAbaAtiva("usuarios")}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${abaAtiva === "usuarios" ? "bg-sky-100 text-sky-800 shadow-sm border border-sky-200" : "text-slate-600 hover:bg-slate-200"}`}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap md:w-full ${abaAtiva === "usuarios" ? "bg-sky-100 text-sky-800 shadow-sm border border-sky-200" : "text-slate-600 hover:bg-slate-200"}`}
           >
             <FaUserShield size={18} /> Equipe e Acessos
           </button>
 
           <button
             onClick={() => setAbaAtiva("logs")}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap ${abaAtiva === "logs" ? "bg-sky-100 text-sky-800 shadow-sm border border-sky-200" : "text-slate-600 hover:bg-slate-200"}`}
+            className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap md:w-full ${abaAtiva === "logs" ? "bg-sky-100 text-sky-800 shadow-sm border border-sky-200" : "text-slate-600 hover:bg-slate-200"}`}
           >
             <FaHistory size={18} /> Auditoria
           </button>
         </div>
 
         {/* Conteúdo Principal */}
-        <div className="flex-1 p-6 md:p-8">
+        <div className="w-full min-w-0 flex-1 overflow-hidden p-6 md:p-8">
           {/* ======================================================== */}
           {/* ABA 1: WHATSAPP */}
           {/* ======================================================== */}
