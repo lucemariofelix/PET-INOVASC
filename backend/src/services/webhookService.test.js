@@ -483,6 +483,93 @@ describe("WebhookService", () => {
       ).not.toHaveBeenCalled();
     });
 
+    it("deve usar remoteJidAlt telefônico quando remoteJid for @lid", async () => {
+      await webhookService.processarEvento(
+        criarRespostaTexto("1", {
+          key: {
+            fromMe: false,
+            remoteJid: "123456789012345@lid",
+            remoteJidAlt: "5584999998888@s.whatsapp.net",
+          },
+        }),
+      );
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).toHaveBeenCalledWith(
+        "5584999998888",
+        "2026-07-25T12:00:00.000Z",
+      );
+    });
+
+    it("deve usar senderPn telefônico quando os JIDs principal e alternativo forem @lid", async () => {
+      await webhookService.processarEvento(
+        criarRespostaTexto("2", {
+          key: {
+            fromMe: false,
+            remoteJid: "123456789012345@lid",
+            remoteJidAlt: "987654321012345@lid",
+            senderPn: "5584999998888@s.whatsapp.net",
+          },
+        }),
+      );
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).toHaveBeenCalledWith(
+        "5584999998888",
+        "2026-07-25T12:00:00.000Z",
+      );
+    });
+
+    it("nunca deve interpretar os dígitos de @lid como telefone", async () => {
+      await webhookService.processarEvento(
+        criarRespostaTexto("1", {
+          key: {
+            fromMe: false,
+            remoteJid: "5584999998888@lid",
+            remoteJidAlt: "987654321012345@lid",
+          },
+        }),
+      );
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("não deve usar JID alternativo de participante quando a conversa for grupo", async () => {
+      await webhookService.processarEvento(
+        criarRespostaTexto("1", {
+          key: {
+            fromMe: false,
+            remoteJid: "120363012345@g.us",
+            remoteJidAlt: "5584999998888@s.whatsapp.net",
+          },
+        }),
+      );
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("não deve processar broadcast mesmo quando houver senderPn telefônico", async () => {
+      await webhookService.processarEvento(
+        criarRespostaTexto("1", {
+          key: {
+            fromMe: false,
+            remoteJid: "status@broadcast",
+            senderPn: "5584999998888@s.whatsapp.net",
+          },
+        }),
+      );
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).not.toHaveBeenCalled();
+    });
+
     it("deve repetir a consulta ao banco após uma falha transitória", async () => {
       webhookRepository.listarConfirmacoesPendentesPorTelefone
         .mockRejectedValueOnce(new Error("falha transitória"))
@@ -520,6 +607,24 @@ describe("WebhookService", () => {
       const logs = console.log.mock.calls.flat().join(" ");
       expect(logs).not.toContain("5584999998888");
       expect(logs).not.toContain("api-key");
+    });
+
+    it("deve diagnosticar somente campos e domínios quando não resolver @lid", async () => {
+      process.env.EVOLUTION_DIAGNOSTICS = "true";
+
+      await webhookService.processarEvento(
+        criarRespostaTexto("1", {
+          key: {
+            fromMe: false,
+            remoteJid: "123456789012345@lid",
+          },
+        }),
+      );
+
+      const logs = console.log.mock.calls.flat().join(" ");
+      expect(logs).toContain('"campo":"key.remoteJid"');
+      expect(logs).toContain('"dominio":"@lid"');
+      expect(logs).not.toContain("123456789012345");
     });
 
     it("não registra segredos nem conteúdo do payload bruto", async () => {

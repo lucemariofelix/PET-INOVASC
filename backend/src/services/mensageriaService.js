@@ -855,13 +855,15 @@ class MensageriaService {
         continue;
       }
 
-      const telefone = this.extrairTelefoneRemetente(data);
-      if (!telefone) {
+      const remetente = this.resolverTelefoneRemetente(data);
+      if (!remetente.telefone) {
         this.logDiagnostico("EVOLUTION_CONFIRMATION_IGNORED", {
           motivo: "REMETENTE_INVALIDO",
+          candidatosJid: remetente.candidatos,
         });
         continue;
       }
+      const telefone = remetente.telefone;
 
       const pendencias = await this.retry(() =>
         webhookRepository.listarConfirmacoesPendentesPorTelefone(
@@ -872,6 +874,7 @@ class MensageriaService {
 
       this.logDiagnostico("EVOLUTION_CONFIRMATION_RECEIVED", {
         telefone: this.mascararTelefone(telefone),
+        origemJid: remetente.origem,
         resposta,
         quantidadePendencias: pendencias.length,
       });
@@ -938,10 +941,50 @@ class MensageriaService {
   }
 
   extrairTelefoneRemetente(data) {
-    const jid = data?.key?.remoteJid || data?.remoteJid;
-    if (typeof jid !== "string" || jid.endsWith("@g.us")) return null;
+    return this.resolverTelefoneRemetente(data).telefone;
+  }
 
-    const partes = jid.split("@");
+  resolverTelefoneRemetente(data) {
+    const jidPrincipal = data?.key?.remoteJid || data?.remoteJid;
+    const candidatos = [
+      ["key.remoteJid", data?.key?.remoteJid],
+      ["key.remoteJidAlt", data?.key?.remoteJidAlt],
+      ["key.senderPn", data?.key?.senderPn],
+      ["remoteJid", data?.remoteJid],
+      ["remoteJidAlt", data?.remoteJidAlt],
+      ["senderPn", data?.senderPn],
+    ];
+    const descricoes = candidatos
+      .filter(([, jid]) => typeof jid === "string" && jid.trim())
+      .map(([campo, jid]) => ({
+        campo,
+        dominio: this.obterDominioJid(jid),
+        quantidadeDigitos: String(jid).split("@")[0].replace(/\D/g, "")
+          .length,
+      }));
+
+    if (typeof jidPrincipal === "string") {
+      const dominioPrincipal = this.obterDominioJid(jidPrincipal);
+      if (["@g.us", "OUTRO_DOMINIO"].includes(dominioPrincipal)) {
+        return { telefone: null, origem: null, candidatos: descricoes };
+      }
+    }
+
+    for (const [origem, jid] of candidatos) {
+      const telefone = this.extrairTelefoneDeJidConfiavel(jid);
+      if (telefone) {
+        return { telefone, origem, candidatos: descricoes };
+      }
+    }
+
+    return { telefone: null, origem: null, candidatos: descricoes };
+  }
+
+  extrairTelefoneDeJidConfiavel(jid) {
+    if (typeof jid !== "string") return null;
+
+    const jidNormalizado = jid.trim();
+    const partes = jidNormalizado.split("@");
     if (partes.length > 2) return null;
     if (partes.length === 2 && partes[1] !== "s.whatsapp.net") return null;
 
@@ -950,6 +993,15 @@ class MensageriaService {
     } catch {
       return null;
     }
+  }
+
+  obterDominioJid(jid) {
+    const partes = String(jid || "").trim().split("@");
+    if (partes.length !== 2 || !partes[1]) return "SEM_DOMINIO";
+    if (["s.whatsapp.net", "lid", "g.us"].includes(partes[1])) {
+      return `@${partes[1]}`;
+    }
+    return "OUTRO_DOMINIO";
   }
 
   extrairBotaoConfirmacaoId(data) {
