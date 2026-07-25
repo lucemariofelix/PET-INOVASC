@@ -9,9 +9,21 @@ const TIPOS_MENSAGEM = Object.freeze({
   AGENDAMENTO_CONSULTA: "AGENDAMENTO_CONSULTA",
   AVISO_GERAL: "AVISO_GERAL",
   GRUPO_ACOMPANHAMENTO: "GRUPO_ACOMPANHAMENTO",
+  RESPOSTA_AUTOMATICA: "RESPOSTA_AUTOMATICA",
 });
 
 const BOTAO_CONFIRMAR_PRESENCA = "CONFIRMAR_PRESENCA";
+const PRAZO_CONFIRMACAO_HORAS = 72;
+const MENU_CONFIRMACAO =
+  "Para responder sobre esta consulta, envie somente uma opção:\n\n1 — Confirmar presença\n2 — Solicitar cancelamento";
+const RESPOSTAS_AUTOMATICAS = Object.freeze({
+  CONFIRMADO:
+    "Sua presença foi confirmada com sucesso. Obrigado pela resposta!",
+  CANCELAMENTO_SOLICITADO:
+    "Sua solicitação de cancelamento foi recebida. A equipe da unidade fará a confirmação.",
+  AMBIGUA:
+    "Encontramos mais de uma consulta aguardando resposta para este número. Entre em contato com a unidade de saúde para confirmar ou solicitar cancelamento.",
+});
 const MENSAGEM_WHATSAPP_DESCONECTADO =
   "O WhatsApp do posto está desconectado. Vá à aba de configurações e leia o QR Code antes de enviar mensagens.";
 const DDDS_BRASILEIROS = new Set([
@@ -185,6 +197,16 @@ class MensageriaService {
     }
 
     return texto;
+  }
+
+  acrescentarMenuConfirmacao(texto) {
+    return `${texto}\n\n${MENU_CONFIRMACAO}`;
+  }
+
+  calcularExpiracaoConfirmacao(dataBase = new Date()) {
+    return new Date(
+      dataBase.getTime() + PRAZO_CONFIRMACAO_HORAS * 60 * 60 * 1000,
+    ).toISOString();
   }
 
   obterConfigEvolution() {
@@ -574,6 +596,7 @@ class MensageriaService {
     data_referencia,
     mensagem,
     templateOverride,
+    solicitarConfirmacao = false,
     usarBotaoConfirmacao = false,
     authHeader,
   }) {
@@ -584,7 +607,7 @@ class MensageriaService {
     this.validarConsentimento(paciente);
 
     const telefoneLimpo = this.sanitizarTelefone(paciente.telefone);
-    const texto = this.montarTexto({
+    const textoBase = this.montarTexto({
       tipo,
       nome: paciente.nome_completo || paciente.nome,
       profissional,
@@ -593,7 +616,17 @@ class MensageriaService {
       templateOverride,
       mensagem,
     });
-    const botaoId = usarBotaoConfirmacao
+    const texto = solicitarConfirmacao === true
+      ? this.acrescentarMenuConfirmacao(textoBase)
+      : textoBase;
+    const usarBotaoConfirmacaoAtivo =
+      usarBotaoConfirmacao === true && solicitarConfirmacao !== true;
+    const confirmacaoSolicitada =
+      solicitarConfirmacao === true || usarBotaoConfirmacaoAtivo;
+    const confirmacaoExpiraEm = confirmacaoSolicitada
+      ? this.calcularExpiracaoConfirmacao()
+      : null;
+    const botaoId = usarBotaoConfirmacaoAtivo
       ? `${BOTAO_CONFIRMAR_PRESENCA}:${consulta_id || paciente.id}:${randomUUID()}`
       : null;
 
@@ -610,7 +643,10 @@ class MensageriaService {
           consulta_id: consulta_id || null,
           usuario_id: usuario_id || null,
           tipo_mensagem: tipo,
-          confirmacao_status: usarBotaoConfirmacao ? "PENDENTE" : null,
+          confirmacao_status: confirmacaoSolicitada ? "PENDENTE" : null,
+          confirmacao_expira_em: confirmacaoExpiraEm,
+          respondido_em: null,
+          resposta_confirmacao: null,
           botao_id: botaoId,
         },
         authHeader,
@@ -624,7 +660,7 @@ class MensageriaService {
     const jsonData = await this.enviarEvolution({
       telefone: telefoneLimpo,
       texto,
-      usarBotaoConfirmacao,
+      usarBotaoConfirmacao: usarBotaoConfirmacaoAtivo,
       botaoId,
     });
     const idDaMensagem = jsonData?.key?.id || jsonData?.id;
@@ -640,7 +676,10 @@ class MensageriaService {
         usuario_id: usuario_id || null,
         mensagem_id: idDaMensagem,
         tipo_mensagem: tipo,
-        confirmacao_status: usarBotaoConfirmacao ? "PENDENTE" : null,
+        confirmacao_status: confirmacaoSolicitada ? "PENDENTE" : null,
+        confirmacao_expira_em: confirmacaoExpiraEm,
+        respondido_em: null,
+        resposta_confirmacao: null,
         botao_id: botaoId,
       },
       authHeader,
@@ -660,6 +699,54 @@ class MensageriaService {
       texto,
       mensagem: historico,
     };
+  }
+
+  async enviarRespostaAutomatica({ telefone, texto, referencia = {} }) {
+    const jsonData = await this.enviarEvolution({
+      telefone,
+      texto,
+      usarBotaoConfirmacao: false,
+      botaoId: null,
+    });
+    const idDaMensagem = jsonData?.key?.id || jsonData?.id;
+
+    const historico = await this.registrarHistorico({
+      paciente_id: referencia.paciente_id || null,
+      // A resposta é correlacionada pelo mensagem_id, mas não entra como o
+      // último lembrete da consulta no polling do Dashboard.
+      consulta_id: null,
+      telefone_destino: telefone,
+      texto_enviado: texto,
+      status: "ENVIADO",
+      status_ordem: 1,
+      usuario_id: null,
+      mensagem_id: idDaMensagem,
+      tipo_mensagem: TIPOS_MENSAGEM.RESPOSTA_AUTOMATICA,
+      confirmacao_status: null,
+      confirmacao_expira_em: null,
+      respondido_em: null,
+      resposta_confirmacao: null,
+      botao_id: null,
+    });
+
+    this.logDiagnostico("EVOLUTION_AUTO_REPLY_PERSISTED", {
+      mensagemId: idDaMensagem,
+      consultaId: referencia.consulta_id || null,
+      telefone: this.mascararTelefone(telefone),
+    });
+
+    return historico;
+  }
+
+  async enviarRespostaAutomaticaComSeguranca(dados) {
+    try {
+      await this.enviarRespostaAutomatica(dados);
+    } catch (error) {
+      this.logDiagnostico("EVOLUTION_AUTO_REPLY_ERROR", {
+        telefone: this.mascararTelefone(dados.telefone),
+        codigo: error?.code || error?.name || "Error",
+      });
+    }
   }
 
   normalizarEventoWebhook(evento) {
@@ -749,17 +836,119 @@ class MensageriaService {
 
       if (fromMe !== false) continue;
 
+      const dataEvento = this.obterDataEvento(payload, data);
+
       const botaoId = this.extrairBotaoConfirmacaoId(data);
 
       if (botaoId) {
-        const dataEvento = this.obterDataEvento(payload, data);
         await this.retry(() =>
           webhookRepository.registrarConfirmacaoMensagem(botaoId, dataEvento),
         );
         continue;
       }
 
-      console.log("[WEBHOOK] Mensagem recebida sem confirmação reconhecida");
+      const resposta = this.extrairRespostaTextual(data);
+      if (!resposta) {
+        this.logDiagnostico("EVOLUTION_CONFIRMATION_IGNORED", {
+          motivo: "CONTEUDO_INVALIDO",
+        });
+        continue;
+      }
+
+      const telefone = this.extrairTelefoneRemetente(data);
+      if (!telefone) {
+        this.logDiagnostico("EVOLUTION_CONFIRMATION_IGNORED", {
+          motivo: "REMETENTE_INVALIDO",
+        });
+        continue;
+      }
+
+      const pendencias = await this.retry(() =>
+        webhookRepository.listarConfirmacoesPendentesPorTelefone(
+          telefone,
+          dataEvento,
+        ),
+      );
+
+      this.logDiagnostico("EVOLUTION_CONFIRMATION_RECEIVED", {
+        telefone: this.mascararTelefone(telefone),
+        resposta,
+        quantidadePendencias: pendencias.length,
+      });
+
+      if (pendencias.length === 0) {
+        this.logDiagnostico("EVOLUTION_CONFIRMATION_IGNORED", {
+          motivo: "SEM_PENDENCIA_ATIVA",
+          telefone: this.mascararTelefone(telefone),
+        });
+        continue;
+      }
+
+      if (pendencias.length > 1) {
+        await this.enviarRespostaAutomaticaComSeguranca({
+          telefone,
+          texto: RESPOSTAS_AUTOMATICAS.AMBIGUA,
+        });
+        continue;
+      }
+
+      const pendencia = pendencias[0];
+      const confirmacaoStatus =
+        resposta === "1" ? "CONFIRMADO" : "CANCELAMENTO_SOLICITADO";
+      const atualizadas = await this.retry(() =>
+        webhookRepository.registrarRespostaConfirmacao({
+          historicoId: pendencia.id,
+          resposta,
+          confirmacaoStatus,
+          dataEvento,
+        }),
+      );
+
+      this.logDiagnostico("EVOLUTION_CONFIRMATION_MATCH", {
+        historicoId: pendencia.id,
+        consultaId: pendencia.consulta_id || null,
+        status: confirmacaoStatus,
+        linhasAtualizadas: atualizadas.length,
+      });
+
+      if (atualizadas.length !== 1) continue;
+
+      await this.enviarRespostaAutomaticaComSeguranca({
+        telefone,
+        texto: RESPOSTAS_AUTOMATICAS[confirmacaoStatus],
+        referencia: {
+          paciente_id: pendencia.paciente_id,
+          consulta_id: pendencia.consulta_id,
+        },
+      });
+    }
+  }
+
+  extrairRespostaTextual(data) {
+    const candidatos = [
+      data?.message?.conversation,
+      data?.message?.extendedTextMessage?.text,
+      data?.body,
+    ];
+    const texto = candidatos.find((valor) => typeof valor === "string");
+
+    if (!texto) return null;
+    const resposta = texto.trim();
+    return resposta === "1" || resposta === "2" ? resposta : null;
+  }
+
+  extrairTelefoneRemetente(data) {
+    const jid = data?.key?.remoteJid || data?.remoteJid;
+    if (typeof jid !== "string" || jid.endsWith("@g.us")) return null;
+
+    const partes = jid.split("@");
+    if (partes.length > 2) return null;
+    if (partes.length === 2 && partes[1] !== "s.whatsapp.net") return null;
+
+    try {
+      return this.sanitizarTelefone(partes[0]);
+    } catch {
+      return null;
     }
   }
 

@@ -22,6 +22,7 @@ class MensagemService {
       data_referencia,
       tipo = TIPOS_MENSAGEM.LEMBRETE_CONSULTA,
       templateOverride,
+      solicitarConfirmacao = false,
       usarBotaoConfirmacao = false,
       consentimento_msg,
     },
@@ -51,6 +52,7 @@ class MensagemService {
       status_consulta,
       data_referencia,
       templateOverride,
+      solicitarConfirmacao,
       usarBotaoConfirmacao,
       authHeader,
     });

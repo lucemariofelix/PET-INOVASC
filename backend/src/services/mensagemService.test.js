@@ -363,6 +363,86 @@ describe("MensagemService", () => {
       );
     });
 
+    it("deve solicitar confirmação por menu textual usando sendText", async () => {
+      const evolutionResponse = {
+        key: { id: "MSG-MENU-TEXTO" },
+        status: "PENDING",
+      };
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 201,
+        text: () => Promise.resolve(JSON.stringify(evolutionResponse)),
+      });
+      const antesDoEnvio = Date.now();
+
+      await mensagemService.dispararMensagem(
+        {
+          ...dadosBase,
+          solicitarConfirmacao: true,
+          usarBotaoConfirmacao: true,
+        },
+        authHeader,
+      );
+
+      const [url, options] = fetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+      expect(url).toBe("https://evo.example.com/message/sendText/ubs_test");
+      expect(body.text).toContain("1 — Confirmar presença");
+      expect(body.text).toContain("2 — Solicitar cancelamento");
+      expect(body.buttons).toBeUndefined();
+
+      const historico = mensagemRepository.salvarHistorico.mock.calls[0][0];
+      expect(historico).toEqual(
+        expect.objectContaining({
+          mensagem_id: "MSG-MENU-TEXTO",
+          confirmacao_status: "PENDENTE",
+          botao_id: null,
+          respondido_em: null,
+          resposta_confirmacao: null,
+        }),
+      );
+      const expiracao = new Date(historico.confirmacao_expira_em).getTime();
+      expect(expiracao).toBeGreaterThanOrEqual(
+        antesDoEnvio + 72 * 60 * 60 * 1000,
+      );
+      expect(expiracao).toBeLessThanOrEqual(Date.now() + 72 * 60 * 60 * 1000);
+    });
+
+    it("deve registrar resposta automática com ID correlacionável", async () => {
+      vi.spyOn(mensageriaService, "enviarEvolution").mockResolvedValue({
+        key: { id: "MSG-RESPOSTA-AUTOMATICA" },
+        status: "PENDING",
+      });
+      vi.spyOn(mensageriaService, "registrarHistorico").mockResolvedValue({
+        id: "hist-resposta",
+      });
+
+      await mensageriaService.enviarRespostaAutomatica({
+        telefone: "5584999998888",
+        texto: "Resposta automática segura",
+        referencia: {
+          paciente_id: "paciente-1",
+          consulta_id: "consulta-1",
+        },
+      });
+
+      expect(mensageriaService.enviarEvolution).toHaveBeenCalledWith({
+        telefone: "5584999998888",
+        texto: "Resposta automática segura",
+        usarBotaoConfirmacao: false,
+        botaoId: null,
+      });
+      expect(mensageriaService.registrarHistorico).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mensagem_id: "MSG-RESPOSTA-AUTOMATICA",
+          tipo_mensagem: "RESPOSTA_AUTOMATICA",
+          status: "ENVIADO",
+          consulta_id: null,
+          botao_id: null,
+        }),
+      );
+    });
+
     it("deve listar somente os IDs únicos e válidos solicitados", async () => {
       const consulta1 = "11111111-1111-4111-8111-111111111111";
       const consulta2 = "22222222-2222-4222-8222-222222222222";

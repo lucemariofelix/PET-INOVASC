@@ -27,6 +27,9 @@ class ConsultaRepository {
           lido_em,
           confirmacao_status,
           confirmado_em,
+          confirmacao_expira_em,
+          respondido_em,
+          resposta_confirmacao,
           botao_id,
           tipo_mensagem
         ),
@@ -88,6 +91,9 @@ class ConsultaRepository {
             lido_em,
             confirmacao_status,
             confirmado_em,
+            confirmacao_expira_em,
+            respondido_em,
+            resposta_confirmacao,
             botao_id,
             tipo_mensagem
           )

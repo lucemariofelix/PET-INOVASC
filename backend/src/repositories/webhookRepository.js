@@ -44,10 +44,14 @@ class WebhookRepository {
       .update({
         confirmacao_status: "CONFIRMADO",
         confirmado_em: dataEvento,
+        respondido_em: dataEvento,
+        resposta_confirmacao: "1",
       })
       .eq("botao_id", botaoId)
       .eq("confirmacao_status", "PENDENTE")
-      .select("id, mensagem_id, confirmacao_status, confirmado_em");
+      .select(
+        "id, mensagem_id, confirmacao_status, confirmado_em, respondido_em, resposta_confirmacao",
+      );
 
     if (error) {
       console.error("❌ Supabase erro ao registrar confirmação:", error.message);
@@ -59,6 +63,66 @@ class WebhookRepository {
     }
 
     return data;
+  }
+
+  async listarConfirmacoesPendentesPorTelefone(telefone, dataEvento) {
+    const { data, error } = await supabaseAdmin
+      .from("historico_mensagens")
+      .select(
+        "id, mensagem_id, consulta_id, paciente_id, telefone_destino, confirmacao_status, confirmacao_expira_em, data_envio",
+      )
+      .eq("telefone_destino", telefone)
+      .eq("confirmacao_status", "PENDENTE")
+      .gt("confirmacao_expira_em", dataEvento)
+      .lte("data_envio", dataEvento)
+      .order("data_envio", { ascending: false });
+
+    if (error) {
+      console.error(
+        "❌ Supabase erro ao buscar confirmações pendentes:",
+        error.message,
+      );
+      throw error;
+    }
+
+    return data || [];
+  }
+
+  async registrarRespostaConfirmacao({
+    historicoId,
+    resposta,
+    confirmacaoStatus,
+    dataEvento,
+  }) {
+    const dadosAtualizacao = {
+      confirmacao_status: confirmacaoStatus,
+      respondido_em: dataEvento,
+      resposta_confirmacao: resposta,
+    };
+
+    if (confirmacaoStatus === "CONFIRMADO") {
+      dadosAtualizacao.confirmado_em = dataEvento;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("historico_mensagens")
+      .update(dadosAtualizacao)
+      .eq("id", historicoId)
+      .eq("confirmacao_status", "PENDENTE")
+      .gt("confirmacao_expira_em", dataEvento)
+      .select(
+        "id, mensagem_id, consulta_id, paciente_id, telefone_destino, confirmacao_status, confirmado_em, respondido_em, resposta_confirmacao",
+      );
+
+    if (error) {
+      console.error(
+        "❌ Supabase erro ao registrar resposta da confirmação:",
+        error.message,
+      );
+      throw error;
+    }
+
+    return data || [];
   }
 }
 

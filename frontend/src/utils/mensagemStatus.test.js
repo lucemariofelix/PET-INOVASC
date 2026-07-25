@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   mesclarStatusMensagens,
+  obterEstadoConfirmacao,
   selecionarUltimaMensagem,
 } from "./mensagemStatus.js";
 
@@ -53,4 +54,40 @@ test("adiciona o novo disparo quando ainda não está no histórico", () => {
   );
 
   assert.deepEqual(resultado[0].historico_mensagens, [mensagem]);
+});
+
+test("apresenta os quatro estados da confirmação textual", () => {
+  const agora = new Date("2026-07-25T12:00:00.000Z");
+
+  assert.equal(
+    obterEstadoConfirmacao({ confirmacao_status: "CONFIRMADO" }, agora),
+    "CONFIRMADO",
+  );
+  assert.equal(
+    obterEstadoConfirmacao(
+      { confirmacao_status: "CANCELAMENTO_SOLICITADO" },
+      agora,
+    ),
+    "CANCELAMENTO_SOLICITADO",
+  );
+  assert.equal(
+    obterEstadoConfirmacao(
+      {
+        confirmacao_status: "PENDENTE",
+        confirmacao_expira_em: "2026-07-25T13:00:00.000Z",
+      },
+      agora,
+    ),
+    "PENDENTE",
+  );
+  assert.equal(
+    obterEstadoConfirmacao(
+      {
+        confirmacao_status: "PENDENTE",
+        confirmacao_expira_em: "2026-07-25T11:59:59.000Z",
+      },
+      agora,
+    ),
+    "EXPIRADO",
+  );
 });

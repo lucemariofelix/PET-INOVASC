@@ -6,6 +6,7 @@ import { getBadgeInfo } from "../utils/dateHelpers";
 import { formatarTelefone } from "../utils/formatters";
 import {
   mesclarStatusMensagens,
+  obterEstadoConfirmacao,
   selecionarUltimaMensagem,
 } from "../utils/mensagemStatus";
 import ModalConfirmacao from "../components/ModalConfirmacao";
@@ -216,13 +217,14 @@ export default function Dashboard() {
   };
 
   const renderizarConfirmacaoWhatsApp = (mensagem, isMobile = false) => {
-    if (!mensagem?.confirmacao_status) return null;
+    const estado = obterEstadoConfirmacao(mensagem);
+    if (estado === "SEM_CONFIRMACAO") return null;
 
     const baseClass = isMobile
       ? "text-[10px] font-semibold border rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-1"
       : "text-[11px] font-medium flex items-center gap-1.5 p-1 rounded w-fit mt-0.5";
 
-    if (mensagem.confirmacao_status === "CONFIRMADO") {
+    if (estado === "CONFIRMADO") {
       const dataFormatada = formatarDataEvento(mensagem.confirmado_em);
       return (
         <span
@@ -230,6 +232,30 @@ export default function Dashboard() {
         >
           <FaCalendarCheck size={isMobile ? 12 : 14} />
           Presença confirmada{dataFormatada ? ` (${dataFormatada})` : ""}
+        </span>
+      );
+    }
+
+    if (estado === "CANCELAMENTO_SOLICITADO") {
+      const dataFormatada = formatarDataEvento(mensagem.respondido_em);
+      return (
+        <span
+          className={`${baseClass} border-rose-100 bg-rose-50 text-rose-700`}
+        >
+          <FaExclamationCircle size={isMobile ? 12 : 14} />
+          Cancelamento solicitado
+          {dataFormatada ? ` (${dataFormatada})` : ""}
+        </span>
+      );
+    }
+
+    if (estado === "EXPIRADO") {
+      return (
+        <span
+          className={`${baseClass} border-slate-200 bg-slate-50 text-slate-600`}
+        >
+          <FaClock size={isMobile ? 12 : 14} />
+          Prazo encerrado
         </span>
       );
     }
@@ -288,6 +314,7 @@ export default function Dashboard() {
         profissional: consulta.tipo_profissional,
         status_consulta: consulta.status_consulta,
         tipo: "LEMBRETE_CONSULTA",
+        solicitarConfirmacao: true,
         data_referencia:
           consulta.data_proxima_consulta || consulta.data_ultima_consulta,
       });

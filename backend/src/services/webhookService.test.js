@@ -4,6 +4,7 @@
 vi.mock("../repositories/webhookRepository");
 
 const webhookRepository = require("../repositories/webhookRepository");
+const mensageriaService = require("./mensageriaService");
 const webhookService = require("./webhookService");
 
 // =============================================================================
@@ -24,6 +25,27 @@ const atualizacaoEsperada = (status, ordem) => ({
   dataEvento: "2026-07-21T22:54:24.369Z",
 });
 
+const criarRespostaTexto = (texto, sobrescritas = {}) => ({
+  event: "messages.upsert",
+  date_time: "2026-07-25T12:00:00.000Z",
+  data: {
+    key: {
+      fromMe: false,
+      remoteJid: "5584999998888@s.whatsapp.net",
+    },
+    message: { conversation: texto },
+    ...sobrescritas,
+  },
+});
+
+const pendenciaAtiva = {
+  id: "hist-pendente-1",
+  mensagem_id: "msg-lembrete-1",
+  consulta_id: "consulta-1",
+  paciente_id: "paciente-1",
+  telefone_destino: "5584999998888",
+};
+
 // =============================================================================
 // SUÍTE PRINCIPAL
 // =============================================================================
@@ -32,6 +54,13 @@ describe("WebhookService", () => {
     vi.clearAllMocks();
     webhookRepository.atualizarStatusMensagem = vi.fn().mockResolvedValue([]);
     webhookRepository.registrarConfirmacaoMensagem = vi.fn().mockResolvedValue([]);
+    webhookRepository.listarConfirmacoesPendentesPorTelefone = vi
+      .fn()
+      .mockResolvedValue([]);
+    webhookRepository.registrarRespostaConfirmacao = vi
+      .fn()
+      .mockResolvedValue([]);
+    vi.spyOn(mensageriaService, "enviarRespostaAutomatica").mockResolvedValue({});
     vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
@@ -312,6 +341,185 @@ describe("WebhookService", () => {
         "CONFIRMAR_PRESENCA:consulta-123:token-unico",
         "2026-07-21T23:05:00.000Z",
       );
+    });
+
+    it('deve confirmar a única pendência ativa ao receber exatamente "1"', async () => {
+      webhookRepository.listarConfirmacoesPendentesPorTelefone.mockResolvedValue([
+        pendenciaAtiva,
+      ]);
+      webhookRepository.registrarRespostaConfirmacao.mockResolvedValue([
+        { ...pendenciaAtiva, confirmacao_status: "CONFIRMADO" },
+      ]);
+
+      await webhookService.processarEvento(criarRespostaTexto(" 1 "));
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).toHaveBeenCalledWith(
+        "5584999998888",
+        "2026-07-25T12:00:00.000Z",
+      );
+      expect(
+        webhookRepository.registrarRespostaConfirmacao,
+      ).toHaveBeenCalledWith({
+        historicoId: "hist-pendente-1",
+        resposta: "1",
+        confirmacaoStatus: "CONFIRMADO",
+        dataEvento: "2026-07-25T12:00:00.000Z",
+      });
+      expect(mensageriaService.enviarRespostaAutomatica).toHaveBeenCalledWith(
+        expect.objectContaining({
+          telefone: "5584999998888",
+          referencia: {
+            paciente_id: "paciente-1",
+            consulta_id: "consulta-1",
+          },
+        }),
+      );
+    });
+
+    it('deve solicitar cancelamento sem alterar a consulta ao receber exatamente "2"', async () => {
+      webhookRepository.listarConfirmacoesPendentesPorTelefone.mockResolvedValue([
+        pendenciaAtiva,
+      ]);
+      webhookRepository.registrarRespostaConfirmacao.mockResolvedValue([
+        {
+          ...pendenciaAtiva,
+          confirmacao_status: "CANCELAMENTO_SOLICITADO",
+        },
+      ]);
+
+      await webhookService.processarEvento(criarRespostaTexto("2"));
+
+      expect(
+        webhookRepository.registrarRespostaConfirmacao,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          resposta: "2",
+          confirmacaoStatus: "CANCELAMENTO_SOLICITADO",
+        }),
+      );
+      expect(mensageriaService.enviarRespostaAutomatica).toHaveBeenCalledWith(
+        expect.objectContaining({
+          texto: expect.stringContaining("solicitação de cancelamento"),
+        }),
+      );
+    });
+
+    it("deve ignorar resposta repetida, expirada ou sem pendência ativa", async () => {
+      await webhookService.processarEvento(criarRespostaTexto("1"));
+
+      expect(
+        webhookRepository.registrarRespostaConfirmacao,
+      ).not.toHaveBeenCalled();
+      expect(mensageriaService.enviarRespostaAutomatica).not.toHaveBeenCalled();
+    });
+
+    it("deve ser idempotente quando outra requisição consumir a pendência primeiro", async () => {
+      webhookRepository.listarConfirmacoesPendentesPorTelefone.mockResolvedValue([
+        pendenciaAtiva,
+      ]);
+      webhookRepository.registrarRespostaConfirmacao.mockResolvedValue([]);
+
+      await webhookService.processarEvento(criarRespostaTexto("1"));
+
+      expect(
+        webhookRepository.registrarRespostaConfirmacao,
+      ).toHaveBeenCalledTimes(1);
+      expect(mensageriaService.enviarRespostaAutomatica).not.toHaveBeenCalled();
+    });
+
+    it("não deve escolher uma pendência quando houver múltiplas", async () => {
+      webhookRepository.listarConfirmacoesPendentesPorTelefone.mockResolvedValue([
+        pendenciaAtiva,
+        { ...pendenciaAtiva, id: "hist-pendente-2", consulta_id: "consulta-2" },
+      ]);
+
+      await webhookService.processarEvento(criarRespostaTexto("1"));
+
+      expect(
+        webhookRepository.registrarRespostaConfirmacao,
+      ).not.toHaveBeenCalled();
+      expect(mensageriaService.enviarRespostaAutomatica).toHaveBeenCalledWith(
+        expect.objectContaining({
+          texto: expect.stringContaining("mais de uma consulta"),
+        }),
+      );
+    });
+
+    it.each(["10", "12", "sim", "1 confirmo", "🎤"])(
+      "deve ignorar conteúdo textual inválido: %s",
+      async (texto) => {
+        await webhookService.processarEvento(criarRespostaTexto(texto));
+
+        expect(
+          webhookRepository.listarConfirmacoesPendentesPorTelefone,
+        ).not.toHaveBeenCalled();
+      },
+    );
+
+    it("deve ignorar mensagens próprias, grupos e remetentes sem telefone confiável", async () => {
+      await webhookService.processarEvento(
+        criarRespostaTexto("1", {
+          key: {
+            fromMe: true,
+            remoteJid: "5584999998888@s.whatsapp.net",
+          },
+        }),
+      );
+      await webhookService.processarEvento(
+        criarRespostaTexto("1", {
+          key: { fromMe: false, remoteJid: "120363012345@g.us" },
+        }),
+      );
+      await webhookService.processarEvento(
+        criarRespostaTexto("1", {
+          key: { fromMe: false, remoteJid: "123456789@lid" },
+        }),
+      );
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("deve repetir a consulta ao banco após uma falha transitória", async () => {
+      webhookRepository.listarConfirmacoesPendentesPorTelefone
+        .mockRejectedValueOnce(new Error("falha transitória"))
+        .mockResolvedValueOnce([]);
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      await webhookService.processarEvento(criarRespostaTexto("1"));
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).toHaveBeenCalledTimes(2);
+    });
+
+    it("não deve falhar o webhook se a resposta automática não puder ser enviada", async () => {
+      webhookRepository.listarConfirmacoesPendentesPorTelefone.mockResolvedValue([
+        pendenciaAtiva,
+      ]);
+      webhookRepository.registrarRespostaConfirmacao.mockResolvedValue([
+        { ...pendenciaAtiva, confirmacao_status: "CONFIRMADO" },
+      ]);
+      mensageriaService.enviarRespostaAutomatica.mockRejectedValue(
+        new Error("provedor indisponível"),
+      );
+
+      await expect(
+        webhookService.processarEvento(criarRespostaTexto("1")),
+      ).resolves.toBeUndefined();
+    });
+
+    it("deve mascarar o telefone nos diagnósticos da confirmação textual", async () => {
+      process.env.EVOLUTION_DIAGNOSTICS = "true";
+
+      await webhookService.processarEvento(criarRespostaTexto("1"));
+
+      const logs = console.log.mock.calls.flat().join(" ");
+      expect(logs).not.toContain("5584999998888");
+      expect(logs).not.toContain("api-key");
     });
 
     it("não registra segredos nem conteúdo do payload bruto", async () => {

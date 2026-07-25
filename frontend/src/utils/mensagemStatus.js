@@ -42,4 +42,26 @@ const mesclarStatusMensagens = (consultas, mensagensAtualizadas) => {
   });
 };
 
-export { mesclarStatusMensagens, selecionarUltimaMensagem };
+const obterEstadoConfirmacao = (mensagem, agora = new Date()) => {
+  const status = mensagem?.confirmacao_status;
+  if (!status) return "SEM_CONFIRMACAO";
+  if (status === "CONFIRMADO") return "CONFIRMADO";
+  if (status === "CANCELAMENTO_SOLICITADO") {
+    return "CANCELAMENTO_SOLICITADO";
+  }
+
+  if (status === "PENDENTE" && mensagem.confirmacao_expira_em) {
+    const expiracao = new Date(mensagem.confirmacao_expira_em);
+    if (!Number.isNaN(expiracao.getTime()) && expiracao <= agora) {
+      return "EXPIRADO";
+    }
+  }
+
+  return "PENDENTE";
+};
+
+export {
+  mesclarStatusMensagens,
+  obterEstadoConfirmacao,
+  selecionarUltimaMensagem,
+};
