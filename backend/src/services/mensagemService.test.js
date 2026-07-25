@@ -45,7 +45,14 @@ beforeEach(() => {
     .mockResolvedValue({ conectado: true, estado: "open" });
 
   // Mock do repository
-  mensagemRepository.salvarHistorico = vi.fn().mockResolvedValue({ id: 1 });
+  mensagemRepository.salvarHistorico = vi.fn().mockResolvedValue({
+    id: "historico-1",
+    mensagem_id: "MSG-ABC-123",
+    consulta_id: 20,
+    status: "ENVIADO",
+    data_envio: "2026-07-21T22:50:00.000Z",
+  });
+  mensagemRepository.listarUltimasPorConsultas = vi.fn().mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -115,6 +122,7 @@ describe("MensagemService", () => {
       // Assert
       expect(resultado).toEqual({
         aviso: "Mensagem simulada. Configure as variáveis.",
+        mensagem: expect.objectContaining({ id: "historico-1" }),
       });
     });
 
@@ -195,7 +203,9 @@ describe("MensagemService", () => {
       expect(body.number).toBe("5584999998888");
       expect(body.text).toContain("Olá, *Maria Silva*!");
 
-      expect(resultado).toEqual(evolutionResponse);
+      expect(resultado).toEqual({
+        mensagem: expect.objectContaining({ id: "historico-1" }),
+      });
     });
 
     // -----------------------------------------------------------------------
@@ -328,19 +338,46 @@ describe("MensagemService", () => {
 
       expect(url).toBe("https://evo.example.com/message/sendButtons/ubs_test");
       expect(body.buttons).toEqual([
-        {
+        expect.objectContaining({
           type: "reply",
           displayText: "Confirmar presença",
-          id: "CONFIRMAR_PRESENCA:20",
-        },
+          id: expect.stringMatching(
+            /^CONFIRMAR_PRESENCA:20:[0-9a-f-]{36}$/,
+          ),
+        }),
       ]);
+      const botaoId = body.buttons[0].id;
       expect(mensagemRepository.salvarHistorico).toHaveBeenCalledWith(
         expect.objectContaining({
           confirmacao_status: "PENDENTE",
-          botao_id: "CONFIRMAR_PRESENCA:20",
+          botao_id: botaoId,
         }),
         authHeader,
       );
+    });
+
+    it("deve listar somente os IDs únicos e válidos solicitados", async () => {
+      const consulta1 = "11111111-1111-4111-8111-111111111111";
+      const consulta2 = "22222222-2222-4222-8222-222222222222";
+
+      await mensagemService.listarStatusMensagens(
+        `${consulta1},${consulta2},${consulta1}`,
+        authHeader,
+      );
+
+      expect(mensagemRepository.listarUltimasPorConsultas).toHaveBeenCalledWith(
+        [consulta1, consulta2],
+        authHeader,
+      );
+    });
+
+    it("deve rejeitar consulta de status com ID inválido", async () => {
+      await expect(
+        mensagemService.listarStatusMensagens("id-invalido", authHeader),
+      ).rejects.toMatchObject({
+        statusCode: 400,
+        code: "VALIDATION_ERROR",
+      });
     });
   });
 });

@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { consultasApi } from "../api/consultas";
 import { mensageriaApi } from "../api/mensageria";
-import { useHistoricoMensagensRealtime } from "../hooks/useHistoricoMensagensRealtime";
+import { useStatusMensagensPolling } from "../hooks/useStatusMensagensPolling";
 import { getBadgeInfo } from "../utils/dateHelpers";
 import { formatarTelefone } from "../utils/formatters";
+import {
+  mesclarStatusMensagens,
+  selecionarUltimaMensagem,
+} from "../utils/mensagemStatus";
 import ModalConfirmacao from "../components/ModalConfirmacao";
 import ModalAlerta from "../components/ModalAlerta";
 import PainelMetricas from "../components/PainelMetricas";
@@ -15,6 +19,7 @@ import {
   FaCheckDouble,
   FaExclamationCircle,
   FaClock,
+  FaCalendarCheck,
 } from "react-icons/fa";
 
 export default function Dashboard() {
@@ -54,8 +59,6 @@ export default function Dashboard() {
 
     carregarDados();
   }, []);
-
-  useHistoricoMensagensRealtime(setConsultas);
 
   // LÓGICA DE FILTRAGEM COMBINADA (Status + Busca Universal)
   const obterNomeAgente = (paciente) => {
@@ -116,6 +119,16 @@ export default function Dashboard() {
   );
   const totalPaginas = Math.ceil(consultasFiltradas.length / itensPorPagina);
 
+  const consultaIdsVisiveis = useMemo(
+    () => itensAtuais.map((consulta) => consulta.id),
+    [itensAtuais],
+  );
+  const atualizarStatusMensagens = useCallback((mensagens) => {
+    setConsultas((atuais) => mesclarStatusMensagens(atuais, mensagens));
+  }, []);
+
+  useStatusMensagensPolling(consultaIdsVisiveis, atualizarStatusMensagens);
+
   const irParaProximaPagina = () => {
     if (paginaAtual < totalPaginas) setPaginaAtual(paginaAtual + 1);
   };
@@ -125,11 +138,23 @@ export default function Dashboard() {
   };
 
   // LÓGICA DE RENDERIZAÇÃO DOS TIQUES DO WHATSAPP
-  const renderizarStatusWhatsApp = (status, dataEnvio, isMobile = false) => {
-    const data = new Date(dataEnvio);
+  const formatarDataEvento = (valor) => {
+    if (!valor) return "";
+    const data = new Date(valor);
+    if (Number.isNaN(data.getTime())) return "";
+    return `${data.toLocaleDateString("pt-BR")} às ${data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  };
 
-    // Omitimos o "timeZone: UTC" para ele usar automaticamente a hora local do computador (GMT-3)
-    const dataFormatada = `${data.toLocaleDateString("pt-BR")} às ${data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  const renderizarStatusWhatsApp = (mensagem, isMobile = false) => {
+    const status = mensagem?.status;
+    const dataStatus =
+      status === "LIDO"
+        ? mensagem.lido_em
+        : status === "ENTREGUE"
+          ? mensagem.entregue_em
+          : mensagem.data_envio;
+    const dataFormatada = formatarDataEvento(dataStatus);
+    const sufixoData = dataFormatada ? ` (${dataFormatada})` : "";
 
     const baseClass = isMobile
       ? "text-[10px] font-semibold border rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2"
@@ -142,7 +167,7 @@ export default function Dashboard() {
             className={`${baseClass} text-sky-700 bg-sky-50 border-sky-100`}
           >
             <FaCheckDouble size={isMobile ? 12 : 14} className="text-sky-500" />
-            Visto pelo paciente ({dataFormatada})
+            Visto pelo paciente{sufixoData}
           </span>
         );
       case "ENTREGUE":
@@ -154,7 +179,7 @@ export default function Dashboard() {
               size={isMobile ? 12 : 14}
               className="text-slate-400"
             />
-            Entregue ({dataFormatada})
+            Entregue{sufixoData}
           </span>
         );
       case "ENVIADO":
@@ -163,7 +188,7 @@ export default function Dashboard() {
             className={`${baseClass} text-slate-600 bg-slate-50 border-slate-100`}
           >
             <FaCheck size={isMobile ? 12 : 14} className="text-slate-400" />
-            Enviado ({dataFormatada})
+            Enviado{sufixoData}
           </span>
         );
       case "ERRO":
@@ -188,6 +213,35 @@ export default function Dashboard() {
           </span>
         );
     }
+  };
+
+  const renderizarConfirmacaoWhatsApp = (mensagem, isMobile = false) => {
+    if (!mensagem?.confirmacao_status) return null;
+
+    const baseClass = isMobile
+      ? "text-[10px] font-semibold border rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-1"
+      : "text-[11px] font-medium flex items-center gap-1.5 p-1 rounded w-fit mt-0.5";
+
+    if (mensagem.confirmacao_status === "CONFIRMADO") {
+      const dataFormatada = formatarDataEvento(mensagem.confirmado_em);
+      return (
+        <span
+          className={`${baseClass} border-emerald-100 bg-emerald-50 text-emerald-700`}
+        >
+          <FaCalendarCheck size={isMobile ? 12 : 14} />
+          Presença confirmada{dataFormatada ? ` (${dataFormatada})` : ""}
+        </span>
+      );
+    }
+
+    return (
+      <span
+        className={`${baseClass} border-amber-100 bg-amber-50 text-amber-700`}
+      >
+        <FaClock size={isMobile ? 12 : 14} />
+        Aguardando confirmação
+      </span>
+    );
   };
 
   // Funções de Disparo
@@ -225,7 +279,7 @@ export default function Dashboard() {
     setModalConfirmacao({ isOpen: false, consulta: null });
 
     try {
-      await mensageriaApi.dispararWhatsApp({
+      const resposta = await mensageriaApi.dispararWhatsApp({
         paciente_id: paciente.id,
         consulta_id: consulta.id, // O ID vital da consulta foi mantido
         telefone: paciente.telefone,
@@ -239,23 +293,11 @@ export default function Dashboard() {
           consulta.data_proxima_consulta || consulta.data_ultima_consulta,
       });
 
-      // A MÁGICA DO REACT ACONTECE AQUI:
-      setConsultas((consultasAtuais) =>
-        consultasAtuais.map((item) => {
-          // Comparamos o ID da CONSULTA, e não do paciente
-          if (item.id === consulta.id) {
-            return {
-              ...item,
-              // Injetamos o histórico direto na consulta
-              historico_mensagens: [
-                { data_envio: new Date().toISOString(), status: "ENVIADO" },
-                ...(item.historico_mensagens || []),
-              ],
-            };
-          }
-          return item;
-        }),
-      );
+      if (resposta.mensagem) {
+        setConsultas((atuais) =>
+          mesclarStatusMensagens(atuais, [resposta.mensagem]),
+        );
+      }
 
       setAlerta({
         isOpen: true,
@@ -409,12 +451,7 @@ export default function Dashboard() {
                       // Lê o histórico direto da consulta
                       const mensagens = consulta.historico_mensagens || [];
                       const ultimaMensagem =
-                        mensagens.length > 0
-                          ? mensagens.sort(
-                              (a, b) =>
-                                new Date(b.data_envio) - new Date(a.data_envio),
-                            )[0]
-                          : null;
+                        selecionarUltimaMensagem(mensagens);
 
                       return (
                         <tr
@@ -441,11 +478,16 @@ export default function Dashboard() {
 
                               {/* INDICADOR VISUAL DE MENSAGEM COM TIQUES */}
                               {ultimaMensagem ? (
-                                renderizarStatusWhatsApp(
-                                  ultimaMensagem.status,
-                                  ultimaMensagem.data_envio,
-                                  false,
-                                )
+                                <>
+                                  {renderizarStatusWhatsApp(
+                                    ultimaMensagem,
+                                    false,
+                                  )}
+                                  {renderizarConfirmacaoWhatsApp(
+                                    ultimaMensagem,
+                                    false,
+                                  )}
+                                </>
                               ) : (
                                 <span className="text-[11px] font-medium text-amber-600 flex items-center gap-1.5 p-1 bg-amber-50 rounded w-fit mt-0.5">
                                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
@@ -499,13 +541,7 @@ export default function Dashboard() {
 
                   // Lê o histórico direto da consulta
                   const mensagens = consulta.historico_mensagens || [];
-                  const ultimaMensagem =
-                    mensagens.length > 0
-                      ? mensagens.sort(
-                          (a, b) =>
-                            new Date(b.data_envio) - new Date(a.data_envio),
-                        )[0]
-                      : null;
+                  const ultimaMensagem = selecionarUltimaMensagem(mensagens);
 
                   return (
                     <div
@@ -530,11 +566,13 @@ export default function Dashboard() {
 
                           {/* INDICADOR VISUAL DE MENSAGEM MOBILE COM TIQUES */}
                           {ultimaMensagem ? (
-                            renderizarStatusWhatsApp(
-                              ultimaMensagem.status,
-                              ultimaMensagem.data_envio,
-                              true,
-                            )
+                            <>
+                              {renderizarStatusWhatsApp(ultimaMensagem, true)}
+                              {renderizarConfirmacaoWhatsApp(
+                                ultimaMensagem,
+                                true,
+                              )}
+                            </>
                           ) : (
                             <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2">
                               <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>

@@ -2,6 +2,7 @@ const mensagemRepository = require("../repositories/mensagemRepository");
 const notificacaoRepository = require("../repositories/notificacaoRepository");
 const webhookRepository = require("../repositories/webhookRepository");
 const { AppError } = require("../errors/AppError");
+const { randomUUID } = require("node:crypto");
 
 const TIPOS_MENSAGEM = Object.freeze({
   LEMBRETE_CONSULTA: "LEMBRETE_CONSULTA",
@@ -376,18 +377,18 @@ class MensageriaService {
       mensagem,
     });
     const botaoId = usarBotaoConfirmacao
-      ? `${BOTAO_CONFIRMAR_PRESENCA}:${consulta_id || paciente.id}`
+      ? `${BOTAO_CONFIRMAR_PRESENCA}:${consulta_id || paciente.id}:${randomUUID()}`
       : null;
 
     const { evolutionUrl, apikey, instanceName } = this.obterConfigEvolution();
 
     if (!evolutionUrl || !apikey || !instanceName) {
-      await this.registrarHistorico(
+      const historico = await this.registrarHistorico(
         {
           telefone_destino: telefoneLimpo,
           texto_enviado: texto,
           status: "SIMULADO",
-          status_ordem: 1,
+          status_ordem: 0,
           paciente_id: paciente.id || null,
           consulta_id: consulta_id || null,
           usuario_id: usuario_id || null,
@@ -397,7 +398,10 @@ class MensageriaService {
         },
         authHeader,
       );
-      return { aviso: "Mensagem simulada. Configure as variáveis." };
+      return {
+        aviso: "Mensagem simulada. Configure as variáveis.",
+        mensagem: historico,
+      };
     }
 
     const jsonData = await this.enviarEvolution({
@@ -411,13 +415,11 @@ class MensageriaService {
     if (!idDaMensagem) {
       console.error(
         "[MENSAGERIA] mensagem_id ausente na resposta da Evolution. " +
-          "O status ENTREGUE/LIDO não será atualizado para esta mensagem. " +
-          "Resposta recebida: " +
-          JSON.stringify(jsonData),
+          "O status ENTREGUE/LIDO não será atualizado para esta mensagem.",
       );
     }
 
-    await this.registrarHistorico(
+    const historico = await this.registrarHistorico(
       {
         paciente_id: paciente.id,
         consulta_id: consulta_id || null,
@@ -439,6 +441,7 @@ class MensageriaService {
       mensagem_id: idDaMensagem,
       resposta: jsonData,
       texto,
+      mensagem: historico,
     };
   }
 
@@ -473,9 +476,11 @@ class MensageriaService {
       const messageId = data?.keyId;
       const statusBruto = data?.update?.status ?? data?.status;
       const statusFormatado = this.mapearStatusMensagem(statusBruto);
+      const ordemStatus = this.obterOrdemStatus(statusFormatado);
+      const dataEvento = this.obterDataEvento(payload, data);
 
       console.log(
-        "[WEBHOOK_DIAG]",
+        "[WEBHOOK_STATUS]",
         JSON.stringify({
           eventoOriginal: payload?.event,
           eventoNormalizado: this.normalizarEventoWebhook(payload?.event),
@@ -498,10 +503,12 @@ class MensageriaService {
         continue;
       }
 
-      console.log(`🔍 Atualizando: ${messageId} → ${statusFormatado}`);
-
       await this.retry(() =>
-        webhookRepository.atualizarStatusMensagem(messageId, statusFormatado),
+        webhookRepository.atualizarStatusMensagem(messageId, {
+          status: statusFormatado,
+          ordem: ordemStatus,
+          dataEvento,
+        }),
       );
     }
   }
@@ -517,8 +524,9 @@ class MensageriaService {
       const botaoId = this.extrairBotaoConfirmacaoId(data);
 
       if (botaoId) {
+        const dataEvento = this.obterDataEvento(payload, data);
         await this.retry(() =>
-          webhookRepository.registrarConfirmacaoMensagem(botaoId),
+          webhookRepository.registrarConfirmacaoMensagem(botaoId, dataEvento),
         );
         continue;
       }
@@ -528,6 +536,20 @@ class MensageriaService {
   }
 
   extrairBotaoConfirmacaoId(data) {
+    let respostaInterativa = null;
+    const paramsJson =
+      data?.message?.interactiveResponseMessage?.nativeFlowResponseMessage
+        ?.paramsJson;
+
+    if (paramsJson) {
+      try {
+        const params = JSON.parse(paramsJson);
+        respostaInterativa = params.id;
+      } catch {
+        console.warn("[WEBHOOK] Resposta interativa com paramsJson inválido");
+      }
+    }
+
     const candidatos = [
       data?.message?.buttonsResponseMessage?.selectedButtonId,
       data?.message?.templateButtonReplyMessage?.selectedId,
@@ -536,6 +558,7 @@ class MensageriaService {
       data?.selectedButtonId,
       data?.body,
       data?.message?.conversation,
+      respostaInterativa,
     ].filter(Boolean);
 
     return candidatos.find((valor) =>
@@ -568,6 +591,21 @@ class MensageriaService {
     }
 
     return null;
+  }
+
+  obterOrdemStatus(status) {
+    if (status === "LIDO") return 3;
+    if (status === "ENTREGUE") return 2;
+    return 0;
+  }
+
+  obterDataEvento(payload, data) {
+    const valor = data?.date_time || payload?.date_time;
+    const dataEvento = valor ? new Date(valor) : new Date();
+
+    return Number.isNaN(dataEvento.getTime())
+      ? new Date().toISOString()
+      : dataEvento.toISOString();
   }
 }
 

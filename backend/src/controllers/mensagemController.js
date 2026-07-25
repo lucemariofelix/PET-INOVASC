@@ -11,7 +11,19 @@ exports.enviarMensagem = async (request, reply) => {
       authHeader,
     ),
     responder: (resultado) =>
-      reply.status(200).send({ sucesso: true, evolution: resultado }),
+      reply.status(200).send({ sucesso: true, ...resultado }),
+  });
+};
+
+exports.listarStatusMensagens = async (request, reply) => {
+  const authHeader = request.headers.authorization;
+  return executarController(request, reply, {
+    executar: () =>
+      mensagemService.listarStatusMensagens(
+        request.query.consulta_ids,
+        authHeader,
+      ),
+    responder: (mensagens) => reply.send({ mensagens }),
   });
 };
 

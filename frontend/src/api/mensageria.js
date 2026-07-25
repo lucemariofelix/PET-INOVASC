@@ -1,4 +1,4 @@
-import { fetchComAutenticacao, lerErro } from "./client";
+import { fetchComAutenticacao, lerErro } from "./client.js";
 
 const mensageriaApi = {
   dispararWhatsApp: async (payload) => {
@@ -19,6 +19,21 @@ const mensageriaApi = {
     });
     if (!res.ok) {
       throw new Error(await lerErro(res, "Erro ao iniciar os disparos"));
+    }
+    return res.json();
+  },
+
+  getStatusMensagens: async (consultaIds, options = {}) => {
+    const params = new URLSearchParams({
+      consulta_ids: consultaIds.join(","),
+    });
+    const res = await fetchComAutenticacao(`/mensagens/status?${params}`, {
+      signal: options.signal,
+    });
+    if (!res.ok) {
+      throw new Error(
+        await lerErro(res, "Erro ao atualizar status das mensagens"),
+      );
     }
     return res.json();
   },

@@ -2,9 +2,14 @@ const mensageriaService = require("./mensageriaService");
 
 class WebhookService {
   async processarEvento(payload) {
-    // Log do payload completo (Pode comentar/remover quando for para produção)
-    console.log("=== JSON BRUTO DA V2.3.7 ===");
-    console.log(JSON.stringify(payload, null, 2));
+    console.log(
+      "[WEBHOOK] Evento recebido",
+      JSON.stringify({
+        evento: payload?.event || null,
+        itens: Array.isArray(payload?.data) ? payload.data.length : 1,
+        instancia: payload?.instance || null,
+      }),
+    );
 
     try {
       await mensageriaService.processarEventoWebhook(payload);

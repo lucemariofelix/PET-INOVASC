@@ -1,5 +1,10 @@
 const mensageriaService = require("./mensageriaService");
 const { TIPOS_MENSAGEM } = require("./mensageriaService");
+const mensagemRepository = require("../repositories/mensagemRepository");
+const { ValidationError } = require("../errors/AppError");
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 class MensagemService {
   // ========================================================================
@@ -50,7 +55,34 @@ class MensagemService {
       authHeader,
     });
 
-    return resultado.resposta || resultado;
+    return {
+      mensagem: resultado.mensagem,
+      ...(resultado.aviso ? { aviso: resultado.aviso } : {}),
+    };
+  }
+
+  async listarStatusMensagens(consultaIdsBrutos, authHeader) {
+    const consultaIds = String(consultaIdsBrutos || "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    if (consultaIds.length === 0) {
+      throw new ValidationError("Informe ao menos uma consulta para verificar.");
+    }
+
+    const idsUnicos = [...new Set(consultaIds)];
+    if (idsUnicos.length > 20) {
+      throw new ValidationError("Consulte no máximo 20 consultas por vez.");
+    }
+
+    if (idsUnicos.some((id) => !UUID_REGEX.test(id))) {
+      throw new ValidationError(
+        "Um ou mais identificadores de consulta são inválidos.",
+      );
+    }
+
+    return mensagemRepository.listarUltimasPorConsultas(idsUnicos, authHeader);
   }
 
   // ========================================================================

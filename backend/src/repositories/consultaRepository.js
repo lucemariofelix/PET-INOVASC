@@ -15,8 +15,20 @@ class ConsultaRepository {
         data_proxima_consulta,
         status_consulta,
         historico_mensagens (
+          id,
+          mensagem_id,
+          consulta_id,
+          paciente_id,
           data_envio,
-          status
+          status,
+          status_ordem,
+          status_atualizado_em,
+          entregue_em,
+          lido_em,
+          confirmacao_status,
+          confirmado_em,
+          botao_id,
+          tipo_mensagem
         ),
         pacientes (
           id,
@@ -64,8 +76,20 @@ class ConsultaRepository {
           consentimento_msg,
           telefone,
           historico_mensagens (
+            id,
+            mensagem_id,
+            consulta_id,
+            paciente_id,
             data_envio,
-            status
+            status,
+            status_ordem,
+            status_atualizado_em,
+            entregue_em,
+            lido_em,
+            confirmacao_status,
+            confirmado_em,
+            botao_id,
+            tipo_mensagem
           )
         )
       `)

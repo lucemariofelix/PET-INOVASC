@@ -5,13 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "test": "node --test src/api/client.test.js src/utils/pacienteSearch.test.js",
+    "test": "node --test src/api/client.test.js src/api/mensageria.test.js src/utils/pacienteSearch.test.js src/utils/mensagemStatus.test.js",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.2",
     "@tailwindcss/vite": "^4.3.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

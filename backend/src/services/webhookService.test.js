@@ -11,10 +11,17 @@ const webhookService = require("./webhookService");
 // =============================================================================
 const criarPayload = (status) => ({
   event: "messages.update",
+  date_time: "2026-07-21T22:54:24.369Z",
   data: {
     keyId: "msg-123",
     update: { status },
   },
+});
+
+const atualizacaoEsperada = (status, ordem) => ({
+  status,
+  ordem,
+  dataEvento: "2026-07-21T22:54:24.369Z",
 });
 
 // =============================================================================
@@ -79,7 +86,7 @@ describe("WebhookService", () => {
       );
       expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
         "msg-123",
-        "ENTREGUE",
+        atualizacaoEsperada("ENTREGUE", 2),
       );
     });
 
@@ -94,7 +101,7 @@ describe("WebhookService", () => {
       );
       expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
         "msg-123",
-        "ENTREGUE",
+        atualizacaoEsperada("ENTREGUE", 2),
       );
     });
 
@@ -109,7 +116,7 @@ describe("WebhookService", () => {
       );
       expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
         "msg-123",
-        "ENTREGUE",
+        atualizacaoEsperada("ENTREGUE", 2),
       );
     });
 
@@ -121,7 +128,7 @@ describe("WebhookService", () => {
       );
       expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
         "msg-123",
-        "ENTREGUE",
+        atualizacaoEsperada("ENTREGUE", 2),
       );
     });
 
@@ -136,7 +143,7 @@ describe("WebhookService", () => {
       );
       expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
         "msg-123",
-        "ENTREGUE",
+        atualizacaoEsperada("ENTREGUE", 2),
       );
     });
 
@@ -151,7 +158,7 @@ describe("WebhookService", () => {
       );
       expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
         "msg-123",
-        "LIDO",
+        atualizacaoEsperada("LIDO", 3),
       );
     });
 
@@ -166,7 +173,7 @@ describe("WebhookService", () => {
       );
       expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
         "msg-123",
-        "LIDO",
+        atualizacaoEsperada("LIDO", 3),
       );
     });
 
@@ -181,7 +188,7 @@ describe("WebhookService", () => {
       );
       expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
         "msg-123",
-        "LIDO",
+        atualizacaoEsperada("LIDO", 3),
       );
     });
 
@@ -193,13 +200,14 @@ describe("WebhookService", () => {
       );
       expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
         "msg-123",
-        "LIDO",
+        atualizacaoEsperada("LIDO", 3),
       );
     });
 
     it('deve processar "messages.update" mesmo com fromMe false', async () => {
       await webhookService.processarEvento({
         event: "messages.update",
+        date_time: "2026-07-21T22:54:24.369Z",
         data: {
           keyId: "msg-from-me-false",
           fromMe: false,
@@ -209,13 +217,14 @@ describe("WebhookService", () => {
 
       expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
         "msg-from-me-false",
-        "LIDO",
+        atualizacaoEsperada("LIDO", 3),
       );
     });
 
     it("deve usar data.keyId e ignorar data.messageId em messages.update", async () => {
       await webhookService.processarEvento({
         event: "messages.update",
+        date_time: "2026-07-21T22:54:24.369Z",
         data: {
           keyId: "key-id-correto",
           messageId: "message-id-errado",
@@ -225,7 +234,7 @@ describe("WebhookService", () => {
 
       expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
         "key-id-correto",
-        "LIDO",
+        atualizacaoEsperada("LIDO", 3),
       );
     });
 
@@ -246,6 +255,7 @@ describe("WebhookService", () => {
     it("deve registrar confirmação quando messages.upsert receber resposta de botão", async () => {
       await webhookService.processarEvento({
         event: "messages.upsert",
+        date_time: "2026-07-21T23:00:00.000Z",
         data: {
           fromMe: false,
           message: {
@@ -258,8 +268,46 @@ describe("WebhookService", () => {
 
       expect(webhookRepository.registrarConfirmacaoMensagem).toHaveBeenCalledWith(
         "CONFIRMAR_PRESENCA:consulta-123",
+        "2026-07-21T23:00:00.000Z",
       );
       expect(webhookRepository.atualizarStatusMensagem).not.toHaveBeenCalled();
+    });
+
+    it("deve reconhecer confirmação em resposta interativa native-flow", async () => {
+      await webhookService.processarEvento({
+        event: "messages.upsert",
+        date_time: "2026-07-21T23:05:00.000Z",
+        data: {
+          key: { fromMe: false },
+          message: {
+            interactiveResponseMessage: {
+              nativeFlowResponseMessage: {
+                paramsJson: JSON.stringify({
+                  id: "CONFIRMAR_PRESENCA:consulta-123:token-unico",
+                }),
+              },
+            },
+          },
+        },
+      });
+
+      expect(webhookRepository.registrarConfirmacaoMensagem).toHaveBeenCalledWith(
+        "CONFIRMAR_PRESENCA:consulta-123:token-unico",
+        "2026-07-21T23:05:00.000Z",
+      );
+    });
+
+    it("não registra segredos nem conteúdo do payload bruto", async () => {
+      await webhookService.processarEvento({
+        event: "connection.update",
+        instance: "ubs-oficial-v2",
+        apikey: "CHAVE-NAO-DEVE-APARECER",
+        data: { message: { conversation: "conteudo privado" } },
+      });
+
+      const logs = console.log.mock.calls.flat().join(" ");
+      expect(logs).not.toContain("CHAVE-NAO-DEVE-APARECER");
+      expect(logs).not.toContain("conteudo privado");
     });
   });
 });
