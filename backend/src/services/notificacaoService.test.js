@@ -5,6 +5,7 @@ vi.mock("../repositories/notificacaoRepository");
 
 const notificacaoRepository = require("../repositories/notificacaoRepository");
 const notificacaoService = require("./notificacaoService");
+const mensageriaService = require("./mensageriaService");
 
 // =============================================================================
 // Dados base
@@ -230,6 +231,11 @@ describe("NotificacaoService", () => {
       process.env.EVOLUTION_API_URL = "https://evo.example.com";
       process.env.EVOLUTION_API_KEY = "api-key-123";
       process.env.EVOLUTION_INSTANCE_NAME = "ubs_test";
+
+      vi.spyOn(mensageriaService, "verificarNumeroWhatsApp").mockResolvedValue({
+        number: "5584999998888",
+        exists: true,
+      });
 
       vi.stubGlobal(
         "fetch",

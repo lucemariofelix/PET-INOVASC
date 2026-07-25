@@ -1,7 +1,7 @@
 const mensagemRepository = require("../repositories/mensagemRepository");
 const notificacaoRepository = require("../repositories/notificacaoRepository");
 const webhookRepository = require("../repositories/webhookRepository");
-const { AppError } = require("../errors/AppError");
+const { AppError, ValidationError } = require("../errors/AppError");
 const { randomUUID } = require("node:crypto");
 
 const TIPOS_MENSAGEM = Object.freeze({
@@ -14,12 +14,36 @@ const TIPOS_MENSAGEM = Object.freeze({
 const BOTAO_CONFIRMAR_PRESENCA = "CONFIRMAR_PRESENCA";
 const MENSAGEM_WHATSAPP_DESCONECTADO =
   "O WhatsApp do posto está desconectado. Vá à aba de configurações e leia o QR Code antes de enviar mensagens.";
+const DDDS_BRASILEIROS = new Set([
+  "11", "12", "13", "14", "15", "16", "17", "18", "19",
+  "21", "22", "24", "27", "28",
+  "31", "32", "33", "34", "35", "37", "38",
+  "41", "42", "43", "44", "45", "46", "47", "48", "49",
+  "51", "53", "54", "55",
+  "61", "62", "63", "64", "65", "66", "67", "68", "69",
+  "71", "73", "74", "75", "77", "79",
+  "81", "82", "83", "84", "85", "86", "87", "88", "89",
+  "91", "92", "93", "94", "95", "96", "97", "98", "99",
+]);
+const STATUS_EVOLUTION_COM_ERRO = new Set([
+  "ERROR",
+  "FAILED",
+  "CANCELLED",
+  "CANCELED",
+]);
 
 const erroWhatsAppDesconectado = () =>
   new AppError(
     MENSAGEM_WHATSAPP_DESCONECTADO,
     409,
     "WHATSAPP_DESCONECTADO",
+  );
+
+const erroProvedorWhatsApp = () =>
+  new AppError(
+    "Não foi possível enviar a mensagem pelo WhatsApp. Tente novamente mais tarde.",
+    502,
+    "WHATSAPP_PROVIDER_ERROR",
   );
 
 const respostaIndicaDesconexao = (texto) => {
@@ -54,11 +78,56 @@ class MensageriaService {
 
   sanitizarTelefone(telefone) {
     if (!telefone) {
-      throw new Error("Paciente sem telefone cadastrado.");
+      throw new ValidationError("Paciente sem telefone cadastrado.");
     }
 
-    const telefoneLimpo = telefone.replace(/\D/g, "");
-    return telefoneLimpo.startsWith("55") ? telefoneLimpo : `55${telefoneLimpo}`;
+    const apenasDigitos = String(telefone).replace(/\D/g, "");
+    let telefoneComDdi;
+
+    if (apenasDigitos.length === 11) {
+      telefoneComDdi = `55${apenasDigitos}`;
+    } else if (apenasDigitos.length === 13 && apenasDigitos.startsWith("55")) {
+      telefoneComDdi = apenasDigitos;
+    } else {
+      throw new ValidationError(
+        "Informe um celular brasileiro com DDD e nono dígito.",
+      );
+    }
+
+    const ddd = telefoneComDdi.slice(2, 4);
+    const numeroLocal = telefoneComDdi.slice(4);
+
+    if (!DDDS_BRASILEIROS.has(ddd) || !/^9\d{8}$/.test(numeroLocal)) {
+      throw new ValidationError(
+        "Informe um celular brasileiro válido com DDD e nono dígito.",
+      );
+    }
+
+    return telefoneComDdi;
+  }
+
+  diagnosticosAtivos() {
+    return String(process.env.EVOLUTION_DIAGNOSTICS).toLowerCase() === "true";
+  }
+
+  mascararTelefone(telefone) {
+    const apenasDigitos = String(telefone || "").replace(/\D/g, "");
+    if (apenasDigitos.length < 4) return "***";
+    return `${apenasDigitos.slice(0, 2)}${"*".repeat(
+      Math.max(apenasDigitos.length - 4, 1),
+    )}${apenasDigitos.slice(-2)}`;
+  }
+
+  mascararJid(jid) {
+    if (!jid) return null;
+    const [numero, dominio] = String(jid).split("@");
+    const numeroMascarado = this.mascararTelefone(numero);
+    return dominio ? `${numeroMascarado}@${dominio}` : numeroMascarado;
+  }
+
+  logDiagnostico(evento, dados) {
+    if (!this.diagnosticosAtivos()) return;
+    console.log(`[${evento}]`, JSON.stringify(dados));
   }
 
   validarConsentimento(paciente) {
@@ -223,8 +292,99 @@ class MensageriaService {
     };
   }
 
+  async verificarNumeroWhatsApp(telefone) {
+    const { evolutionUrl, apikey, instanceName } = this.obterConfigEvolution();
+    let resposta;
+
+    try {
+      resposta = await fetch(
+        `${evolutionUrl}/chat/whatsappNumbers/${instanceName}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey,
+          },
+          body: JSON.stringify({ numbers: [telefone] }),
+        },
+      );
+    } catch (error) {
+      this.logDiagnostico("EVOLUTION_PREFLIGHT_ERROR", {
+        telefone: this.mascararTelefone(telefone),
+        erro: error?.name || "Error",
+      });
+      throw erroProvedorWhatsApp();
+    }
+
+    let textoResposta;
+    try {
+      textoResposta = await resposta.text();
+    } catch {
+      throw erroProvedorWhatsApp();
+    }
+
+    if (!resposta.ok) {
+      this.logDiagnostico("EVOLUTION_PREFLIGHT_RESPONSE", {
+        httpStatus: resposta.status,
+        ok: false,
+      });
+      if (respostaIndicaDesconexao(textoResposta)) {
+        throw erroWhatsAppDesconectado();
+      }
+      throw erroProvedorWhatsApp();
+    }
+
+    let dadosResposta;
+
+    try {
+      dadosResposta = JSON.parse(textoResposta);
+    } catch {
+      this.logDiagnostico("EVOLUTION_PREFLIGHT_RESPONSE", {
+        httpStatus: resposta.status,
+        jsonValido: false,
+      });
+      throw erroProvedorWhatsApp();
+    }
+
+    this.logDiagnostico("EVOLUTION_PREFLIGHT_RESPONSE", {
+      httpStatus: resposta.status,
+      ok: resposta.ok,
+      formato: Array.isArray(dadosResposta) ? "array" : "object",
+      chaves:
+        dadosResposta && !Array.isArray(dadosResposta)
+          ? Object.keys(dadosResposta)
+          : [],
+    });
+
+    const numeros = Array.isArray(dadosResposta)
+      ? dadosResposta
+      : dadosResposta?.numbers;
+    const verificacao = Array.isArray(numeros)
+      ? numeros.find(
+          (item) =>
+            String(item?.number || "").replace(/\D/g, "") === telefone,
+        ) || numeros[0]
+      : null;
+
+    if (!verificacao || typeof verificacao.exists !== "boolean") {
+      throw erroProvedorWhatsApp();
+    }
+
+    if (!verificacao.exists) {
+      throw new AppError(
+        "O número informado não possui uma conta ativa no WhatsApp.",
+        422,
+        "WHATSAPP_NUMBER_NOT_FOUND",
+      );
+    }
+
+    return verificacao;
+  }
+
   async enviarEvolution({ telefone, texto, usarBotaoConfirmacao, botaoId }) {
     const { evolutionUrl, apikey, instanceName } = this.obterConfigEvolution();
+
+    await this.verificarNumeroWhatsApp(telefone);
 
     const payload = this.montarPayloadEvolution({
       telefone,
@@ -233,36 +393,93 @@ class MensageriaService {
       botaoId,
     });
 
-    const resposta = await fetch(
-      `${evolutionUrl}/message/${payload.endpoint}/${instanceName}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey,
-        },
-        body: JSON.stringify(payload.body),
-      },
-    );
+    this.logDiagnostico("EVOLUTION_SEND_REQUEST", {
+      endpoint: payload.endpoint,
+      instancia: instanceName,
+      telefone: this.mascararTelefone(telefone),
+      quantidadeDigitos: telefone.length,
+      tipoMensagem: usarBotaoConfirmacao ? "buttons" : "text",
+      possuiBotao: usarBotaoConfirmacao,
+    });
 
-    const textData = await resposta.text();
+    let resposta;
+    try {
+      resposta = await fetch(
+        `${evolutionUrl}/message/${payload.endpoint}/${instanceName}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey,
+          },
+          body: JSON.stringify(payload.body),
+        },
+      );
+    } catch (error) {
+      this.logDiagnostico("EVOLUTION_SEND_ERROR", {
+        endpoint: payload.endpoint,
+        erro: error?.name || "Error",
+      });
+      throw erroProvedorWhatsApp();
+    }
+
+    let textData;
+    try {
+      textData = await resposta.text();
+    } catch {
+      throw erroProvedorWhatsApp();
+    }
 
     if (!resposta.ok) {
       console.error("[EVOLUTION] Falha ao enviar mensagem.", {
         status: resposta.status,
-        resposta: textData,
+      });
+      this.logDiagnostico("EVOLUTION_SEND_RESPONSE", {
+        httpStatus: resposta.status,
+        ok: false,
+        desconectado: respostaIndicaDesconexao(textData),
       });
       if (respostaIndicaDesconexao(textData)) {
         throw erroWhatsAppDesconectado();
       }
-      throw new AppError(
-        "Não foi possível enviar a mensagem pelo WhatsApp. Tente novamente mais tarde.",
-        502,
-        "WHATSAPP_PROVIDER_ERROR",
-      );
+      throw erroProvedorWhatsApp();
     }
 
-    return JSON.parse(textData);
+    let jsonData;
+    try {
+      jsonData = JSON.parse(textData);
+    } catch {
+      this.logDiagnostico("EVOLUTION_SEND_RESPONSE", {
+        httpStatus: resposta.status,
+        jsonValido: false,
+      });
+      throw erroProvedorWhatsApp();
+    }
+
+    const idDaMensagem = jsonData?.key?.id || jsonData?.id || null;
+    const statusInterno = String(jsonData?.status || "").toUpperCase();
+    const respostaComErro = Boolean(
+      jsonData?.error ||
+        jsonData?.response?.error ||
+        STATUS_EVOLUTION_COM_ERRO.has(statusInterno),
+    );
+
+    this.logDiagnostico("EVOLUTION_SEND_RESPONSE", {
+      httpStatus: resposta.status,
+      ok: resposta.ok,
+      chaves:
+        jsonData && typeof jsonData === "object" ? Object.keys(jsonData) : [],
+      mensagemId: idDaMensagem,
+      remoteJid: this.mascararJid(jsonData?.key?.remoteJid),
+      status: jsonData?.status || null,
+      possuiErro: respostaComErro,
+    });
+
+    if (!idDaMensagem || respostaComErro) {
+      throw erroProvedorWhatsApp();
+    }
+
+    return jsonData;
   }
 
   async registrarHistorico(dadosHistorico, authHeader) {
@@ -410,14 +627,7 @@ class MensageriaService {
       usarBotaoConfirmacao,
       botaoId,
     });
-    const idDaMensagem = jsonData?.key?.id || jsonData?.id || null;
-
-    if (!idDaMensagem) {
-      console.error(
-        "[MENSAGERIA] mensagem_id ausente na resposta da Evolution. " +
-          "O status ENTREGUE/LIDO não será atualizado para esta mensagem.",
-      );
-    }
+    const idDaMensagem = jsonData?.key?.id || jsonData?.id;
 
     const historico = await this.registrarHistorico(
       {
@@ -435,6 +645,13 @@ class MensageriaService {
       },
       authHeader,
     );
+
+    this.logDiagnostico("EVOLUTION_SEND_PERSISTED", {
+      mensagemId: idDaMensagem,
+      consultaId: consulta_id || null,
+      status: "ENVIADO",
+      telefone: this.mascararTelefone(telefoneLimpo),
+    });
 
     return {
       telefoneLimpo,
@@ -473,25 +690,28 @@ class MensageriaService {
     const itensArray = this.obterItensWebhook(payload);
 
     for (const data of itensArray) {
-      const messageId = data?.keyId;
+      const messageId = data?.keyId || data?.key?.id;
       const statusBruto = data?.update?.status ?? data?.status;
       const statusFormatado = this.mapearStatusMensagem(statusBruto);
       const ordemStatus = this.obterOrdemStatus(statusFormatado);
       const dataEvento = this.obterDataEvento(payload, data);
 
-      console.log(
-        "[WEBHOOK_STATUS]",
-        JSON.stringify({
-          eventoOriginal: payload?.event,
-          eventoNormalizado: this.normalizarEventoWebhook(payload?.event),
-          messageId: messageId ?? null,
-          statusBruto: statusBruto ?? null,
-          isFromMe: data?.fromMe ?? data?.key?.fromMe ?? null,
-        }),
-      );
+      this.logDiagnostico("EVOLUTION_WEBHOOK_STATUS", {
+        eventoOriginal: payload?.event,
+        eventoNormalizado: this.normalizarEventoWebhook(payload?.event),
+        keyId: data?.keyId ?? null,
+        keyObjectId: data?.key?.id ?? null,
+        messageIdInterno: data?.messageId ?? null,
+        idCorrelacao: messageId ?? null,
+        statusBruto: statusBruto ?? null,
+        statusNormalizado: statusFormatado,
+        isFromMe: data?.fromMe ?? data?.key?.fromMe ?? null,
+      });
 
       if (!messageId) {
-        console.warn("[WEBHOOK] Ignorado: keyId ausente", { statusBruto });
+        console.warn("[WEBHOOK] Ignorado: ID de correlação ausente", {
+          statusBruto,
+        });
         continue;
       }
 
@@ -503,13 +723,21 @@ class MensageriaService {
         continue;
       }
 
-      await this.retry(() =>
+      const linhasAtualizadas = await this.retry(() =>
         webhookRepository.atualizarStatusMensagem(messageId, {
           status: statusFormatado,
           ordem: ordemStatus,
           dataEvento,
         }),
       );
+
+      this.logDiagnostico("EVOLUTION_WEBHOOK_MATCH", {
+        mensagemId: messageId,
+        status: statusFormatado,
+        linhasAtualizadas: Array.isArray(linhasAtualizadas)
+          ? linhasAtualizadas.length
+          : 0,
+      });
     }
   }
 

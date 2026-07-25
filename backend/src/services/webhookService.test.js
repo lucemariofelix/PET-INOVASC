@@ -238,6 +238,23 @@ describe("WebhookService", () => {
       );
     });
 
+    it("deve usar data.key.id quando keyId não estiver presente", async () => {
+      await webhookService.processarEvento({
+        event: "messages.update",
+        date_time: "2026-07-21T22:54:24.369Z",
+        data: {
+          key: { id: "key-object-id", fromMe: true },
+          messageId: "message-id-interno",
+          update: { status: "READ" },
+        },
+      });
+
+      expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
+        "key-object-id",
+        atualizacaoEsperada("LIDO", 3),
+      );
+    });
+
     it("deve ignorar messages.update sem data.keyId mesmo com messageId", async () => {
       vi.spyOn(console, "warn").mockImplementation(() => {});
 
@@ -298,6 +315,7 @@ describe("WebhookService", () => {
     });
 
     it("não registra segredos nem conteúdo do payload bruto", async () => {
+      process.env.EVOLUTION_DIAGNOSTICS = "true";
       await webhookService.processarEvento({
         event: "connection.update",
         instance: "ubs-oficial-v2",

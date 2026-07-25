@@ -43,6 +43,10 @@ beforeEach(() => {
   // A conexão real é coberta separadamente; aqui isolamos o envio.
   vi.spyOn(mensageriaService, "verificarConexaoWhatsApp")
     .mockResolvedValue({ conectado: true, estado: "open" });
+  vi.spyOn(mensageriaService, "verificarNumeroWhatsApp").mockResolvedValue({
+    number: "5584999998888",
+    exists: true,
+  });
 
   // Mock do repository
   mensagemRepository.salvarHistorico = vi.fn().mockResolvedValue({
@@ -190,6 +194,9 @@ describe("MensagemService", () => {
 
       // Assert: fetch chamado com parâmetros corretos
       expect(fetch).toHaveBeenCalledTimes(1);
+      expect(
+        mensageriaService.verificarNumeroWhatsApp,
+      ).toHaveBeenCalledWith("5584999998888");
 
       const [url, options] = fetch.mock.calls[0];
       expect(url).toBe("https://evo.example.com/message/sendText/ubs_test");
@@ -378,6 +385,155 @@ describe("MensagemService", () => {
         statusCode: 400,
         code: "VALIDATION_ERROR",
       });
+    });
+
+    it.each([
+      ["84999998888", "5584999998888"],
+      ["(84) 9 9999-8888", "5584999998888"],
+      ["5584999998888", "5584999998888"],
+    ])("deve normalizar celular brasileiro válido %s", (entrada, esperado) => {
+      expect(mensageriaService.sanitizarTelefone(entrada)).toBe(esperado);
+    });
+
+    it.each([
+      "8499998888",
+      "5500999998888",
+      "558499998888",
+      "15584999998888",
+    ])("deve rejeitar telefone inválido %s", (telefone) => {
+      expect(() => mensageriaService.sanitizarTelefone(telefone)).toThrow(
+        /celular brasileiro/i,
+      );
+    });
+
+    it("deve rejeitar HTTP 2xx sem identificador da mensagem", async () => {
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ status: "PENDING" })),
+      });
+
+      await expect(
+        mensagemService.dispararMensagem(dadosBase, authHeader),
+      ).rejects.toMatchObject({
+        statusCode: 502,
+        code: "WHATSAPP_PROVIDER_ERROR",
+      });
+      expect(mensagemRepository.salvarHistorico).not.toHaveBeenCalled();
+    });
+
+    it("deve rejeitar resposta de envio com JSON inválido", async () => {
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve("resposta-invalida"),
+      });
+
+      await expect(
+        mensagemService.dispararMensagem(dadosBase, authHeader),
+      ).rejects.toMatchObject({ code: "WHATSAPP_PROVIDER_ERROR" });
+      expect(mensagemRepository.salvarHistorico).not.toHaveBeenCalled();
+    });
+
+    it("deve rejeitar status interno de falha mesmo com key.id", async () => {
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({ key: { id: "MSG-FALHA" }, status: "FAILED" }),
+          ),
+      });
+
+      await expect(
+        mensagemService.dispararMensagem(dadosBase, authHeader),
+      ).rejects.toMatchObject({ code: "WHATSAPP_PROVIDER_ERROR" });
+      expect(mensagemRepository.salvarHistorico).not.toHaveBeenCalled();
+    });
+
+    it("deve validar a existência do número no preflight", async () => {
+      mensageriaService.verificarNumeroWhatsApp.mockRestore();
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              numbers: [{ number: "5584999998888", exists: true }],
+            }),
+          ),
+      });
+
+      await expect(
+        mensageriaService.verificarNumeroWhatsApp("5584999998888"),
+      ).resolves.toMatchObject({ exists: true });
+      expect(fetch).toHaveBeenCalledWith(
+        "https://evo.example.com/chat/whatsappNumbers/ubs_test",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ numbers: ["5584999998888"] }),
+        }),
+      );
+    });
+
+    it("deve rejeitar número inexistente no WhatsApp", async () => {
+      mensageriaService.verificarNumeroWhatsApp.mockRestore();
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () =>
+          Promise.resolve(
+            JSON.stringify([
+              { number: "5584999998888", exists: false },
+            ]),
+          ),
+      });
+
+      await expect(
+        mensageriaService.verificarNumeroWhatsApp("5584999998888"),
+      ).rejects.toMatchObject({
+        statusCode: 422,
+        code: "WHATSAPP_NUMBER_NOT_FOUND",
+      });
+    });
+
+    it("deve falhar fechado quando o preflight estiver indisponível", async () => {
+      mensageriaService.verificarNumeroWhatsApp.mockRestore();
+      fetch.mockRejectedValue(new Error("offline"));
+
+      await expect(
+        mensageriaService.verificarNumeroWhatsApp("5584999998888"),
+      ).rejects.toMatchObject({
+        statusCode: 502,
+        code: "WHATSAPP_PROVIDER_ERROR",
+      });
+    });
+
+    it("deve manter dados sensíveis fora dos logs diagnósticos", async () => {
+      process.env.EVOLUTION_DIAGNOSTICS = "true";
+      const log = vi.spyOn(console, "log").mockImplementation(() => {});
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 201,
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              key: {
+                id: "MSG-LOG-1",
+                remoteJid: "5584999998888@s.whatsapp.net",
+              },
+              status: "PENDING",
+            }),
+          ),
+      });
+
+      await mensagemService.dispararMensagem(dadosBase, authHeader);
+
+      const logs = log.mock.calls.flat().join(" ");
+      expect(logs).not.toContain("api-key-123");
+      expect(logs).not.toContain("5584999998888");
+      expect(logs).not.toContain("Olá, *Maria Silva*!");
+      expect(logs).toContain("55*********88");
     });
   });
 });
