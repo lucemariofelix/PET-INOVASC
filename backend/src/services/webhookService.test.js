@@ -489,7 +489,7 @@ describe("WebhookService", () => {
           key: {
             fromMe: false,
             remoteJid: "123456789012345@lid",
-            remoteJidAlt: "5584999998888@s.whatsapp.net",
+            remoteJidAlt: "558499998888@s.whatsapp.net",
           },
         }),
       );
@@ -509,7 +509,7 @@ describe("WebhookService", () => {
             fromMe: false,
             remoteJid: "123456789012345@lid",
             remoteJidAlt: "987654321012345@lid",
-            senderPn: "5584999998888@s.whatsapp.net",
+            senderPn: "558499998888@s.whatsapp.net",
           },
         }),
       );
@@ -521,6 +521,53 @@ describe("WebhookService", () => {
         "2026-07-25T12:00:00.000Z",
       );
     });
+
+    it("deve restaurar o nono dígito do remoteJid brasileiro recebido", async () => {
+      await webhookService.processarEvento(
+        criarRespostaTexto("1", {
+          key: {
+            fromMe: false,
+            remoteJid: "558499998888@s.whatsapp.net",
+          },
+        }),
+      );
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).toHaveBeenCalledWith(
+        "5584999998888",
+        "2026-07-25T12:00:00.000Z",
+      );
+    });
+
+    it("deve preservar o telefone que já contém o nono dígito", async () => {
+      await webhookService.processarEvento(criarRespostaTexto("2"));
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).toHaveBeenCalledWith(
+        "5584999998888",
+        "2026-07-25T12:00:00.000Z",
+      );
+    });
+
+    it.each([
+      "550099998888@s.whatsapp.net",
+      "351234567890@s.whatsapp.net",
+    ])(
+      "deve rejeitar remetente de 12 dígitos inválido: %s",
+      async (remoteJid) => {
+        await webhookService.processarEvento(
+          criarRespostaTexto("1", {
+            key: { fromMe: false, remoteJid },
+          }),
+        );
+
+        expect(
+          webhookRepository.listarConfirmacoesPendentesPorTelefone,
+        ).not.toHaveBeenCalled();
+      },
+    );
 
     it("nunca deve interpretar os dígitos de @lid como telefone", async () => {
       await webhookService.processarEvento(
@@ -625,6 +672,28 @@ describe("WebhookService", () => {
       expect(logs).toContain('"campo":"key.remoteJid"');
       expect(logs).toContain('"dominio":"@lid"');
       expect(logs).not.toContain("123456789012345");
+    });
+
+    it("deve diagnosticar a restauração do nono dígito sem expor o telefone", async () => {
+      process.env.EVOLUTION_DIAGNOSTICS = "true";
+
+      await webhookService.processarEvento(
+        criarRespostaTexto("1", {
+          key: {
+            fromMe: false,
+            remoteJid: "558499998888@s.whatsapp.net",
+          },
+        }),
+      );
+
+      const logs = console.log.mock.calls.flat().join(" ");
+      expect(logs).toContain('"quantidadeDigitosOriginal":12');
+      expect(logs).toContain('"quantidadeDigitosNormalizada":13');
+      expect(logs).toContain(
+        '"normalizacaoAplicada":"NONO_DIGITO_RESTAURADO"',
+      );
+      expect(logs).not.toContain("558499998888");
+      expect(logs).not.toContain("5584999998888");
     });
 
     it("não registra segredos nem conteúdo do payload bruto", async () => {

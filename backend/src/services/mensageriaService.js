@@ -875,6 +875,9 @@ class MensageriaService {
       this.logDiagnostico("EVOLUTION_CONFIRMATION_RECEIVED", {
         telefone: this.mascararTelefone(telefone),
         origemJid: remetente.origem,
+        quantidadeDigitosOriginal: remetente.quantidadeDigitosOriginal,
+        quantidadeDigitosNormalizada: remetente.quantidadeDigitosNormalizada,
+        normalizacaoAplicada: remetente.normalizacaoAplicada,
         resposta,
         quantidadePendencias: pendencias.length,
       });
@@ -971,9 +974,13 @@ class MensageriaService {
     }
 
     for (const [origem, jid] of candidatos) {
-      const telefone = this.extrairTelefoneDeJidConfiavel(jid);
-      if (telefone) {
-        return { telefone, origem, candidatos: descricoes };
+      const resolucao = this.resolverTelefoneDeJidConfiavel(jid);
+      if (resolucao) {
+        return {
+          ...resolucao,
+          origem,
+          candidatos: descricoes,
+        };
       }
     }
 
@@ -981,6 +988,10 @@ class MensageriaService {
   }
 
   extrairTelefoneDeJidConfiavel(jid) {
+    return this.resolverTelefoneDeJidConfiavel(jid)?.telefone || null;
+  }
+
+  resolverTelefoneDeJidConfiavel(jid) {
     if (typeof jid !== "string") return null;
 
     const jidNormalizado = jid.trim();
@@ -988,8 +999,38 @@ class MensageriaService {
     if (partes.length > 2) return null;
     if (partes.length === 2 && partes[1] !== "s.whatsapp.net") return null;
 
+    const numeroOriginal = partes[0];
+    if (!/^\+?\d+$/.test(numeroOriginal)) return null;
+
+    const apenasDigitos = numeroOriginal.replace(/\D/g, "");
+    if (apenasDigitos.length === 12 && apenasDigitos.startsWith("55")) {
+      const ddd = apenasDigitos.slice(2, 4);
+      if (!DDDS_BRASILEIROS.has(ddd)) return null;
+
+      const comNonoDigito =
+        `${apenasDigitos.slice(0, 4)}9${apenasDigitos.slice(4)}`;
+      try {
+        const telefone = this.sanitizarTelefone(comNonoDigito);
+        return {
+          telefone,
+          quantidadeDigitosOriginal: apenasDigitos.length,
+          quantidadeDigitosNormalizada: telefone.length,
+          normalizacaoAplicada: "NONO_DIGITO_RESTAURADO",
+        };
+      } catch {
+        return null;
+      }
+    }
+
     try {
-      return this.sanitizarTelefone(partes[0]);
+      const telefone = this.sanitizarTelefone(numeroOriginal);
+      return {
+        telefone,
+        quantidadeDigitosOriginal: apenasDigitos.length,
+        quantidadeDigitosNormalizada: telefone.length,
+        normalizacaoAplicada:
+          telefone === apenasDigitos ? "NENHUMA" : "DDI_ADICIONADO",
+      };
     } catch {
       return null;
     }
