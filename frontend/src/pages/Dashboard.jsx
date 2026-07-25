@@ -288,7 +288,6 @@ export default function Dashboard() {
         profissional: consulta.tipo_profissional,
         status_consulta: consulta.status_consulta,
         tipo: "LEMBRETE_CONSULTA",
-        usarBotaoConfirmacao: true,
         data_referencia:
           consulta.data_proxima_consulta || consulta.data_ultima_consulta,
       });
