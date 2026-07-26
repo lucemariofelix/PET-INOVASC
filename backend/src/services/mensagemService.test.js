@@ -56,6 +56,20 @@ beforeEach(() => {
     status: "ENVIADO",
     data_envio: "2026-07-21T22:50:00.000Z",
   });
+  mensagemRepository.reservarDisparoConfirmacao = vi.fn().mockResolvedValue({
+    permitido: true,
+    historico_id: "reserva-confirmacao-1",
+    confirmacao_expira_em: "2026-07-28T22:50:00.000Z",
+  });
+  mensagemRepository.finalizarDisparoConfirmacao = vi.fn().mockResolvedValue({
+    id: "reserva-confirmacao-1",
+    mensagem_id: "MSG-ABC-123",
+    consulta_id: 20,
+    status: "ENVIADO",
+    confirmacao_status: "PENDENTE",
+    confirmacao_expira_em: "2026-07-28T22:50:00.000Z",
+  });
+  mensagemRepository.falharDisparoConfirmacao = vi.fn().mockResolvedValue(true);
   mensagemRepository.listarUltimasPorConsultas = vi.fn().mockResolvedValue([]);
 });
 
@@ -354,11 +368,17 @@ describe("MensagemService", () => {
         }),
       ]);
       const botaoId = body.buttons[0].id;
-      expect(mensagemRepository.salvarHistorico).toHaveBeenCalledWith(
+      expect(mensagemRepository.reservarDisparoConfirmacao).toHaveBeenCalledWith(
         expect.objectContaining({
-          confirmacao_status: "PENDENTE",
           botao_id: botaoId,
         }),
+        authHeader,
+      );
+      expect(
+        mensagemRepository.finalizarDisparoConfirmacao,
+      ).toHaveBeenCalledWith(
+        "reserva-confirmacao-1",
+        "MSG-BOTAO",
         authHeader,
       );
     });
@@ -373,8 +393,6 @@ describe("MensagemService", () => {
         status: 201,
         text: () => Promise.resolve(JSON.stringify(evolutionResponse)),
       });
-      const antesDoEnvio = Date.now();
-
       await mensagemService.dispararMensagem(
         {
           ...dadosBase,
@@ -391,21 +409,182 @@ describe("MensagemService", () => {
       expect(body.text).toContain("2 — Solicitar cancelamento");
       expect(body.buttons).toBeUndefined();
 
-      const historico = mensagemRepository.salvarHistorico.mock.calls[0][0];
-      expect(historico).toEqual(
+      expect(mensagemRepository.reservarDisparoConfirmacao).toHaveBeenCalledWith(
         expect.objectContaining({
-          mensagem_id: "MSG-MENU-TEXTO",
-          confirmacao_status: "PENDENTE",
+          consulta_id: 20,
           botao_id: null,
-          respondido_em: null,
-          resposta_confirmacao: null,
+          texto_enviado: expect.stringContaining("1 — Confirmar presença"),
         }),
+        authHeader,
       );
-      const expiracao = new Date(historico.confirmacao_expira_em).getTime();
-      expect(expiracao).toBeGreaterThanOrEqual(
-        antesDoEnvio + 72 * 60 * 60 * 1000,
+      expect(
+        mensagemRepository.finalizarDisparoConfirmacao,
+      ).toHaveBeenCalledWith(
+        "reserva-confirmacao-1",
+        "MSG-MENU-TEXTO",
+        authHeader,
       );
-      expect(expiracao).toBeLessThanOrEqual(Date.now() + 72 * 60 * 60 * 1000);
+      expect(mensagemRepository.salvarHistorico).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ["CONFIRMATION_PENDING", "aguardando resposta"],
+      ["CONSULTATION_ALREADY_CONFIRMED", "já foi confirmada"],
+      ["CANCELLATION_ALREADY_REQUESTED", "solicitação de cancelamento"],
+    ])(
+      "deve bloquear no backend sem chamar a Evolution para %s",
+      async (codigo, trechoMensagem) => {
+        mensagemRepository.reservarDisparoConfirmacao.mockResolvedValue({
+          permitido: false,
+          codigo,
+          historico_id: "historico-bloqueador",
+        });
+
+        await expect(
+          mensagemService.dispararMensagem(
+            { ...dadosBase, solicitarConfirmacao: true },
+            authHeader,
+          ),
+        ).rejects.toMatchObject({
+          statusCode: 409,
+          code: codigo,
+          message: expect.stringContaining(trechoMensagem),
+        });
+
+        expect(fetch).not.toHaveBeenCalled();
+        expect(
+          mensageriaService.verificarConexaoWhatsApp,
+        ).not.toHaveBeenCalled();
+        expect(
+          mensagemRepository.finalizarDisparoConfirmacao,
+        ).not.toHaveBeenCalled();
+      },
+    );
+
+    it("deve exigir consulta para uma mensagem com confirmação", async () => {
+      await expect(
+        mensagemService.dispararMensagem(
+          {
+            ...dadosBase,
+            consulta_id: undefined,
+            solicitarConfirmacao: true,
+          },
+          authHeader,
+        ),
+      ).rejects.toMatchObject({ code: "VALIDATION_ERROR", statusCode: 400 });
+
+      expect(
+        mensagemRepository.reservarDisparoConfirmacao,
+      ).not.toHaveBeenCalled();
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it("deve liberar a reserva quando o provedor falhar antes de aceitar o envio", async () => {
+      fetch.mockResolvedValue({
+        ok: false,
+        status: 503,
+        text: () => Promise.resolve("provider unavailable"),
+      });
+      vi.spyOn(console, "error").mockImplementation(() => {});
+
+      await expect(
+        mensagemService.dispararMensagem(
+          { ...dadosBase, solicitarConfirmacao: true },
+          authHeader,
+        ),
+      ).rejects.toMatchObject({ code: "WHATSAPP_PROVIDER_ERROR" });
+
+      expect(mensagemRepository.falharDisparoConfirmacao).toHaveBeenCalledWith(
+        "reserva-confirmacao-1",
+        authHeader,
+      );
+    });
+
+    it("deve manter a reserva se o provedor aceitar e a finalização falhar", async () => {
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 201,
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({ key: { id: "MSG-ACEITA" }, status: "PENDING" }),
+          ),
+      });
+      mensagemRepository.finalizarDisparoConfirmacao.mockRejectedValue(
+        new Error("banco indisponível"),
+      );
+
+      await expect(
+        mensagemService.dispararMensagem(
+          { ...dadosBase, solicitarConfirmacao: true },
+          authHeader,
+        ),
+      ).rejects.toThrow("banco indisponível");
+
+      expect(
+        mensagemRepository.falharDisparoConfirmacao,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("deve permitir somente uma chamada ao provedor em disparos concorrentes", async () => {
+      mensagemRepository.reservarDisparoConfirmacao
+        .mockResolvedValueOnce({
+          permitido: true,
+          historico_id: "reserva-concorrente",
+        })
+        .mockResolvedValueOnce({
+          permitido: false,
+          codigo: "CONFIRMATION_PENDING",
+          historico_id: "reserva-concorrente",
+        });
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 201,
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({
+              key: { id: "MSG-CONCORRENTE" },
+              status: "PENDING",
+            }),
+          ),
+      });
+
+      const resultados = await Promise.allSettled([
+        mensagemService.dispararMensagem(
+          { ...dadosBase, solicitarConfirmacao: true },
+          authHeader,
+        ),
+        mensagemService.dispararMensagem(
+          { ...dadosBase, solicitarConfirmacao: true },
+          authHeader,
+        ),
+      ]);
+
+      expect(resultados.map((resultado) => resultado.status).sort()).toEqual([
+        "fulfilled",
+        "rejected",
+      ]);
+      expect(fetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("deve manter mensagens sem confirmação fora da reserva", async () => {
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 201,
+        text: () =>
+          Promise.resolve(
+            JSON.stringify({ key: { id: "MSG-AVISO" }, status: "PENDING" }),
+          ),
+      });
+
+      await mensagemService.dispararMensagem(
+        { ...dadosBase, tipo: "AVISO_GERAL" },
+        authHeader,
+      );
+
+      expect(
+        mensagemRepository.reservarDisparoConfirmacao,
+      ).not.toHaveBeenCalled();
+      expect(mensagemRepository.salvarHistorico).toHaveBeenCalledTimes(1);
     });
 
     it("deve registrar resposta automática com ID correlacionável", async () => {

@@ -9,6 +9,50 @@ const selecionarUltimaMensagem = (mensagens) => {
   }, null);
 };
 
+const dataConfirmacao = (mensagem) =>
+  new Date(
+    mensagem?.respondido_em ||
+      mensagem?.confirmado_em ||
+      mensagem?.data_envio ||
+      0,
+  ).getTime();
+
+const selecionarMaisRecente = (mensagens) =>
+  mensagens.reduce((maisRecente, mensagem) => {
+    if (!maisRecente) return mensagem;
+    return dataConfirmacao(mensagem) > dataConfirmacao(maisRecente)
+      ? mensagem
+      : maisRecente;
+  }, null);
+
+const selecionarConfirmacaoEfetiva = (mensagens, agora = new Date()) => {
+  const historico = Array.isArray(mensagens) ? mensagens : [];
+  const terminais = historico.filter((mensagem) =>
+    ["CONFIRMADO", "CANCELAMENTO_SOLICITADO"].includes(
+      mensagem?.confirmacao_status,
+    ),
+  );
+  if (terminais.length > 0) return selecionarMaisRecente(terminais);
+
+  const pendentes = historico.filter((mensagem) => {
+    if (mensagem?.confirmacao_status !== "PENDENTE") return false;
+    const expiracao = new Date(mensagem.confirmacao_expira_em || 0);
+    return !Number.isNaN(expiracao.getTime()) && expiracao > agora;
+  });
+  if (pendentes.length > 0) return selecionarMaisRecente(pendentes);
+
+  const expiradas = historico.filter((mensagem) => {
+    if (mensagem?.confirmacao_status === "EXPIRADO") return true;
+    if (mensagem?.confirmacao_status !== "PENDENTE") return false;
+    const expiracao = new Date(mensagem.confirmacao_expira_em || 0);
+    return !Number.isNaN(expiracao.getTime()) && expiracao <= agora;
+  });
+  const expirada = selecionarMaisRecente(expiradas);
+  return expirada
+    ? { ...expirada, confirmacao_status: "EXPIRADO" }
+    : null;
+};
+
 const mesclarStatusMensagens = (consultas, mensagensAtualizadas) => {
   if (!Array.isArray(consultas) || !Array.isArray(mensagensAtualizadas)) {
     return Array.isArray(consultas) ? consultas : [];
@@ -38,7 +82,14 @@ const mesclarStatusMensagens = (consultas, mensagensAtualizadas) => {
       historico.unshift(mensagemAtualizada);
     }
 
-    return { ...consulta, historico_mensagens: historico };
+    return {
+      ...consulta,
+      historico_mensagens: historico,
+      confirmacao_whatsapp:
+        mensagemAtualizada.confirmacao_efetiva ||
+        selecionarConfirmacaoEfetiva(historico) ||
+        consulta.confirmacao_whatsapp,
+    };
   });
 };
 
@@ -49,6 +100,8 @@ const obterEstadoConfirmacao = (mensagem, agora = new Date()) => {
   if (status === "CANCELAMENTO_SOLICITADO") {
     return "CANCELAMENTO_SOLICITADO";
   }
+  if (status === "EXPIRADO") return "EXPIRADO";
+  if (status === "SUBSTITUIDO") return "SEM_CONFIRMACAO";
 
   if (status === "PENDENTE" && mensagem.confirmacao_expira_em) {
     const expiracao = new Date(mensagem.confirmacao_expira_em);
@@ -63,5 +116,6 @@ const obterEstadoConfirmacao = (mensagem, agora = new Date()) => {
 export {
   mesclarStatusMensagens,
   obterEstadoConfirmacao,
+  selecionarConfirmacaoEfetiva,
   selecionarUltimaMensagem,
 };

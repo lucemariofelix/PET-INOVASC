@@ -33,9 +33,11 @@ class MensagemService {
         "Este paciente não possui um número de telefone cadastrado.",
       );
 
+    const exigeReserva =
+      solicitarConfirmacao === true || usarBotaoConfirmacao === true;
     const { evolutionUrl, apikey, instanceName } =
       mensageriaService.obterConfigEvolution();
-    if (evolutionUrl && apikey && instanceName) {
+    if (!exigeReserva && evolutionUrl && apikey && instanceName) {
       await mensageriaService.verificarConexaoWhatsApp();
     }
 

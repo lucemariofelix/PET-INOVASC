@@ -13,7 +13,6 @@ const TIPOS_MENSAGEM = Object.freeze({
 });
 
 const BOTAO_CONFIRMAR_PRESENCA = "CONFIRMAR_PRESENCA";
-const PRAZO_CONFIRMACAO_HORAS = 72;
 const MENU_CONFIRMACAO =
   "Para responder sobre esta consulta, envie somente uma opção:\n\n1 — Confirmar presença\n2 — Solicitar cancelamento";
 const RESPOSTAS_AUTOMATICAS = Object.freeze({
@@ -201,12 +200,6 @@ class MensageriaService {
 
   acrescentarMenuConfirmacao(texto) {
     return `${texto}\n\n${MENU_CONFIRMACAO}`;
-  }
-
-  calcularExpiracaoConfirmacao(dataBase = new Date()) {
-    return new Date(
-      dataBase.getTime() + PRAZO_CONFIRMACAO_HORAS * 60 * 60 * 1000,
-    ).toISOString();
   }
 
   obterConfigEvolution() {
@@ -623,9 +616,11 @@ class MensageriaService {
       usarBotaoConfirmacao === true && solicitarConfirmacao !== true;
     const confirmacaoSolicitada =
       solicitarConfirmacao === true || usarBotaoConfirmacaoAtivo;
-    const confirmacaoExpiraEm = confirmacaoSolicitada
-      ? this.calcularExpiracaoConfirmacao()
-      : null;
+    if (confirmacaoSolicitada && !consulta_id) {
+      throw new ValidationError(
+        "A consulta é obrigatória para solicitar confirmação.",
+      );
+    }
     const botaoId = usarBotaoConfirmacaoAtivo
       ? `${BOTAO_CONFIRMAR_PRESENCA}:${consulta_id || paciente.id}:${randomUUID()}`
       : null;
@@ -643,11 +638,11 @@ class MensageriaService {
           consulta_id: consulta_id || null,
           usuario_id: usuario_id || null,
           tipo_mensagem: tipo,
-          confirmacao_status: confirmacaoSolicitada ? "PENDENTE" : null,
-          confirmacao_expira_em: confirmacaoExpiraEm,
+          confirmacao_status: null,
+          confirmacao_expira_em: null,
           respondido_em: null,
           resposta_confirmacao: null,
-          botao_id: botaoId,
+          botao_id: null,
         },
         authHeader,
       );
@@ -657,48 +652,139 @@ class MensageriaService {
       };
     }
 
-    const jsonData = await this.enviarEvolution({
-      telefone: telefoneLimpo,
-      texto,
-      usarBotaoConfirmacao: usarBotaoConfirmacaoAtivo,
-      botaoId,
-    });
-    const idDaMensagem = jsonData?.key?.id || jsonData?.id;
+    let reserva = null;
+    if (confirmacaoSolicitada) {
+      reserva = await mensagemRepository.reservarDisparoConfirmacao(
+        {
+          paciente_id: paciente.id,
+          consulta_id,
+          telefone_destino: telefoneLimpo,
+          texto_enviado: texto,
+          tipo_mensagem: tipo,
+          botao_id: botaoId,
+        },
+        authHeader,
+      );
+      this.validarReservaConfirmacao(reserva);
+    }
 
-    const historico = await this.registrarHistorico(
-      {
-        paciente_id: paciente.id,
-        consulta_id: consulta_id || null,
-        telefone_destino: telefoneLimpo,
-        texto_enviado: texto,
+    let provedorAceitou = false;
+    try {
+      if (reserva) await this.verificarConexaoWhatsApp();
+      const jsonData = await this.enviarEvolution({
+        telefone: telefoneLimpo,
+        texto,
+        usarBotaoConfirmacao: usarBotaoConfirmacaoAtivo,
+        botaoId,
+      });
+      provedorAceitou = true;
+      const idDaMensagem = jsonData?.key?.id || jsonData?.id;
+
+      const historico = reserva
+        ? await mensagemRepository.finalizarDisparoConfirmacao(
+            reserva.historico_id,
+            idDaMensagem,
+            authHeader,
+          )
+        : await this.registrarHistorico(
+            {
+              paciente_id: paciente.id,
+              consulta_id: consulta_id || null,
+              telefone_destino: telefoneLimpo,
+              texto_enviado: texto,
+              status: "ENVIADO",
+              status_ordem: 1,
+              usuario_id: usuario_id || null,
+              mensagem_id: idDaMensagem,
+              tipo_mensagem: tipo,
+              confirmacao_status: null,
+              confirmacao_expira_em: null,
+              respondido_em: null,
+              resposta_confirmacao: null,
+              botao_id: null,
+            },
+            authHeader,
+          );
+
+      if (!historico) {
+        this.logDiagnostico("EVOLUTION_RESERVATION_FINALIZE_ERROR", {
+          historicoId: reserva?.historico_id || null,
+          mensagemId: idDaMensagem,
+        });
+        throw new Error("Não foi possível finalizar a reserva do disparo.");
+      }
+
+      this.logDiagnostico("EVOLUTION_SEND_PERSISTED", {
+        mensagemId: idDaMensagem,
+        consultaId: consulta_id || null,
         status: "ENVIADO",
-        status_ordem: 1,
-        usuario_id: usuario_id || null,
+        telefone: this.mascararTelefone(telefoneLimpo),
+      });
+
+      return {
+        telefoneLimpo,
         mensagem_id: idDaMensagem,
-        tipo_mensagem: tipo,
-        confirmacao_status: confirmacaoSolicitada ? "PENDENTE" : null,
-        confirmacao_expira_em: confirmacaoExpiraEm,
-        respondido_em: null,
-        resposta_confirmacao: null,
-        botao_id: botaoId,
+        resposta: jsonData,
+        texto,
+        mensagem: historico,
+      };
+    } catch (error) {
+      if (reserva?.historico_id && !provedorAceitou) {
+        await mensagemRepository
+          .falharDisparoConfirmacao(reserva.historico_id, authHeader)
+          .catch((falhaReserva) => {
+            this.logDiagnostico("EVOLUTION_RESERVATION_RELEASE_ERROR", {
+              historicoId: reserva.historico_id,
+              codigo: falhaReserva?.code || falhaReserva?.name || "Error",
+            });
+          });
+      }
+      throw error;
+    }
+  }
+
+  validarReservaConfirmacao(reserva) {
+    if (reserva?.permitido === true && reserva?.historico_id) return;
+
+    const bloqueios = {
+      CONFIRMATION_PENDING: {
+        mensagem:
+          "Já existe um lembrete aguardando resposta para esta consulta.",
+        codigo: "CONFIRMATION_PENDING",
+        status: 409,
       },
-      authHeader,
-    );
-
-    this.logDiagnostico("EVOLUTION_SEND_PERSISTED", {
-      mensagemId: idDaMensagem,
-      consultaId: consulta_id || null,
-      status: "ENVIADO",
-      telefone: this.mascararTelefone(telefoneLimpo),
-    });
-
-    return {
-      telefoneLimpo,
-      mensagem_id: idDaMensagem,
-      resposta: jsonData,
-      texto,
-      mensagem: historico,
+      CONSULTATION_ALREADY_CONFIRMED: {
+        mensagem: "A presença desta consulta já foi confirmada.",
+        codigo: "CONSULTATION_ALREADY_CONFIRMED",
+        status: 409,
+      },
+      CANCELLATION_ALREADY_REQUESTED: {
+        mensagem:
+          "Esta consulta já possui uma solicitação de cancelamento aguardando análise.",
+        codigo: "CANCELLATION_ALREADY_REQUESTED",
+        status: 409,
+      },
+      CONSULTATION_NOT_FOUND: {
+        mensagem: "Consulta não encontrada.",
+        codigo: "CONSULTATION_NOT_FOUND",
+        status: 404,
+      },
+      CONSULTATION_PATIENT_MISMATCH: {
+        mensagem: "A consulta não pertence ao paciente informado.",
+        codigo: "CONSULTATION_PATIENT_MISMATCH",
+        status: 400,
+      },
     };
+    const bloqueio = bloqueios[reserva?.codigo];
+    if (!bloqueio) {
+      throw new Error("Resposta inválida ao reservar o disparo.");
+    }
+
+    this.logDiagnostico("EVOLUTION_SEND_BLOCKED", {
+      codigo: bloqueio.codigo,
+      historicoId: reserva?.historico_id || null,
+    });
+    throw new AppError(bloqueio.mensagem, bloqueio.status, bloqueio.codigo);
   }
 
   async enviarRespostaAutomatica({ telefone, texto, referencia = {} }) {

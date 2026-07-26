@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   mesclarStatusMensagens,
   obterEstadoConfirmacao,
+  selecionarConfirmacaoEfetiva,
   selecionarUltimaMensagem,
 } from "./mensagemStatus.js";
 
@@ -90,4 +91,91 @@ test("apresenta os quatro estados da confirmação textual", () => {
     ),
     "EXPIRADO",
   );
+});
+
+test("prioriza uma resposta terminal mesmo com pendência posterior", () => {
+  const confirmacao = selecionarConfirmacaoEfetiva(
+    [
+      {
+        id: "terminal",
+        data_envio: "2026-07-25T19:32:00.000Z",
+        respondido_em: "2026-07-25T20:37:00.000Z",
+        confirmacao_status: "CANCELAMENTO_SOLICITADO",
+      },
+      {
+        id: "pendente-posterior",
+        data_envio: "2026-07-25T23:07:00.000Z",
+        confirmacao_status: "PENDENTE",
+        confirmacao_expira_em: "2026-07-28T23:07:00.000Z",
+      },
+      {
+        id: "substituida",
+        data_envio: "2026-07-25T23:08:00.000Z",
+        confirmacao_status: "SUBSTITUIDO",
+      },
+    ],
+    new Date("2026-07-25T23:30:00.000Z"),
+  );
+
+  assert.equal(confirmacao.id, "terminal");
+  assert.equal(confirmacao.confirmacao_status, "CANCELAMENTO_SOLICITADO");
+});
+
+test("seleciona pendência ativa e classifica prazo vencido", () => {
+  const pendente = {
+    id: "pendente",
+    data_envio: "2026-07-25T10:00:00.000Z",
+    confirmacao_status: "PENDENTE",
+    confirmacao_expira_em: "2026-07-28T10:00:00.000Z",
+  };
+
+  assert.equal(
+    selecionarConfirmacaoEfetiva(
+      [pendente],
+      new Date("2026-07-26T10:00:00.000Z"),
+    ).confirmacao_status,
+    "PENDENTE",
+  );
+  assert.equal(
+    selecionarConfirmacaoEfetiva(
+      [pendente],
+      new Date("2026-07-29T10:00:00.000Z"),
+    ).confirmacao_status,
+    "EXPIRADO",
+  );
+});
+
+test("mescla separadamente a confirmação efetiva retornada pelo polling", () => {
+  const resultado = mesclarStatusMensagens(
+    [
+      {
+        id: "consulta-1",
+        historico_mensagens: [
+          {
+            id: "terminal",
+            mensagem_id: "msg-antiga",
+            confirmacao_status: "CANCELAMENTO_SOLICITADO",
+          },
+        ],
+      },
+    ],
+    [
+      {
+        id: "recente",
+        consulta_id: "consulta-1",
+        mensagem_id: "msg-recente",
+        status: "LIDO",
+        confirmacao_efetiva: {
+          id: "terminal",
+          confirmacao_status: "CANCELAMENTO_SOLICITADO",
+        },
+      },
+    ],
+  );
+
+  assert.equal(
+    resultado[0].confirmacao_whatsapp.confirmacao_status,
+    "CANCELAMENTO_SOLICITADO",
+  );
+  assert.equal(selecionarUltimaMensagem(resultado[0].historico_mensagens).id, "recente");
 });

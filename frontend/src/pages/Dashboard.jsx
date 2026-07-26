@@ -7,6 +7,7 @@ import { formatarTelefone } from "../utils/formatters";
 import {
   mesclarStatusMensagens,
   obterEstadoConfirmacao,
+  selecionarConfirmacaoEfetiva,
   selecionarUltimaMensagem,
 } from "../utils/mensagemStatus";
 import ModalConfirmacao from "../components/ModalConfirmacao";
@@ -270,9 +271,41 @@ export default function Dashboard() {
     );
   };
 
+  const obterConfirmacaoEfetiva = (consulta) =>
+    consulta.confirmacao_whatsapp ||
+    selecionarConfirmacaoEfetiva(consulta.historico_mensagens || []);
+
+  const obterBloqueioDisparo = (consulta) => {
+    const estado = obterEstadoConfirmacao(obterConfirmacaoEfetiva(consulta));
+    const rotulos = {
+      PENDENTE: "Aguardando resposta",
+      CONFIRMADO: "Presença confirmada",
+      CANCELAMENTO_SOLICITADO: "Cancelamento solicitado",
+    };
+    return {
+      bloqueado: Boolean(rotulos[estado]),
+      estado,
+      rotulo: rotulos[estado] || null,
+    };
+  };
+
   // Funções de Disparo
   const solicitarDisparo = (consulta) => {
     const paciente = consulta.pacientes;
+
+    const bloqueio = obterBloqueioDisparo(consulta);
+    if (bloqueio.bloqueado) {
+      setAlerta({
+        isOpen: true,
+        tipo: "aviso",
+        titulo: "Novo disparo bloqueado",
+        mensagem:
+          bloqueio.estado === "PENDENTE"
+            ? "Esta consulta já possui uma mensagem aguardando resposta."
+            : "Esta consulta já possui uma resposta registrada e não permite um novo disparo.",
+      });
+      return;
+    }
 
     if (!paciente?.telefone) {
       setAlerta({
@@ -478,6 +511,9 @@ export default function Dashboard() {
                       const mensagens = consulta.historico_mensagens || [];
                       const ultimaMensagem =
                         selecionarUltimaMensagem(mensagens);
+                      const confirmacaoEfetiva =
+                        obterConfirmacaoEfetiva(consulta);
+                      const bloqueioDisparo = obterBloqueioDisparo(consulta);
 
                       return (
                         <tr
@@ -510,7 +546,7 @@ export default function Dashboard() {
                                     false,
                                   )}
                                   {renderizarConfirmacaoWhatsApp(
-                                    ultimaMensagem,
+                                    confirmacaoEfetiva,
                                     false,
                                   )}
                                 </>
@@ -547,9 +583,14 @@ export default function Dashboard() {
                           <td className="px-6 py-4 text-center">
                             <button
                               onClick={() => solicitarDisparo(consulta)}
-                              className="bg-slate-800 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-xs font-semibold shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-2 mx-auto w-full max-w-30"
+                              disabled={bloqueioDisparo.bloqueado}
+                              className={`px-4 py-2 rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center justify-center gap-2 mx-auto w-full max-w-36 ${
+                                bloqueioDisparo.bloqueado
+                                  ? "bg-slate-200 text-slate-600 cursor-not-allowed"
+                                  : "bg-slate-800 hover:bg-emerald-600 text-white cursor-pointer"
+                              }`}
                             >
-                              Disparar Msg
+                              {bloqueioDisparo.rotulo || "Disparar Msg"}
                             </button>
                           </td>
                         </tr>
@@ -568,6 +609,9 @@ export default function Dashboard() {
                   // Lê o histórico direto da consulta
                   const mensagens = consulta.historico_mensagens || [];
                   const ultimaMensagem = selecionarUltimaMensagem(mensagens);
+                  const confirmacaoEfetiva =
+                    obterConfirmacaoEfetiva(consulta);
+                  const bloqueioDisparo = obterBloqueioDisparo(consulta);
 
                   return (
                     <div
@@ -595,7 +639,7 @@ export default function Dashboard() {
                             <>
                               {renderizarStatusWhatsApp(ultimaMensagem, true)}
                               {renderizarConfirmacaoWhatsApp(
-                                ultimaMensagem,
+                                confirmacaoEfetiva,
                                 true,
                               )}
                             </>
@@ -651,9 +695,14 @@ export default function Dashboard() {
 
                       <button
                         onClick={() => solicitarDisparo(consulta)}
-                        className="w-full bg-slate-800 hover:bg-emerald-600 text-white py-3 rounded-lg text-sm font-semibold shadow-sm transition-colors cursor-pointer"
+                        disabled={bloqueioDisparo.bloqueado}
+                        className={`w-full py-3 rounded-lg text-sm font-semibold shadow-sm transition-colors ${
+                          bloqueioDisparo.bloqueado
+                            ? "bg-slate-200 text-slate-600 cursor-not-allowed"
+                            : "bg-slate-800 hover:bg-emerald-600 text-white cursor-pointer"
+                        }`}
                       >
-                        Disparar Mensagem
+                        {bloqueioDisparo.rotulo || "Disparar Mensagem"}
                       </button>
                     </div>
                   );
