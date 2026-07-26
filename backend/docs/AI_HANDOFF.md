@@ -1,367 +1,151 @@
-# AI Handoff — Fase 2: Testes
+# AI Handoff — Estado atual do SGBA-UBS
 
-**Data:** 06/06/2026
-**Status:** Em andamento (Etapas 1 a 7 concluídas + investigação ativa do Webhook/Evolution)
+**Atualizado em:** 25/07/2026
 
----
+**Status:** fluxo de mensageria, webhook, confirmação textual e bloqueio de reenvios implementados e validados.
 
-## 1. Módulos já cobertos por testes
+## Estado verificado
 
-| Etapa     | Módulo               | Arquivo de teste                          | Testes |
-| --------- | -------------------- | ----------------------------------------- | ------ |
-| 1         | `AppError`           | `src/errors/AppError.test.js`             | 8      |
-| 2         | `ConsultaService`    | `src/services/consultaService.test.js`    | 8      |
-| 3         | `MensagemService`    | `src/services/mensagemService.test.js`    | 7      |
-| 4         | `PacienteService`    | `src/services/pacienteService.test.js`    | 7      |
-| 5         | `AuthService`        | `src/services/authService.test.js`        | 5      |
-| 6         | `UsuarioService`     | `src/services/usuarioService.test.js`     | 13     |
-| 7         | `NotificacaoService` | `src/services/notificacaoService.test.js` | 20     |
-| **Total** | **7 módulos**        | **7 arquivos**                            | **68** |
+- Backend: 20 arquivos de teste e 215 testes aprovados.
+- Frontend: 4 arquivos de teste executados pelo `node:test`.
+- Frontend: lint e build de produção aprovados.
+- Branch de trabalho: `main`.
+- Integração real validada com Evolution API v2.3.x, incluindo envio, entrega, leitura e resposta textual.
 
-**68/68 testes passam consistentemente.**
+## Arquitetura relevante
 
----
+### Mensageria
 
-## 2. Quantidade atual de testes
+`mensagemService` recebe o contrato HTTP e delega para `mensageriaService`, que concentra:
 
-```text
-68 testes — 7 test files — 0 falhas
+- consentimento e validação do telefone;
+- preflight de existência no WhatsApp;
+- transporte `sendText`/compatibilidade legada de botões;
+- validação da resposta real da Evolution;
+- reserva e finalização de lembretes com confirmação;
+- normalização dos webhooks;
+- respostas automáticas.
+
+`mensagemRepository` usa o cliente autenticado do Supabase para histórico, polling e RPCs transacionais. `webhookRepository` usa `supabaseAdmin`, pois a Evolution não possui sessão de usuário.
+
+### Frontend
+
+- O Dashboard solicita confirmação somente por menu textual.
+- A tela de agendamento ainda usa o contrato legado `usarBotaoConfirmacao`; não confundir essa compatibilidade com o fluxo textual validado no Dashboard.
+- O status é atualizado por `GET /mensagens/status` a cada 10 segundos.
+- `confirmacao_efetiva` é separada da mensagem mais recente.
+- O botão de disparo é bloqueado visualmente, mas o banco é a autoridade contra concorrência.
+- O shell autenticado possui largura máxima de 1600 px; tabelas usam o espaço amplo e formulários/modais preservam limites próprios.
+
+## Contratos principais
+
+### Enviar mensagem
+
+```http
+POST /mensagens/enviar
+Authorization: Bearer <token>
+Content-Type: application/json
 ```
 
-### 2.1 Métricas atuais
-
-- 68 testes
-- 7 módulos cobertos
-- 0 falhas
-- 0 alterações em produção durante a Fase 2
-- Vitest 4.1.8
-
----
-
-## 3. Arquivos de teste criados
-
-| Arquivo                                           | Etapa   | Data       |
-| ------------------------------------------------- | ------- | ---------- |
-| `backend/src/errors/AppError.test.js`             | Etapa 1 | existente  |
-| `backend/src/services/consultaService.test.js`    | Etapa 2 | existente  |
-| `backend/src/services/mensagemService.test.js`    | Etapa 3 | 05/06/2026 |
-| `backend/src/services/pacienteService.test.js`    | Etapa 4 | 05/06/2026 |
-| `backend/src/services/authService.test.js`        | Etapa 5 | 05/06/2026 |
-| `backend/src/services/usuarioService.test.js`     | Etapa 6 | 05/06/2026 |
-| `backend/src/services/notificacaoService.test.js` | Etapa 7 | 06/06/2026 |
-
----
-
-## 4. Decisões técnicas tomadas
-
-### 4.1 Padrão de mock para repositories (CommonJS)
-
-```js
-vi.mock("../repositories/nomeRepository");
-
-const repository = require("../repositories/nomeRepository");
-const service = require("./nomeService");
-
-beforeEach(() => {
-  vi.clearAllMocks();
-  repository.metodoX = vi.fn().mockResolvedValue(...);
-});
-```
-
-Aplicado em:
-
-- PacienteService
-- UsuarioService
-
----
-
-### 4.2 Padrão de mock para Supabase (CommonJS)
-
-```js
-vi.mock("../config/supabase", () => ({
-  supabase: {
-    auth: {},
-    from: vi.fn(),
-  },
-}));
-```
-
-Motivação:
-
-- Vitest 4.x + CommonJS
-- Mutação in-place funciona corretamente
-- Evita problemas com factories capturando variáveis externas
-
-Aplicado em:
-
-- AuthService
-- UsuarioService
-
----
-
-### 4.3 Mock de fetch global
-
-```js
-vi.stubGlobal("fetch", vi.fn());
-
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-```
-
-Aplicado em:
-
-- MensagemService
-- NotificacaoService
-
----
-
-### 4.4 Mock de process.env
-
-```js
-let originalEnv;
-
-beforeEach(() => {
-  originalEnv = { ...process.env };
-});
-
-afterEach(() => {
-  process.env = originalEnv;
-});
-```
-
-Aplicado em:
-
-- MensagemService
-- NotificacaoService
-
----
-
-### 4.5 Duplo mock (Supabase + Repository)
-
-```js
-vi.mock("../config/supabase", () => ({
-  supabaseAdmin: { auth: { admin: {} } },
-}));
-
-vi.mock("../repositories/usuarioRepository");
-```
-
-Aplicado em:
-
-- UsuarioService
-
----
-
-### 4.6 Spy em console.error
-
-```js
-const spy = vi.spyOn(console, "error").mockImplementation(() => {});
-```
-
-Aplicado em:
-
-- UsuarioService (fluxo best effort)
-
----
-
-## 5. NotificacaoService
-
-### 5.1 Cenários cobertos
-
-- iniciarDisparoLote
-- validações de entrada
-- envio bem-sucedido
-- substituição de `{nome}`
-- registro `ENVIADO`
-- registro `ERRO`
-- fallback de nome
-- fallback de `mensagem_id`
-- múltiplos pacientes
-- formatação de telefone
-- payload enviado para Evolution
-- falhas de fetch
-- falhas de resposta
-- continuidade da fila
-
-### 5.2 Estratégia aplicada
-
-- Repository mockado
-- Fetch mockado
-- Process.env controlado
-- Delay neutralizado em testes
-- Nenhuma chamada real à Evolution API
-
----
-
-## 6. Próximos módulos candidatos
-
-### 6.1 WebhookService (prioridade alta)
-
-- 71 linhas
-- 1 método público: `processarEvento`
-- Possui retry interno
-- Usa `setTimeout`
-- Depende de `webhookRepository`
-
-Estratégia:
-
-- Mock do repository
-- Fake timers
-- Testes de retry
-- Testes de mapeamento de status
-
-### 6.2 Controllers (prioridade baixa)
-
-- Camadas finas
-- Melhor como integração
-
-### 6.3 Repositories (prioridade baixa)
-
-- Acoplamento forte ao Supabase
-- Preferir testes de integração
-
----
-
-## 7. Investigação Evolution API / Webhook (06/06/2026)
-
-### 7.1 Situação resolvida
-
-Problemas corrigidos durante a investigação:
-
-- Erro 500 no envio de mensagens.
-- Redis restaurado.
-- QR Code voltou a ser gerado.
-- Evolution voltou a conectar.
-- Mensagens voltaram a ser enviadas.
-- Envio confirmado via Postman.
-- Envio confirmado pelo sistema.
-- Status WhatsApp retornando corretamente.
-- Webhook configurado com sucesso na Evolution.
-
-### 7.2 Situação atual
-
-Mensagens:
-
-- chegam ao destinatário;
-- são entregues;
-- são lidas.
-
-Porém:
-
-- frontend não atualiza ENTREGUE;
-- frontend não atualiza LIDO.
-
-### 7.3 Evidências confirmadas
-
-Webhook configurado:
+Para lembrete com confirmação:
 
 ```json
 {
-  "enabled": true,
-  "url": "https://pet-inovasc.onrender.com/webhooks/evolution",
-  "events": [
-    "MESSAGES_UPDATE",
-    "MESSAGES_UPSERT",
-    "CONNECTION_UPDATE",
-    "SEND_MESSAGE"
-  ]
+  "paciente_id": "uuid",
+  "consulta_id": "uuid",
+  "telefone": "DDD + celular",
+  "consentimento_msg": true,
+  "tipo": "LEMBRETE_CONSULTA",
+  "solicitarConfirmacao": true
 }
 ```
 
-Render registrou:
+Bloqueios esperados:
 
-```text
+| HTTP | Código | Motivo |
+| ---: | --- | --- |
+| 409 | `CONFIRMATION_PENDING` | Há uma pendência ativa. |
+| 409 | `CONSULTATION_ALREADY_CONFIRMED` | A presença já foi confirmada. |
+| 409 | `CANCELLATION_ALREADY_REQUESTED` | Já existe pedido de cancelamento. |
+| 409 | `WHATSAPP_DESCONECTADO` | A instância não está conectada. |
+| 422 | `WHATSAPP_NUMBER_NOT_FOUND` | O número não existe no WhatsApp. |
+| 502 | `WHATSAPP_PROVIDER_ERROR` | Preflight ou envio retornou resposta inválida. |
+
+### Polling
+
+```http
+GET /mensagens/status?consulta_ids=<uuid,uuid>
+Authorization: Bearer <token>
+```
+
+Aceita até 20 IDs e retorna a mensagem mais recente de cada consulta com `confirmacao_efetiva`.
+
+### Webhook
+
+```http
 POST /webhooks/evolution
+x-evolution-secret: <EVOLUTION_WEBHOOK_SECRET>
 ```
 
-Portanto:
+Eventos obrigatórios: `MESSAGES_UPDATE` e `MESSAGES_UPSERT`.
 
-- Evolution → Render está funcionando.
-- O webhook está chegando ao backend.
+## Invariantes que não devem ser quebradas
 
-### 7.4 Evidências adicionais
+- HTTP 2xx sem `key.id`/`id` não é envio bem-sucedido.
+- `mensagem_id` preserva exatamente o identificador da Evolution.
+- `data.messageId` não é usado para correlacionar status.
+- O status de entrega só avança: `ENVIADO → ENTREGUE → LIDO`.
+- `LIDO` não significa presença confirmada.
+- `2` solicita cancelamento; não cancela a consulta.
+- Uma resposta terminal prevalece sobre lembretes posteriores.
+- No máximo uma pendência pode existir por `consulta_id`.
+- Falha após aceitação do provedor mantém a reserva, evitando duplicidade.
+- Grupos, mensagens próprias, áudios, reações, frases e valores diferentes de `1`/`2` não confirmam consultas.
+- Logs não devem conter texto integral, API key, segredo ou telefone completo.
 
-Teste manual executado:
+## Banco de dados
+
+Migrations centrais da entrega:
+
+1. `20260721000200_status_visual_mensagens.sql` — ordem e timestamps de entrega/leitura.
+2. `20260725000100_confirmacao_textual_consultas.sql` — prazo e resposta textual.
+3. `20260725000200_bloqueio_reenvio_confirmacao.sql` — reconciliação, índice único e RPCs de reserva.
+
+Estados de confirmação: `PENDENTE`, `CONFIRMADO`, `CANCELAMENTO_SOLICITADO`, `EXPIRADO` e `SUBSTITUIDO`.
+
+Não remover históricos conflitantes: a reconciliação os classifica como `SUBSTITUIDO` ou `EXPIRADO`.
+
+## Operação e diagnóstico
+
+Ative `EVOLUTION_DIAGNOSTICS=true` somente durante investigação. O ciclo saudável contém:
 
 ```text
-TESTE-SIMULADOR-123 → LIDO
-Nenhuma linha atualizada
+EVOLUTION_PREFLIGHT_RESPONSE
+EVOLUTION_SEND_REQUEST endpoint=sendText
+EVOLUTION_SEND_RESPONSE mensagemId=<id>
+EVOLUTION_SEND_PERSISTED status=ENVIADO
+EVOLUTION_WEBHOOK_STATUS statusNormalizado=ENTREGUE/LIDO
+EVOLUTION_WEBHOOK_MATCH linhasAtualizadas=1
 ```
 
-Resultado:
-
-- rota funciona;
-- webhookRepository executa;
-- atualização não encontra registros correspondentes.
-
-Indício forte de incompatibilidade entre:
+Para confirmação textual:
 
 ```text
-messageId recebido
+EVOLUTION_CONFIRMATION_RECEIVED resposta=1|2 quantidadePendencias=1
+EVOLUTION_CONFIRMATION_MATCH linhasAtualizadas=1
+EVOLUTION_AUTO_REPLY_PERSISTED
 ```
 
-e
+Consulte `docs/MENSAGERIA_WHATSAPP.md` e `docs/IMPLANTACAO.md` na raiz do repositório para detalhes.
 
-```text
-mensagem_id salvo na tabela historico_mensagens
-```
-
-### 7.5 Hipóteses atuais
-
-Hipótese 1 (mais provável)
-
-- webhook chega;
-- payload não corresponde ao formato esperado pelo WebhookService;
-- evento é descartado silenciosamente.
-
-Hipótese 2
-
-- webhook chega;
-- messageId extraído não coincide com mensagem_id armazenado.
-
-Hipótese 3
-
-- evento recebido pela Evolution difere dos eventos atualmente tratados pelo service.
-
-### 7.6 Próximo passo recomendado
-
-Adicionar logs temporários de diagnóstico no WebhookService.
-
-Registrar:
-
-- event recebido;
-- formato de data (array/objeto);
-- messageId extraído;
-- status bruto recebido;
-- motivo de descarte;
-- momento da chamada ao webhookRepository;
-- quantidade de registros atualizados.
-
-Restrições:
-
-- não alterar regra de negócio;
-- não alterar repository;
-- não alterar resposta HTTP;
-- não expor secrets;
-- não logar conteúdo completo das mensagens.
-
-Objetivo:
-
-Identificar exatamente por que o webhook recebido não atualiza o status da mensagem.
-
----
-
-## 8. Observações
-
-- Nenhum código de produção foi alterado durante a construção dos 68 testes.
-- Todos os mocks permanecem isolados por teste.
-- Nenhuma chamada real a Supabase ou Evolution ocorre na suíte.
-- Projeto utiliza JavaScript puro (CommonJS).
-- Vitest 4.1.8.
-- Comando padrão:
+## Comandos de validação
 
 ```bash
 cd backend
+npm test
+
+cd ../frontend
 pnpm test
+pnpm lint
+pnpm build
 ```

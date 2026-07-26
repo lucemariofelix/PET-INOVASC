@@ -20,8 +20,10 @@ Este projeto faz parte das iniciativas do **PET-Saúde: Informação e Saúde Di
 - **Cadastro completo de pacientes:** registro de CPF/CNS, telefone, endereço, condição de saúde, ACS, grupos de acompanhamento e contato de emergência.
 - **Consentimento para WhatsApp:** controle explícito de autorização para envio de mensagens, com bloqueio de disparos quando o paciente não autorizou.
 - **Agendamento de consultas:** criação de consultas vinculadas ao paciente, com verificação de conflitos e envio opcional de mensagem de agendamento.
-- **Mensageria via WhatsApp:** envio de lembretes de consulta, mensagens de agendamento, avisos gerais e comunicações por grupo.
-- **Confirmação informativa:** registro de confirmação recebida pelo paciente via botão no WhatsApp, sem alterar automaticamente o status da consulta.
+- **Mensageria via WhatsApp:** envio validado de lembretes, mensagens de agendamento, avisos gerais e comunicações por grupo via Evolution API.
+- **Rastreio de entrega:** acompanhamento monotônico de mensagens como Enviado, Entregue e Lido, atualizado por webhook e polling autenticado.
+- **Confirmação textual:** lembretes solicitam resposta `1` para presença ou `2` para cancelamento, sem depender de botões nativos do WhatsApp.
+- **Bloqueio de reenvios:** uma reserva transacional por consulta impede disparos duplicados quando existe pendência ou resposta registrada.
 - **Grupos de acompanhamento:** organização de pacientes por linhas de cuidado, condições, campanhas ou ações territoriais.
 - **Controle de território:** vínculo entre pacientes e Agentes Comunitários de Saúde para apoiar a rotina das microáreas.
 - **Auditoria e histórico:** registro de ações relevantes, mensagens enviadas, status de entrega e eventos recebidos por webhook.
@@ -34,7 +36,8 @@ Este projeto faz parte das iniciativas do **PET-Saúde: Informação e Saúde Di
 - **Acompanhamento e busca ativa:** o painel calcula atrasos, próximas consultas e prioridades para orientar a atuação da equipe.
 - **Agendamento e comunicação:** ao criar uma consulta, o sistema pode registrar e enviar uma mensagem de agendamento ao paciente autorizado.
 - **Lembretes e avisos:** pacientes com consentimento podem receber lembretes de consulta, avisos gerais ou mensagens direcionadas por grupo de acompanhamento.
-- **Confirmação pelo paciente:** respostas por botão no WhatsApp são registradas no histórico para consulta da equipe.
+- **Confirmação pelo paciente:** respostas textuais `1` e `2` são recebidas por webhook; a opção `2` solicita revisão humana e nunca cancela a consulta automaticamente.
+- **Acompanhamento da mensagem:** eventos da Evolution atualizam entrega e leitura sem confundir esses estados com a resposta do paciente.
 - **Auditoria:** ações administrativas e eventos relevantes ficam disponíveis para acompanhamento e rastreabilidade.
 
 ## 🔐 Segurança e Privacidade
@@ -47,6 +50,8 @@ O SGBA-UBS foi estruturado considerando a sensibilidade dos dados de saúde e a 
 - Redução de permissões públicas em tabelas sensíveis.
 - Uso de consentimento explícito para mensagens via WhatsApp.
 - Histórico de mensagens com tipo, status de entrega, confirmação e vínculo com paciente/consulta.
+- Segredo dedicado no webhook da Evolution e logs diagnósticos com dados sensíveis mascarados.
+- Validação do número, existência no WhatsApp e identificador real do provedor antes de registrar um envio.
 - Auditoria de operações relevantes do sistema.
 
 ## 👥 Perfis de Usuário
@@ -78,6 +83,39 @@ A aplicação utiliza uma arquitetura web separada em frontend, backend e banco 
 - Histórico de mensagens, pacientes, consultas, grupos e perfis de usuários
 - Migrations versionadas para evolução do schema
 
+## 📚 Documentação
+
+- [Glossário do domínio](./CONTEXT.md)
+- [Mensageria e confirmação via WhatsApp](./docs/MENSAGERIA_WHATSAPP.md)
+- [Interface e comportamento responsivo](./docs/INTERFACE.md)
+- [Implantação e validação](./docs/IMPLANTACAO.md)
+- [Decisão: confirmação por menu textual](./docs/adr/0001-confirmacao-textual-via-whatsapp.md)
+- [Mudanças recentes](./CHANGELOG.md)
+- [Handoff técnico e testes](./backend/docs/AI_HANDOFF.md)
+
+## 💻 Desenvolvimento local
+
+Copie os arquivos `.env.example` de `backend` e `frontend`, preencha as variáveis do ambiente e execute os projetos separadamente.
+
+```bash
+cd backend
+npm install
+npm run dev
+```
+
+```bash
+cd frontend
+pnpm install
+pnpm dev
+```
+
+Validação completa:
+
+```bash
+cd backend && npm test
+cd ../frontend && pnpm test && pnpm lint && pnpm build
+```
+
 ## 🚀 Estratégia de Implantação
 
 O projeto foi pensado para acesso remoto por equipes de UBS, com separação clara entre interface, API e banco de dados.
@@ -86,6 +124,8 @@ O projeto foi pensado para acesso remoto por equipes de UBS, com separação cla
 - **Backend:** API Node.js processada no Render.
 - **Banco de Dados:** Supabase/PostgreSQL.
 - **Mensageria:** Evolution API para integração com WhatsApp.
+
+As migrations devem ser aplicadas antes do backend, e o backend antes do frontend. Consulte o [guia de implantação](./docs/IMPLANTACAO.md) para a configuração do webhook e o roteiro de aceitação.
 
 ## 📌 Status do Projeto
 
