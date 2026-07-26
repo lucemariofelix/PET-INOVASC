@@ -194,7 +194,7 @@ export default function GestaoGrupos({ usuario }) {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
+    <div className="w-full space-y-6 animate-in fade-in duration-300">
       <div>
         <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
           <FaLayerGroup className="text-sky-700" /> Grupos de Acompanhamento

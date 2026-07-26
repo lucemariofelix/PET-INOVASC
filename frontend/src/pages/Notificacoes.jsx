@@ -124,7 +124,7 @@ export default function Notificacoes({ usuario }) {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto animate-in fade-in duration-300">
+    <div className="w-full p-6 animate-in fade-in duration-300">
       <div className="flex items-center gap-3 mb-8">
         <div className="w-12 h-12 bg-sky-100 rounded-full flex items-center justify-center text-sky-800 text-2xl shadow-sm">
           <FaBullhorn />

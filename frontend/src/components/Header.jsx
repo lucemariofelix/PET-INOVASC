@@ -40,7 +40,7 @@ export default function Header({ usuario, onLogout }) {
 
   return (
     <header className="bg-sky-800 shadow-md relative z-50">
-      <div className="py-4 px-4 sm:px-8 flex items-center justify-between max-w-screen-2xl mx-auto">
+      <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between px-4 py-4 sm:px-8">
         {/* 1. LOGO E TÍTULO */}
         <div className="flex items-center gap-3 shrink-0">
           <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center font-bold text-xl shrink-0">

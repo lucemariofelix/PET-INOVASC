@@ -71,7 +71,7 @@ function AppLayout() {
     <div className="min-h-screen bg-slate-100 font-sans text-slate-800">
       <Header usuario={usuario} onLogout={handleLogout} />
 
-      <main className="max-w-7xl mx-auto py-6 px-2 sm:px-6 lg:px-8 w-full">
+      <main className="mx-auto w-full max-w-[1600px] px-3 py-6 sm:px-6 lg:px-8">
         <Outlet />
       </main>
     </div>
