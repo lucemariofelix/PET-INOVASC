@@ -160,7 +160,7 @@ export default function Dashboard() {
 
     const baseClass = isMobile
       ? "text-[10px] font-semibold border rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-2"
-      : "text-[11px] font-medium flex items-center gap-1.5 p-1 rounded w-fit mt-0.5";
+      : "text-[11px] font-medium inline-flex max-w-full flex-wrap items-center gap-1.5 p-1 rounded whitespace-normal mt-0.5";
 
     switch (status) {
       case "LIDO":
@@ -223,7 +223,7 @@ export default function Dashboard() {
 
     const baseClass = isMobile
       ? "text-[10px] font-semibold border rounded-md px-2 py-0.5 inline-flex items-center gap-1 mt-1"
-      : "text-[11px] font-medium flex items-center gap-1.5 p-1 rounded w-fit mt-0.5";
+      : "text-[11px] font-medium inline-flex max-w-full flex-wrap items-center gap-1.5 p-1 rounded whitespace-normal mt-0.5";
 
     if (estado === "CONFIRMADO") {
       const dataFormatada = formatarDataEvento(mensagem.confirmado_em);
@@ -375,7 +375,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="w-full min-w-0 space-y-6 animate-in fade-in duration-300">
       {/* 1. CABEÇALHO DA PÁGINA (Apenas Título) */}
       <div>
         <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">
@@ -392,7 +392,7 @@ export default function Dashboard() {
       )}
 
       {/* 3. BLOCO DA TABELA (Tabela + Barra de Ferramentas colada nela) */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="w-full min-w-0 bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         {/* BARRA DE FERRAMENTAS DA TABELA */}
         <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-slate-50">
           <h3 className="text-lg font-bold text-slate-700 hidden xl:block">
@@ -463,7 +463,7 @@ export default function Dashboard() {
         </div>
 
         {/* ÁREA DE CONTEÚDO DA TABELA */}
-        <div className="p-2 sm:p-0 min-h-100">
+        <div className="w-full min-w-0 p-2 sm:p-0 min-h-100">
           {loading ? (
             <div className="py-20 flex flex-col items-center justify-center">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sky-700 mb-4"></div>
@@ -489,17 +489,26 @@ export default function Dashboard() {
           ) : (
             <>
               {/* VISUALIZAÇÃO DESKTOP (Tabela) */}
-              <div className="hidden lg:block overflow-x-auto">
-                <table className="w-full text-left text-sm whitespace-nowrap">
+              <div className="hidden w-full min-w-0 overflow-x-auto lg:block lg:overflow-x-visible">
+                <table className="w-full table-fixed text-left text-sm">
+                  <colgroup>
+                    <col className="w-[28%]" />
+                    <col className="w-[15%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[8%]" />
+                    <col className="w-[9%]" />
+                    <col className="w-[16%]" />
+                  </colgroup>
                   <thead className="bg-slate-50 text-slate-500 uppercase font-semibold text-xs border-b border-slate-200">
                     <tr>
-                      <th className="px-6 py-4">Paciente</th>
-                      <th className="px-6 py-4">Agente (ACS)</th>
-                      <th className="px-6 py-4">Condição</th>
-                      <th className="px-6 py-4">Profissional</th>
-                      <th className="px-6 py-4 text-center">Tempo</th>
-                      <th className="px-6 py-4 text-center">Status</th>
-                      <th className="px-6 py-4 text-center">Ação</th>
+                      <th className="whitespace-nowrap px-3 py-4 xl:px-4">Paciente</th>
+                      <th className="whitespace-nowrap px-3 py-4 xl:px-4">Agente (ACS)</th>
+                      <th className="whitespace-nowrap px-3 py-4 xl:px-4">Condição</th>
+                      <th className="whitespace-nowrap px-3 py-4 xl:px-4">Profissional</th>
+                      <th className="whitespace-nowrap px-3 py-4 text-center xl:px-4">Tempo</th>
+                      <th className="whitespace-nowrap px-3 py-4 text-center xl:px-4">Status</th>
+                      <th className="whitespace-nowrap px-3 py-4 text-center xl:px-4">Ação</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -520,8 +529,8 @@ export default function Dashboard() {
                           key={`desk-${index}`}
                           className="hover:bg-slate-50 transition-colors group"
                         >
-                          <td className="px-6 py-4">
-                            <p className="font-bold text-slate-800 leading-tight">
+                          <td className="min-w-0 whitespace-normal break-words px-3 py-4 xl:px-4">
+                            <p className="font-bold text-slate-800 leading-tight whitespace-normal break-words">
                               {paciente?.nome_completo}
                             </p>
 
@@ -559,32 +568,32 @@ export default function Dashboard() {
                             </div>
                           </td>
 
-                          <td className="px-6 py-4 text-slate-600">
+                          <td className="min-w-0 whitespace-normal break-words px-3 py-4 text-slate-600 xl:px-4">
                             {obterNomeAgente(paciente) || "Não inf."}
                           </td>
-                          <td className="px-6 py-4">
-                            <span className="bg-slate-100 text-slate-600 px-2 py-1 rounded text-xs font-medium truncate max-w-37.5 inline-block">
+                          <td className="min-w-0 px-3 py-4 xl:px-4">
+                            <span className="block max-w-full truncate rounded bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
                               {paciente?.condicao || "NENHUM"}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-slate-600 font-medium">
+                          <td className="min-w-0 whitespace-normal break-words px-3 py-4 font-medium text-slate-600 xl:px-4">
                             {consulta.tipo_profissional}
                           </td>
-                          <td className="px-6 py-4 text-center font-bold text-slate-700">
+                          <td className="break-words px-3 py-4 text-center font-bold leading-tight text-slate-700 xl:px-4">
                             {badge.textoDias}
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-3 py-4 text-center xl:px-4">
                             <span
-                              className={`px-3 py-1 rounded-md text-xs font-bold border ${badge.color}`}
+                              className={`inline-flex max-w-full justify-center whitespace-normal rounded-md border px-2 py-1 text-xs font-bold leading-tight xl:px-3 ${badge.color}`}
                             >
                               {badge.label}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-3 py-4 text-center xl:px-4">
                             <button
                               onClick={() => solicitarDisparo(consulta)}
                               disabled={bloqueioDisparo.bloqueado}
-                              className={`px-4 py-2 rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center justify-center gap-2 mx-auto w-full max-w-36 ${
+                              className={`mx-auto flex w-full max-w-full items-center justify-center gap-2 whitespace-normal rounded-lg px-2 py-2 text-xs font-semibold leading-tight shadow-sm transition-colors xl:px-3 ${
                                 bloqueioDisparo.bloqueado
                                   ? "bg-slate-200 text-slate-600 cursor-not-allowed"
                                   : "bg-slate-800 hover:bg-emerald-600 text-white cursor-pointer"
