@@ -100,7 +100,8 @@ Eventos obrigatórios: `MESSAGES_UPDATE` e `MESSAGES_UPSERT`.
 - Uma resposta terminal prevalece sobre lembretes posteriores.
 - No máximo uma pendência pode existir por `consulta_id`.
 - Falha após aceitação do provedor mantém a reserva, evitando duplicidade.
-- Grupos, mensagens próprias, áudios, reações, frases e valores diferentes de `1`/`2` não confirmam consultas.
+- Grupos, mensagens próprias, áudios, reações, frases e valores fora dos sinônimos aceitos não confirmam consultas.
+- Respostas textuais aceitas: `1`, `sim`, `confirmar`, `ok` e `s` para confirmação; `2`, `nao`, `não`, `cancelar` e `n` para solicitação de cancelamento. A comparação ignora maiúsculas e espaços externos.
 - Logs não devem conter texto integral, API key, segredo ou telefone completo.
 
 ## Banco de dados
@@ -131,7 +132,7 @@ EVOLUTION_WEBHOOK_MATCH linhasAtualizadas=1
 Para confirmação textual:
 
 ```text
-EVOLUTION_CONFIRMATION_RECEIVED resposta=1|2 quantidadePendencias=1
+EVOLUTION_CONFIRMATION_RECEIVED resposta=<resposta-normalizada> quantidadePendencias=1
 EVOLUTION_CONFIRMATION_MATCH linhasAtualizadas=1
 EVOLUTION_AUTO_REPLY_PERSISTED
 ```

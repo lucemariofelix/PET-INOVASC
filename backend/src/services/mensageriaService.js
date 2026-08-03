@@ -23,6 +23,14 @@ const RESPOSTAS_AUTOMATICAS = Object.freeze({
   AMBIGUA:
     "Encontramos mais de uma consulta aguardando resposta para este número. Entre em contato com a unidade de saúde para confirmar ou solicitar cancelamento.",
 });
+const RESPOSTAS_CONFIRMACAO = Object.freeze(["1", "sim", "confirmar", "ok", "s"]);
+const RESPOSTAS_CANCELAMENTO = Object.freeze([
+  "2",
+  "nao",
+  "não",
+  "cancelar",
+  "n",
+]);
 const MENSAGEM_WHATSAPP_DESCONECTADO =
   "O WhatsApp do posto está desconectado. Vá à aba de configurações e leia o QR Code antes de enviar mensagens.";
 const DDDS_BRASILEIROS = new Set([
@@ -933,13 +941,14 @@ class MensageriaService {
         continue;
       }
 
-      const resposta = this.extrairRespostaTextual(data);
-      if (!resposta) {
+      const respostaInterpretada = this.extrairRespostaTextual(data);
+      if (!respostaInterpretada) {
         this.logDiagnostico("EVOLUTION_CONFIRMATION_IGNORED", {
           motivo: "CONTEUDO_INVALIDO",
         });
         continue;
       }
+      const { resposta, confirmacaoStatus } = respostaInterpretada;
 
       const remetente = this.resolverTelefoneRemetente(data);
       if (!remetente.telefone) {
@@ -985,8 +994,6 @@ class MensageriaService {
       }
 
       const pendencia = pendencias[0];
-      const confirmacaoStatus =
-        resposta === "1" ? "CONFIRMADO" : "CANCELAMENTO_SOLICITADO";
       const atualizadas = await this.retry(() =>
         webhookRepository.registrarRespostaConfirmacao({
           historicoId: pendencia.id,
@@ -1022,11 +1029,22 @@ class MensageriaService {
       data?.message?.extendedTextMessage?.text,
       data?.body,
     ];
-    const texto = candidatos.find((valor) => typeof valor === "string");
+    const texto = candidatos.find(
+      (valor) => typeof valor === "string" && valor.trim(),
+    );
 
     if (!texto) return null;
-    const resposta = texto.trim();
-    return resposta === "1" || resposta === "2" ? resposta : null;
+    const resposta = texto.trim().toLowerCase();
+
+    if (RESPOSTAS_CONFIRMACAO.includes(resposta)) {
+      return { resposta, confirmacaoStatus: "CONFIRMADO" };
+    }
+
+    if (RESPOSTAS_CANCELAMENTO.includes(resposta)) {
+      return { resposta, confirmacaoStatus: "CANCELAMENTO_SOLICITADO" };
+    }
+
+    return null;
   }
 
   extrairTelefoneRemetente(data) {

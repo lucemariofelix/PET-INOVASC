@@ -378,6 +378,31 @@ describe("WebhookService", () => {
       );
     });
 
+    it.each(["1", "sim", "confirmar", "ok", "s"])(
+      'deve confirmar a única pendência ativa ao receber "%s"',
+      async (resposta) => {
+        webhookRepository.listarConfirmacoesPendentesPorTelefone.mockResolvedValue([
+          pendenciaAtiva,
+        ]);
+        webhookRepository.registrarRespostaConfirmacao.mockResolvedValue([
+          { ...pendenciaAtiva, confirmacao_status: "CONFIRMADO" },
+        ]);
+
+        await webhookService.processarEvento(
+          criarRespostaTexto(`  ${resposta.toUpperCase()}  `),
+        );
+
+        expect(
+          webhookRepository.registrarRespostaConfirmacao,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            resposta,
+            confirmacaoStatus: "CONFIRMADO",
+          }),
+        );
+      },
+    );
+
     it('deve solicitar cancelamento sem alterar a consulta ao receber exatamente "2"', async () => {
       webhookRepository.listarConfirmacoesPendentesPorTelefone.mockResolvedValue([
         pendenciaAtiva,
@@ -402,6 +427,113 @@ describe("WebhookService", () => {
       expect(mensageriaService.enviarRespostaAutomatica).toHaveBeenCalledWith(
         expect.objectContaining({
           texto: expect.stringContaining("solicitação de cancelamento"),
+        }),
+      );
+    });
+
+    it.each(["2", "nao", "não", "cancelar", "n"])(
+      'deve solicitar cancelamento ao receber "%s"',
+      async (resposta) => {
+        webhookRepository.listarConfirmacoesPendentesPorTelefone.mockResolvedValue([
+          pendenciaAtiva,
+        ]);
+        webhookRepository.registrarRespostaConfirmacao.mockResolvedValue([
+          {
+            ...pendenciaAtiva,
+            confirmacao_status: "CANCELAMENTO_SOLICITADO",
+          },
+        ]);
+
+        await webhookService.processarEvento(
+          criarRespostaTexto(`  ${resposta.toUpperCase()}  `),
+        );
+
+        expect(
+          webhookRepository.registrarRespostaConfirmacao,
+        ).toHaveBeenCalledWith(
+          expect.objectContaining({
+            resposta,
+            confirmacaoStatus: "CANCELAMENTO_SOLICITADO",
+          }),
+        );
+      },
+    );
+
+    it("deve aceitar resposta em extendedTextMessage ao citar a mensagem original", async () => {
+      webhookRepository.listarConfirmacoesPendentesPorTelefone.mockResolvedValue([
+        pendenciaAtiva,
+      ]);
+      webhookRepository.registrarRespostaConfirmacao.mockResolvedValue([
+        { ...pendenciaAtiva, confirmacao_status: "CONFIRMADO" },
+      ]);
+
+      await webhookService.processarEvento(
+        criarRespostaTexto(undefined, {
+          message: { extendedTextMessage: { text: " Sim " } },
+        }),
+      );
+
+      expect(
+        webhookRepository.registrarRespostaConfirmacao,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          resposta: "sim",
+          confirmacaoStatus: "CONFIRMADO",
+        }),
+      );
+    });
+
+    it("deve preservar data.body como fallback de compatibilidade", async () => {
+      webhookRepository.listarConfirmacoesPendentesPorTelefone.mockResolvedValue([
+        pendenciaAtiva,
+      ]);
+      webhookRepository.registrarRespostaConfirmacao.mockResolvedValue([
+        { ...pendenciaAtiva, confirmacao_status: "CONFIRMADO" },
+      ]);
+
+      await webhookService.processarEvento(
+        criarRespostaTexto(undefined, {
+          message: {},
+          body: " Ok ",
+        }),
+      );
+
+      expect(
+        webhookRepository.registrarRespostaConfirmacao,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          resposta: "ok",
+          confirmacaoStatus: "CONFIRMADO",
+        }),
+      );
+    });
+
+    it("deve priorizar conversation quando os dois campos de texto estiverem presentes", async () => {
+      webhookRepository.listarConfirmacoesPendentesPorTelefone.mockResolvedValue([
+        pendenciaAtiva,
+      ]);
+      webhookRepository.registrarRespostaConfirmacao.mockResolvedValue([
+        {
+          ...pendenciaAtiva,
+          confirmacao_status: "CANCELAMENTO_SOLICITADO",
+        },
+      ]);
+
+      await webhookService.processarEvento(
+        criarRespostaTexto("2", {
+          message: {
+            conversation: "2",
+            extendedTextMessage: { text: "sim" },
+          },
+        }),
+      );
+
+      expect(
+        webhookRepository.registrarRespostaConfirmacao,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          resposta: "2",
+          confirmacaoStatus: "CANCELAMENTO_SOLICITADO",
         }),
       );
     });
@@ -447,7 +579,7 @@ describe("WebhookService", () => {
       );
     });
 
-    it.each(["10", "12", "sim", "1 confirmo", "🎤"])(
+    it.each(["", "10", "12", "1 confirmo", "🎤"])(
       "deve ignorar conteúdo textual inválido: %s",
       async (texto) => {
         await webhookService.processarEvento(criarRespostaTexto(texto));
@@ -457,6 +589,18 @@ describe("WebhookService", () => {
         ).not.toHaveBeenCalled();
       },
     );
+
+    it("deve ignorar mensagem de áudio sem conteúdo textual", async () => {
+      await webhookService.processarEvento(
+        criarRespostaTexto(undefined, {
+          message: { audioMessage: { url: "https://example.test/audio" } },
+        }),
+      );
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).not.toHaveBeenCalled();
+    });
 
     it("deve ignorar mensagens próprias, grupos e remetentes sem telefone confiável", async () => {
       await webhookService.processarEvento(
