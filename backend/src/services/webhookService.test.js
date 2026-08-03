@@ -52,6 +52,7 @@ const pendenciaAtiva = {
 describe("WebhookService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.EVOLUTION_DIAGNOSTICS;
     webhookRepository.atualizarStatusMensagem = vi.fn().mockResolvedValue([]);
     webhookRepository.registrarConfirmacaoMensagem = vi.fn().mockResolvedValue([]);
     webhookRepository.listarConfirmacoesPendentesPorTelefone = vi
@@ -236,7 +237,9 @@ describe("WebhookService", () => {
       );
     });
 
-    it('deve processar "messages.update" mesmo com fromMe false', async () => {
+    it('deve ignorar "messages.update" com fromMe false e diagnosticar o motivo', async () => {
+      process.env.EVOLUTION_DIAGNOSTICS = "true";
+
       await webhookService.processarEvento({
         event: "messages.update",
         date_time: "2026-07-21T22:54:24.369Z",
@@ -247,9 +250,11 @@ describe("WebhookService", () => {
         },
       });
 
-      expect(webhookRepository.atualizarStatusMensagem).toHaveBeenCalledWith(
-        "msg-from-me-false",
-        atualizacaoEsperada("LIDO", 3),
+      expect(
+        webhookRepository.atualizarStatusMensagem,
+      ).not.toHaveBeenCalled();
+      expect(console.log.mock.calls.flat().join(" ")).toContain(
+        "EVOLUTION_WEBHOOK_STATUS_IGNORED",
       );
     });
 
@@ -379,6 +384,127 @@ describe("WebhookService", () => {
           },
         }),
       );
+    });
+
+    it("deve priorizar messageTimestamp sobre date_time", async () => {
+      const messageTimestamp = Date.parse("2026-08-03T16:09:44.802Z") / 1000;
+
+      await webhookService.processarEvento(
+        criarRespostaTexto("1", {
+          messageTimestamp,
+          date_time: "2026-08-03T13:09:44.802Z",
+        }),
+      );
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).toHaveBeenCalledWith(
+        "5584999998888",
+        "2026-08-03T16:09:44.802Z",
+      );
+    });
+
+    it.each([
+      ["segundos", 1785773384.802],
+      ["milissegundos", 1785773384802],
+      ["string numérica", "1785773384.802"],
+    ])(
+      "deve aceitar messageTimestamp em %s",
+      async (_formato, messageTimestamp) => {
+        await webhookService.processarEvento(
+          criarRespostaTexto("1", { messageTimestamp }),
+        );
+
+        expect(
+          webhookRepository.listarConfirmacoesPendentesPorTelefone,
+        ).toHaveBeenCalledWith(
+          "5584999998888",
+          "2026-08-03T16:09:44.802Z",
+        );
+      },
+    );
+
+    it("deve aceitar date_time com offset explícito e normalizar para UTC", async () => {
+      await webhookService.processarEvento(
+        criarRespostaTexto("1", {
+          date_time: "2026-08-03T13:09:44.802-03:00",
+        }),
+      );
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).toHaveBeenCalledWith(
+        "5584999998888",
+        "2026-08-03T16:09:44.802Z",
+      );
+    });
+
+    it("deve usar um único horário de recebimento para datas locais, inválidas ou ausentes", async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-08-03T16:09:44.802Z"));
+
+      const item = (date_time) => ({
+        key: {
+          fromMe: false,
+          remoteJid: "5584999998888@s.whatsapp.net",
+        },
+        message: { conversation: "1" },
+        ...(date_time === undefined ? {} : { date_time }),
+      });
+
+      try {
+        await webhookService.processarEvento({
+          event: "messages.upsert",
+          data: [
+            item("2026-08-03T13:09:44.802"),
+            item("data-invalida"),
+            item(undefined),
+          ],
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).toHaveBeenCalledTimes(3);
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).toHaveBeenNthCalledWith(
+        1,
+        "5584999998888",
+        "2026-08-03T16:09:44.802Z",
+      );
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).toHaveBeenNthCalledWith(
+        2,
+        "5584999998888",
+        "2026-08-03T16:09:44.802Z",
+      );
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).toHaveBeenNthCalledWith(
+        3,
+        "5584999998888",
+        "2026-08-03T16:09:44.802Z",
+      );
+    });
+
+    it("deve diagnosticar a origem do horário sem registrar conteúdo ou telefone", async () => {
+      process.env.EVOLUTION_DIAGNOSTICS = "true";
+
+      await webhookService.processarEvento(
+        criarRespostaTexto("conteudo-privado", {
+          messageTimestamp: "1785773384.802",
+        }),
+      );
+
+      const logs = console.log.mock.calls.flat().join(" ");
+      expect(logs).toContain('"origemDataEvento":"MESSAGE_TIMESTAMP"');
+      expect(logs).toContain('"dataEvento":"2026-08-03T16:09:44.802Z"');
+      expect(logs).not.toContain("conteudo-privado");
+      expect(logs).not.toContain("5584999998888");
     });
 
     it.each(["1", "sim", "confirmar", "ok", "s"])(

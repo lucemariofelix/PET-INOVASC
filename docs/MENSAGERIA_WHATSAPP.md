@@ -54,6 +54,18 @@ O contrato `usarBotaoConfirmacao` continua disponível por compatibilidade e ain
 
 Os eventos `SERVER_ACK`, `DELIVERY_ACK`, `DELIVERED`, `RECEIVED`, `2` e `3` são normalizados para `ENTREGUE`. `READ`, `VIEWED`, `PLAYED`, `4` e `5` são normalizados para `LIDO`. A atualização usa `status_ordem`, impedindo regressões como `LIDO → ENTREGUE`.
 
+Eventos `MESSAGES_UPDATE` com `fromMe: false` descrevem mensagens recebidas e não atualizam o histórico de mensagens enviadas. Quando os diagnósticos estão ativos, eles são registrados apenas como `EVOLUTION_WEBHOOK_STATUS_IGNORED`, sem identificadores pessoais. Eventos com `fromMe: true` ou sem esse campo continuam sendo processados para manter compatibilidade com versões da Evolution que o omitem.
+
+## Horário dos webhooks
+
+Todo horário usado para atualizar o transporte ou correlacionar uma confirmação é normalizado para ISO UTC. A origem é escolhida nesta ordem:
+
+1. `messageTimestamp` Unix da mensagem, em segundos, milissegundos ou string numérica;
+2. `date_time` quando possuir `Z` ou offset explícito, como `-03:00`;
+3. horário em que o backend recebeu o payload.
+
+Um `date_time` sem offset não é interpretado como horário local, pois seu resultado dependeria do fuso configurado no servidor. Todos os itens de um mesmo payload compartilham o mesmo horário de recebimento usado como fallback. Com os diagnósticos ativos, `origemDataEvento` informa `MESSAGE_TIMESTAMP`, `DATE_TIME_WITH_OFFSET` ou `SERVER_RECEIVED_AT`.
+
 ## Correlação do webhook
 
 Para `MESSAGES_UPDATE`, o identificador de correlação é:
@@ -83,6 +95,8 @@ Resultados:
 | `2` | `CANCELAMENTO_SOLICITADO` | Solicita análise da unidade; não cancela a consulta. |
 
 Após uma resposta válida, o sistema envia uma resposta automática por `sendText` e a registra como `RESPOSTA_AUTOMATICA`. Se houver mais de uma pendência para o mesmo telefone, nenhuma consulta é alterada e o paciente é orientado a contatar a unidade.
+
+Um mesmo telefone pode pertencer a mais de um paciente da mesma família. Isso é esperado, especialmente quando familiares administram as mensagens de pacientes idosos. A associação automática só acontece quando existe exatamente uma pendência ativa para o telefone; múltiplas pendências permanecem ambíguas por segurança.
 
 ## Bloqueio de reenvios
 

@@ -855,21 +855,22 @@ class MensageriaService {
 
   async processarEventoWebhook(payload) {
     const eventoNormalizado = this.normalizarEventoWebhook(payload?.event);
+    const recebidoEm = new Date().toISOString();
 
     if (eventoNormalizado === "MESSAGES_UPSERT") {
-      await this.processarConfirmacoesRecebidas(payload);
+      await this.processarConfirmacoesRecebidas(payload, recebidoEm);
       return;
     }
 
     if (eventoNormalizado === "MESSAGES_UPDATE") {
-      await this.processarAtualizacoesStatus(payload);
+      await this.processarAtualizacoesStatus(payload, recebidoEm);
       return;
     }
 
     console.log(`[WEBHOOK] Evento ignorado: "${payload?.event}"`);
   }
 
-  async processarAtualizacoesStatus(payload) {
+  async processarAtualizacoesStatus(payload, recebidoEm) {
     const itensArray = this.obterItensWebhook(payload);
 
     for (const data of itensArray) {
@@ -877,7 +878,21 @@ class MensageriaService {
       const statusBruto = data?.update?.status ?? data?.status;
       const statusFormatado = this.mapearStatusMensagem(statusBruto);
       const ordemStatus = this.obterOrdemStatus(statusFormatado);
-      const dataEvento = this.obterDataEvento(payload, data);
+      const fromMe = data?.fromMe ?? data?.key?.fromMe;
+
+      if (fromMe === false) {
+        this.logDiagnostico("EVOLUTION_WEBHOOK_STATUS_IGNORED", {
+          motivo: "MENSAGEM_RECEBIDA",
+          statusBruto: statusBruto ?? null,
+        });
+        continue;
+      }
+
+      const { dataEvento, origem: origemDataEvento } = this.obterDataEvento(
+        payload,
+        data,
+        recebidoEm,
+      );
 
       this.logDiagnostico("EVOLUTION_WEBHOOK_STATUS", {
         eventoOriginal: payload?.event,
@@ -888,7 +903,9 @@ class MensageriaService {
         idCorrelacao: messageId ?? null,
         statusBruto: statusBruto ?? null,
         statusNormalizado: statusFormatado,
-        isFromMe: data?.fromMe ?? data?.key?.fromMe ?? null,
+        isFromMe: fromMe ?? null,
+        dataEvento,
+        origemDataEvento,
       });
 
       if (!messageId) {
@@ -924,7 +941,7 @@ class MensageriaService {
     }
   }
 
-  async processarConfirmacoesRecebidas(payload) {
+  async processarConfirmacoesRecebidas(payload, recebidoEm) {
     const itensArray = this.obterItensWebhook(payload);
 
     for (const data of itensArray) {
@@ -932,7 +949,11 @@ class MensageriaService {
 
       if (fromMe !== false) continue;
 
-      const dataEvento = this.obterDataEvento(payload, data);
+      const { dataEvento, origem: origemDataEvento } = this.obterDataEvento(
+        payload,
+        data,
+        recebidoEm,
+      );
 
       const botaoId = this.extrairBotaoConfirmacaoId(data);
 
@@ -974,6 +995,8 @@ class MensageriaService {
         quantidadeDigitosOriginal: remetente.quantidadeDigitosOriginal,
         quantidadeDigitosNormalizada: remetente.quantidadeDigitosNormalizada,
         normalizacaoAplicada: remetente.normalizacaoAplicada,
+        dataEvento,
+        origemDataEvento,
         resposta:
           respostaInterpretada.confirmacaoStatus
             ? respostaInterpretada.resposta
@@ -1245,13 +1268,50 @@ class MensageriaService {
     return 0;
   }
 
-  obterDataEvento(payload, data) {
-    const valor = data?.date_time || payload?.date_time;
-    const dataEvento = valor ? new Date(valor) : new Date();
+  obterDataEvento(payload, data, recebidoEm) {
+    const timestamp = data?.messageTimestamp ?? payload?.messageTimestamp;
+    const numeroTimestamp =
+      typeof timestamp === "string" && timestamp.trim() !== ""
+        ? Number(timestamp)
+        : timestamp;
 
-    return Number.isNaN(dataEvento.getTime())
-      ? new Date().toISOString()
-      : dataEvento.toISOString();
+    if (
+      typeof numeroTimestamp === "number" &&
+      Number.isFinite(numeroTimestamp)
+    ) {
+      const milissegundos =
+        Math.abs(numeroTimestamp) < 1e12
+          ? numeroTimestamp * 1000
+          : numeroTimestamp;
+      const dataTimestamp = new Date(milissegundos);
+      if (!Number.isNaN(dataTimestamp.getTime())) {
+        return {
+          dataEvento: dataTimestamp.toISOString(),
+          origem: "MESSAGE_TIMESTAMP",
+        };
+      }
+    }
+
+    const dateTime = data?.date_time || payload?.date_time;
+    const possuiFusoExplicito =
+      typeof dateTime === "string" && /(?:z|[+-]\d{2}:\d{2})$/i.test(dateTime);
+    if (possuiFusoExplicito) {
+      const dataComFuso = new Date(dateTime);
+      if (!Number.isNaN(dataComFuso.getTime())) {
+        return {
+          dataEvento: dataComFuso.toISOString(),
+          origem: "DATE_TIME_WITH_OFFSET",
+        };
+      }
+    }
+
+    const dataRecebimento = new Date(recebidoEm);
+    return {
+      dataEvento: Number.isNaN(dataRecebimento.getTime())
+        ? new Date().toISOString()
+        : dataRecebimento.toISOString(),
+      origem: "SERVER_RECEIVED_AT",
+    };
   }
 }
 
