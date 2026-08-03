@@ -1,12 +1,12 @@
 # AI Handoff — Estado atual do SGBA-UBS
 
-**Atualizado em:** 25/07/2026
+**Atualizado em:** 03/08/2026
 
 **Status:** fluxo de mensageria, webhook, confirmação textual e bloqueio de reenvios implementados e validados.
 
 ## Estado verificado
 
-- Backend: 20 arquivos de teste e 215 testes aprovados.
+- Backend: 20 arquivos de teste e 234 testes aprovados.
 - Frontend: 4 arquivos de teste executados pelo `node:test`.
 - Frontend: lint e build de produção aprovados.
 - Branch de trabalho: `main`.
@@ -33,7 +33,7 @@
 - O Dashboard solicita confirmação somente por menu textual.
 - A tela de agendamento ainda usa o contrato legado `usarBotaoConfirmacao`; não confundir essa compatibilidade com o fluxo textual validado no Dashboard.
 - O status é atualizado por `GET /mensagens/status` a cada 10 segundos.
-- `confirmacao_efetiva` é separada da mensagem mais recente.
+- O Dashboard mantém `ultima_mensagem_whatsapp` separada de `confirmacao_whatsapp`: entrega/leitura e confirmação são exibidas simultaneamente e uma pendência nunca mascara o transporte.
 - O botão de disparo é bloqueado visualmente, mas o banco é a autoridade contra concorrência.
 - O shell autenticado possui largura máxima de 1600 px; tabelas usam o espaço amplo e formulários/modais preservam limites próprios.
 
@@ -89,6 +89,16 @@ x-evolution-secret: <EVOLUTION_WEBHOOK_SECRET>
 
 Eventos obrigatórios: `MESSAGES_UPDATE` e `MESSAGES_UPSERT`.
 
+Nas confirmações textuais, o conteúdo é extraído nesta ordem:
+
+1. `data.message.conversation`;
+2. `data.message.extendedTextMessage.text`, usado também em respostas que citam a mensagem original;
+3. `data.body`, mantido como fallback de compatibilidade.
+
+O primeiro conteúdo textual não vazio é normalizado com remoção dos espaços externos e conversão para minúsculas antes da classificação da intenção.
+
+Quando há exatamente uma confirmação pendente e chega texto fora das intenções aceitas, o sistema reserva atomicamente e envia uma única orientação para responder apenas `1` ou `2`. Novos textos inválidos na mesma pendência e textos posteriores a uma resposta terminal são ignorados. Áudio, mídia e conteúdo vazio não disparam orientação.
+
 ## Invariantes que não devem ser quebradas
 
 - HTTP 2xx sem `key.id`/`id` não é envio bem-sucedido.
@@ -98,10 +108,12 @@ Eventos obrigatórios: `MESSAGES_UPDATE` e `MESSAGES_UPSERT`.
 - `LIDO` não significa presença confirmada.
 - `2` solicita cancelamento; não cancela a consulta.
 - Uma resposta terminal prevalece sobre lembretes posteriores.
+- O status de transporte é independente da confirmação: `ENTREGUE` e `LIDO` devem aparecer mesmo enquanto a resposta estiver `PENDENTE`.
 - No máximo uma pendência pode existir por `consulta_id`.
 - Falha após aceitação do provedor mantém a reserva, evitando duplicidade.
 - Grupos, mensagens próprias, áudios, reações, frases e valores fora dos sinônimos aceitos não confirmam consultas.
-- Respostas textuais aceitas: `1`, `sim`, `confirmar`, `ok` e `s` para confirmação; `2`, `nao`, `não`, `cancelar` e `n` para solicitação de cancelamento. A comparação ignora maiúsculas e espaços externos.
+- Respostas textuais aceitas: `1`, `sim`, `confirmar`, `ok` e `s` para confirmação; `2`, `nao`, `não`, `cancelar` e `n` para solicitação de cancelamento. A comparação é integral após a normalização, portanto esses valores não são reconhecidos dentro de frases maiores.
+- Uma resposta textual inválida não confirma, não cancela, não encerra nem prorroga a pendência; a orientação é enviada no máximo uma vez por histórico.
 - Logs não devem conter texto integral, API key, segredo ou telefone completo.
 
 ## Banco de dados
@@ -111,6 +123,7 @@ Migrations centrais da entrega:
 1. `20260721000200_status_visual_mensagens.sql` — ordem e timestamps de entrega/leitura.
 2. `20260725000100_confirmacao_textual_consultas.sql` — prazo e resposta textual.
 3. `20260725000200_bloqueio_reenvio_confirmacao.sql` — reconciliação, índice único e RPCs de reserva.
+4. `20260803000100_orientacao_resposta_invalida.sql` — reserva atômica da orientação única para texto inválido.
 
 Estados de confirmação: `PENDENTE`, `CONFIRMADO`, `CANCELAMENTO_SOLICITADO`, `EXPIRADO` e `SUBSTITUIDO`.
 

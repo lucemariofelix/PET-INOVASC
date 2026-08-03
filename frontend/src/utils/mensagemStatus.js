@@ -85,6 +85,7 @@ const mesclarStatusMensagens = (consultas, mensagensAtualizadas) => {
     return {
       ...consulta,
       historico_mensagens: historico,
+      ultima_mensagem_whatsapp: mensagemAtualizada,
       confirmacao_whatsapp:
         mensagemAtualizada.confirmacao_efetiva ||
         selecionarConfirmacaoEfetiva(historico) ||

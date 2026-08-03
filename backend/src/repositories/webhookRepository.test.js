@@ -27,6 +27,10 @@ const criarQuery = (estado) => {
       estado.filtros.push(["lte", campo, valor]);
       return query;
     }),
+    is: vi.fn((campo, valor) => {
+      estado.filtros.push(["is", campo, valor]);
+      return query;
+    }),
     order: vi.fn((campo, opcoes) => {
       estado.ordem = [campo, opcoes];
       return query;
@@ -126,5 +130,36 @@ describe("WebhookRepository", () => {
         ["gt", "confirmacao_expira_em", "2026-07-25T12:00:00.000Z"],
       ]),
     );
+  });
+
+  it("reserva a orientação somente para pendência ativa ainda não orientada", async () => {
+    const reservada = await webhookRepository.reservarOrientacaoRespostaInvalida(
+      "hist-1",
+      "2026-08-03T12:00:00.000Z",
+    );
+
+    expect(reservada).toBe(true);
+    expect(estado.atualizacao).toEqual({
+      orientacao_resposta_invalida_em: "2026-08-03T12:00:00.000Z",
+    });
+    expect(estado.filtros).toEqual(
+      expect.arrayContaining([
+        ["eq", "id", "hist-1"],
+        ["eq", "confirmacao_status", "PENDENTE"],
+        ["gt", "confirmacao_expira_em", "2026-08-03T12:00:00.000Z"],
+        ["is", "orientacao_resposta_invalida_em", null],
+      ]),
+    );
+  });
+
+  it("não reserva uma segunda orientação para a mesma pendência", async () => {
+    estado.data = [];
+
+    await expect(
+      webhookRepository.reservarOrientacaoRespostaInvalida(
+        "hist-1",
+        "2026-08-03T12:01:00.000Z",
+      ),
+    ).resolves.toBe(false);
   });
 });

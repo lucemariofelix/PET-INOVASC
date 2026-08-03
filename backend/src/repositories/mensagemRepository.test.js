@@ -77,6 +77,8 @@ describe("MensagemRepository", () => {
       {
         id: "pendente-recente",
         consulta_id: "consulta-1",
+        status: "ENTREGUE",
+        entregue_em: "2026-07-25T23:08:00.000Z",
         data_envio: "2026-07-25T23:07:00.000Z",
         confirmacao_status: "PENDENTE",
         confirmacao_expira_em: "2026-07-28T23:07:00.000Z",
@@ -103,6 +105,7 @@ describe("MensagemRepository", () => {
     expect(resultado).toHaveLength(1);
     expect(resultado[0]).toMatchObject({
       id: "pendente-recente",
+      status: "ENTREGUE",
       confirmacao_efetiva: {
         id: "terminal-antigo",
         confirmacao_status: "CANCELAMENTO_SOLICITADO",

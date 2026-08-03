@@ -179,3 +179,42 @@ test("mescla separadamente a confirmação efetiva retornada pelo polling", () =
   );
   assert.equal(selecionarUltimaMensagem(resultado[0].historico_mensagens).id, "recente");
 });
+
+test("mantém transporte entregue separado da confirmação pendente", () => {
+  const resultado = mesclarStatusMensagens(
+    [
+      {
+        id: "consulta-1",
+        historico_mensagens: [
+          {
+            id: "hist-1",
+            mensagem_id: "msg-1",
+            status: "ENVIADO",
+            confirmacao_status: "PENDENTE",
+            confirmacao_expira_em: "2026-08-06T12:00:00.000Z",
+          },
+        ],
+      },
+    ],
+    [
+      {
+        id: "hist-1",
+        consulta_id: "consulta-1",
+        mensagem_id: "msg-1",
+        status: "ENTREGUE",
+        entregue_em: "2026-08-03T12:00:00.000Z",
+        confirmacao_efetiva: {
+          id: "hist-1",
+          confirmacao_status: "PENDENTE",
+          confirmacao_expira_em: "2026-08-06T12:00:00.000Z",
+        },
+      },
+    ],
+  );
+
+  assert.equal(resultado[0].ultima_mensagem_whatsapp.status, "ENTREGUE");
+  assert.equal(
+    resultado[0].confirmacao_whatsapp.confirmacao_status,
+    "PENDENTE",
+  );
+});

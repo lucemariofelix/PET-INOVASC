@@ -519,6 +519,7 @@ export default function Dashboard() {
                       // Lê o histórico direto da consulta
                       const mensagens = consulta.historico_mensagens || [];
                       const ultimaMensagem =
+                        consulta.ultima_mensagem_whatsapp ||
                         selecionarUltimaMensagem(mensagens);
                       const confirmacaoEfetiva =
                         obterConfirmacaoEfetiva(consulta);
@@ -617,7 +618,9 @@ export default function Dashboard() {
 
                   // Lê o histórico direto da consulta
                   const mensagens = consulta.historico_mensagens || [];
-                  const ultimaMensagem = selecionarUltimaMensagem(mensagens);
+                  const ultimaMensagem =
+                    consulta.ultima_mensagem_whatsapp ||
+                    selecionarUltimaMensagem(mensagens);
                   const confirmacaoEfetiva =
                     obterConfirmacaoEfetiva(consulta);
                   const bloqueioDisparo = obterBloqueioDisparo(consulta);

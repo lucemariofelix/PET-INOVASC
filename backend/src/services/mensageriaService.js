@@ -22,6 +22,8 @@ const RESPOSTAS_AUTOMATICAS = Object.freeze({
     "Sua solicitação de cancelamento foi recebida. A equipe da unidade fará a confirmação.",
   AMBIGUA:
     "Encontramos mais de uma consulta aguardando resposta para este número. Entre em contato com a unidade de saúde para confirmar ou solicitar cancelamento.",
+  INVALIDA:
+    "Não conseguimos identificar sua resposta. Para responder sobre esta consulta, envie somente:\n\n1 — Confirmar presença\n2 — Solicitar cancelamento\n\nResponda apenas com 1 ou 2.",
 });
 const RESPOSTAS_CONFIRMACAO = Object.freeze(["1", "sim", "confirmar", "ok", "s"]);
 const RESPOSTAS_CANCELAMENTO = Object.freeze([
@@ -944,11 +946,10 @@ class MensageriaService {
       const respostaInterpretada = this.extrairRespostaTextual(data);
       if (!respostaInterpretada) {
         this.logDiagnostico("EVOLUTION_CONFIRMATION_IGNORED", {
-          motivo: "CONTEUDO_INVALIDO",
+          motivo: "CONTEUDO_AUSENTE",
         });
         continue;
       }
-      const { resposta, confirmacaoStatus } = respostaInterpretada;
 
       const remetente = this.resolverTelefoneRemetente(data);
       if (!remetente.telefone) {
@@ -973,7 +974,10 @@ class MensageriaService {
         quantidadeDigitosOriginal: remetente.quantidadeDigitosOriginal,
         quantidadeDigitosNormalizada: remetente.quantidadeDigitosNormalizada,
         normalizacaoAplicada: remetente.normalizacaoAplicada,
-        resposta,
+        resposta:
+          respostaInterpretada.confirmacaoStatus
+            ? respostaInterpretada.resposta
+            : null,
         quantidadePendencias: pendencias.length,
       });
 
@@ -994,6 +998,34 @@ class MensageriaService {
       }
 
       const pendencia = pendencias[0];
+      if (!respostaInterpretada.confirmacaoStatus) {
+        const orientacaoReservada = await this.retry(() =>
+          webhookRepository.reservarOrientacaoRespostaInvalida(
+            pendencia.id,
+            dataEvento,
+          ),
+        );
+
+        this.logDiagnostico("EVOLUTION_CONFIRMATION_IGNORED", {
+          motivo: "CONTEUDO_INVALIDO",
+          historicoId: pendencia.id,
+          orientacaoReservada,
+        });
+
+        if (orientacaoReservada) {
+          await this.enviarRespostaAutomaticaComSeguranca({
+            telefone,
+            texto: RESPOSTAS_AUTOMATICAS.INVALIDA,
+            referencia: {
+              paciente_id: pendencia.paciente_id,
+              consulta_id: pendencia.consulta_id,
+            },
+          });
+        }
+        continue;
+      }
+
+      const { resposta, confirmacaoStatus } = respostaInterpretada;
       const atualizadas = await this.retry(() =>
         webhookRepository.registrarRespostaConfirmacao({
           historicoId: pendencia.id,
@@ -1044,7 +1076,7 @@ class MensageriaService {
       return { resposta, confirmacaoStatus: "CANCELAMENTO_SOLICITADO" };
     }
 
-    return null;
+    return { resposta, confirmacaoStatus: null };
   }
 
   extrairTelefoneRemetente(data) {

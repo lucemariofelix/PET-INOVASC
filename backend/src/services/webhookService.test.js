@@ -60,6 +60,9 @@ describe("WebhookService", () => {
     webhookRepository.registrarRespostaConfirmacao = vi
       .fn()
       .mockResolvedValue([]);
+    webhookRepository.reservarOrientacaoRespostaInvalida = vi
+      .fn()
+      .mockResolvedValue(false);
     vi.spyOn(mensageriaService, "enviarRespostaAutomatica").mockResolvedValue({});
     vi.spyOn(console, "log").mockImplementation(() => {});
   });
@@ -579,16 +582,96 @@ describe("WebhookService", () => {
       );
     });
 
-    it.each(["", "10", "12", "1 confirmo", "🎤"])(
-      "deve ignorar conteúdo textual inválido: %s",
+    it.each(["10", "12", "1 confirmo", "🎤"])(
+      "deve consultar pendências sem orientar quando não houver pendência para: %s",
       async (texto) => {
         await webhookService.processarEvento(criarRespostaTexto(texto));
 
         expect(
           webhookRepository.listarConfirmacoesPendentesPorTelefone,
+        ).toHaveBeenCalledWith(
+          "5584999998888",
+          "2026-07-25T12:00:00.000Z",
+        );
+        expect(
+          webhookRepository.reservarOrientacaoRespostaInvalida,
         ).not.toHaveBeenCalled();
       },
     );
+
+    it("deve ignorar conteúdo textual vazio", async () => {
+      await webhookService.processarEvento(criarRespostaTexto(""));
+
+      expect(
+        webhookRepository.listarConfirmacoesPendentesPorTelefone,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("deve orientar uma vez quando houver uma pendência e a resposta for inválida", async () => {
+      webhookRepository.listarConfirmacoesPendentesPorTelefone.mockResolvedValue([
+        pendenciaAtiva,
+      ]);
+      webhookRepository.reservarOrientacaoRespostaInvalida.mockResolvedValue(
+        true,
+      );
+
+      await webhookService.processarEvento(criarRespostaTexto("bom dia"));
+
+      expect(
+        webhookRepository.reservarOrientacaoRespostaInvalida,
+      ).toHaveBeenCalledWith(
+        pendenciaAtiva.id,
+        "2026-07-25T12:00:00.000Z",
+      );
+      expect(mensageriaService.enviarRespostaAutomatica).toHaveBeenCalledWith(
+        expect.objectContaining({
+          telefone: "5584999998888",
+          texto:
+            "Não conseguimos identificar sua resposta. Para responder sobre esta consulta, envie somente:\n\n1 — Confirmar presença\n2 — Solicitar cancelamento\n\nResponda apenas com 1 ou 2.",
+        }),
+      );
+      expect(
+        webhookRepository.registrarRespostaConfirmacao,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("não deve repetir a orientação quando a pendência já foi orientada", async () => {
+      webhookRepository.listarConfirmacoesPendentesPorTelefone.mockResolvedValue([
+        pendenciaAtiva,
+      ]);
+      webhookRepository.reservarOrientacaoRespostaInvalida.mockResolvedValue(
+        false,
+      );
+
+      await webhookService.processarEvento(criarRespostaTexto("outra frase"));
+
+      expect(
+        webhookRepository.reservarOrientacaoRespostaInvalida,
+      ).toHaveBeenCalledTimes(1);
+      expect(mensageriaService.enviarRespostaAutomatica).not.toHaveBeenCalled();
+    });
+
+    it("deve ignorar texto livre enviado depois de uma resposta terminal", async () => {
+      webhookRepository.listarConfirmacoesPendentesPorTelefone
+        .mockResolvedValueOnce([pendenciaAtiva])
+        .mockResolvedValueOnce([]);
+      webhookRepository.registrarRespostaConfirmacao.mockResolvedValueOnce([
+        { ...pendenciaAtiva, confirmacao_status: "CONFIRMADO" },
+      ]);
+
+      await webhookService.processarEvento(criarRespostaTexto("1"));
+      await webhookService.processarEvento(criarRespostaTexto("bom dia"));
+
+      expect(
+        webhookRepository.registrarRespostaConfirmacao,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        webhookRepository.reservarOrientacaoRespostaInvalida,
+      ).not.toHaveBeenCalled();
+      expect(mensageriaService.enviarRespostaAutomatica).toHaveBeenCalledTimes(
+        1,
+      );
+    });
 
     it("deve ignorar mensagem de áudio sem conteúdo textual", async () => {
       await webhookService.processarEvento(

@@ -88,6 +88,27 @@ class WebhookRepository {
     return data || [];
   }
 
+  async reservarOrientacaoRespostaInvalida(historicoId, dataEvento) {
+    const { data, error } = await supabaseAdmin
+      .from("historico_mensagens")
+      .update({ orientacao_resposta_invalida_em: dataEvento })
+      .eq("id", historicoId)
+      .eq("confirmacao_status", "PENDENTE")
+      .gt("confirmacao_expira_em", dataEvento)
+      .is("orientacao_resposta_invalida_em", null)
+      .select("id");
+
+    if (error) {
+      console.error(
+        "❌ Supabase erro ao reservar orientação de resposta inválida:",
+        error.message,
+      );
+      throw error;
+    }
+
+    return Array.isArray(data) && data.length === 1;
+  }
+
   async registrarRespostaConfirmacao({
     historicoId,
     resposta,
