@@ -24,6 +24,10 @@ _Evitar_: Mensagem lida, mensagem entregue
 Pedido do paciente para que a unidade revise o agendamento. Não cancela a consulta automaticamente.
 _Evitar_: Consulta cancelada
 
+**Cancelamento efetivado**:
+Encerramento da consulta realizado por uma pessoa autenticada da unidade após uma solicitação de cancelamento do paciente. Um novo atendimento exige outro agendamento.
+_Evitar_: Solicitação de cancelamento
+
 **Pendência de confirmação**:
 Lembrete ainda dentro do prazo e aguardando resposta válida do paciente.
 _Evitar_: Mensagem não lida

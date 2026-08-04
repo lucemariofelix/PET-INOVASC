@@ -15,6 +15,14 @@ export const calcularAtraso = (dataUltima) => {
 };
 
 export const getBadgeInfo = (consulta) => {
+  if (["CANCELADA", "CANCELADO"].includes(consulta.status_consulta)) {
+    return {
+      label: "CANCELADA",
+      color: "bg-slate-200 text-slate-700 border-slate-300",
+      textoDias: "Encerrada",
+    };
+  }
+
   // --- PARTE 1: AVALIA AGENDAMENTOS FUTUROS ---
   if (consulta.data_proxima_consulta) {
     // Isola a data e fixa ao meio-dia (Mantendo a segurança contra o fuso)

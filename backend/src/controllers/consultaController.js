@@ -40,6 +40,27 @@ class ConsultaController {
     });
   }
 
+  async efetivarCancelamento(request, reply) {
+    const authHeader = request.headers.authorization;
+    return executarController(request, reply, {
+      executar: () =>
+        consultaService.efetivarCancelamentoSolicitado(
+          request.params.id,
+          authHeader,
+        ),
+      auditoria: ({ resultado }) => ({
+        acao: "CANCELOU_CONSULTA_SOLICITADA",
+        detalhes: `Cancelou a consulta ${resultado.consulta.id} do paciente ${resultado.consulta.paciente_id}`,
+      }),
+      responder: (resultado) => reply.status(200).send({
+        mensagem: resultado.ja_cancelada
+          ? "Consulta já estava cancelada."
+          : "Consulta cancelada com sucesso!",
+        ...resultado,
+      }),
+    });
+  }
+
 }
 
 module.exports = new ConsultaController();

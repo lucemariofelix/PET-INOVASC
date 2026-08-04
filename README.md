@@ -23,6 +23,7 @@ Este projeto faz parte das iniciativas do **PET-Saúde: Informação e Saúde Di
 - **Mensageria via WhatsApp:** envio validado de lembretes, mensagens de agendamento, avisos gerais e comunicações por grupo via Evolution API.
 - **Rastreio de entrega:** acompanhamento monotônico de mensagens como Enviado, Entregue e Lido, atualizado por webhook e polling autenticado.
 - **Confirmação textual:** lembretes solicitam resposta `1` para presença ou `2` para cancelamento, sem depender de botões nativos do WhatsApp.
+- **Efetivação de cancelamento:** após o pedido do paciente, qualquer perfil autenticado pode cancelar a consulta de forma auditada e confirmar a conclusão pelo WhatsApp.
 - **Bloqueio de reenvios:** uma reserva transacional por consulta impede disparos duplicados quando existe pendência ou resposta registrada.
 - **Grupos de acompanhamento:** organização de pacientes por linhas de cuidado, condições, campanhas ou ações territoriais.
 - **Controle de território:** vínculo entre pacientes e Agentes Comunitários de Saúde para apoiar a rotina das microáreas.
@@ -36,7 +37,7 @@ Este projeto faz parte das iniciativas do **PET-Saúde: Informação e Saúde Di
 - **Acompanhamento e busca ativa:** o painel calcula atrasos, próximas consultas e prioridades para orientar a atuação da equipe.
 - **Agendamento e comunicação:** ao criar uma consulta, o sistema pode registrar e enviar uma mensagem de agendamento ao paciente autorizado.
 - **Lembretes e avisos:** pacientes com consentimento podem receber lembretes de consulta, avisos gerais ou mensagens direcionadas por grupo de acompanhamento.
-- **Confirmação pelo paciente:** respostas textuais `1` e `2` são recebidas por webhook; a opção `2` solicita revisão humana e nunca cancela a consulta automaticamente.
+- **Confirmação pelo paciente:** respostas textuais `1` e `2` são recebidas por webhook; a opção `2` solicita revisão humana e a consulta só é cancelada após ação de um usuário autenticado.
 - **Acompanhamento da mensagem:** eventos da Evolution atualizam entrega e leitura sem confundir esses estados com a resposta do paciente.
 - **Auditoria:** ações administrativas e eventos relevantes ficam disponíveis para acompanhamento e rastreabilidade.
 

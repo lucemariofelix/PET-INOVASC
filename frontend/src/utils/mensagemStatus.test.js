@@ -5,6 +5,7 @@ import {
   obterEstadoConfirmacao,
   selecionarConfirmacaoEfetiva,
   selecionarUltimaMensagem,
+  podeEfetivarCancelamento,
 } from "./mensagemStatus.js";
 
 test("seleciona a mensagem mais recente sem alterar o histórico", () => {
@@ -216,5 +217,25 @@ test("mantém transporte entregue separado da confirmação pendente", () => {
   assert.equal(
     resultado[0].confirmacao_whatsapp.confirmacao_status,
     "PENDENTE",
+  );
+});
+
+test("permite efetivar somente cancelamento solicitado em consulta agendada", () => {
+  const solicitada = {
+    status_consulta: "AGENDADA",
+    confirmacao_whatsapp: { confirmacao_status: "CANCELAMENTO_SOLICITADO" },
+  };
+
+  assert.equal(podeEfetivarCancelamento(solicitada), true);
+  assert.equal(
+    podeEfetivarCancelamento({ ...solicitada, status_consulta: "CANCELADA" }),
+    false,
+  );
+  assert.equal(
+    podeEfetivarCancelamento({
+      status_consulta: "AGENDADA",
+      confirmacao_whatsapp: { confirmacao_status: "CONFIRMADO" },
+    }),
+    false,
   );
 });

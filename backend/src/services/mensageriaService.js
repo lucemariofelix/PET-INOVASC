@@ -10,6 +10,7 @@ const TIPOS_MENSAGEM = Object.freeze({
   AVISO_GERAL: "AVISO_GERAL",
   GRUPO_ACOMPANHAMENTO: "GRUPO_ACOMPANHAMENTO",
   RESPOSTA_AUTOMATICA: "RESPOSTA_AUTOMATICA",
+  CANCELAMENTO_CONSULTA: "CANCELAMENTO_CONSULTA",
 });
 
 const BOTAO_CONFIRMAR_PRESENCA = "CONFIRMAR_PRESENCA";
@@ -196,6 +197,10 @@ class MensageriaService {
 
     if (tipo === TIPOS_MENSAGEM.AGENDAMENTO_CONSULTA) {
       return `Olá, *${nomePaciente}*! Sua consulta com o(a) profissional *${profissional}* foi agendada para *${dataFormatada}*.\n\nCaso não possa comparecer, avise a unidade de saúde com antecedência.`;
+    }
+
+    if (tipo === TIPOS_MENSAGEM.CANCELAMENTO_CONSULTA) {
+      return `Olá, *${nomePaciente}*! O cancelamento da sua consulta com o(a) profissional *${profissional || "da unidade"}*, marcada para *${dataFormatada}*, foi confirmado pela unidade de saúde.`;
     }
 
     let texto = `Olá, *${nomePaciente}*! Aqui é do seu Posto Potengi.\n\n`;

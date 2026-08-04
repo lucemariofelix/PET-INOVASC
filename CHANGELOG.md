@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-04
+
+### Cancelamento de consultas
+
+- Adicionada efetivação auditável do cancelamento solicitado pelo paciente para todos os perfis autenticados.
+- Consultas canceladas deixam as métricas ativas e não recebem novos lembretes.
+- Adicionada confirmação final pelo WhatsApp sem reversão do cancelamento em caso de falha do provedor.
+
 ## 2026-07-25
 
 ### Mensageria e acompanhamento

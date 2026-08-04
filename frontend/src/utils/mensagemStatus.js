@@ -53,6 +53,14 @@ const selecionarConfirmacaoEfetiva = (mensagens, agora = new Date()) => {
     : null;
 };
 
+const podeEfetivarCancelamento = (consulta, agora = new Date()) => {
+  if (consulta?.status_consulta !== "AGENDADA") return false;
+  const confirmacao =
+    consulta.confirmacao_whatsapp ||
+    selecionarConfirmacaoEfetiva(consulta.historico_mensagens || [], agora);
+  return confirmacao?.confirmacao_status === "CANCELAMENTO_SOLICITADO";
+};
+
 const mesclarStatusMensagens = (consultas, mensagensAtualizadas) => {
   if (!Array.isArray(consultas) || !Array.isArray(mensagensAtualizadas)) {
     return Array.isArray(consultas) ? consultas : [];
@@ -118,5 +126,6 @@ export {
   mesclarStatusMensagens,
   obterEstadoConfirmacao,
   selecionarConfirmacaoEfetiva,
+  podeEfetivarCancelamento,
   selecionarUltimaMensagem,
 };

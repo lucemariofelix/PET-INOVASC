@@ -18,15 +18,18 @@ import {
 import { getBadgeInfo } from '../utils/dateHelpers';
 
 export default function PainelMetricas({ consultas }) {
+  const consultasAtivas = consultas.filter(
+    (consulta) => !["CANCELADA", "CANCELADO"].includes(consulta.status_consulta),
+  );
   // 1. CÁLCULO DAS MÉTRICAS DOS CARDS
-  const totalPacientes = consultas.length;
+  const totalPacientes = consultasAtivas.length;
   
-  const atrasados = consultas.filter(c => {
+  const atrasados = consultasAtivas.filter(c => {
     const label = getBadgeInfo(c).label;
     return label === 'URGENTE' || label === 'ALERTA';
   }).length;
 
-  const noPrazo = consultas.filter(c => {
+  const noPrazo = consultasAtivas.filter(c => {
     const label = getBadgeInfo(c).label;
     return label === 'OK' || label === 'LEMBRETE';
   }).length;
@@ -39,7 +42,7 @@ export default function PainelMetricas({ consultas }) {
 
   // 3. DADOS PARA O GRÁFICO DE BARRAS (Por Profissional)
   // Agrupa os pacientes pela especialidade (Enfermagem, Médico, Odonto)
-  const contagemProfissional = consultas.reduce((acc, consulta) => {
+  const contagemProfissional = consultasAtivas.reduce((acc, consulta) => {
     const prof = consulta.tipo_profissional || 'Outros';
     acc[prof] = (acc[prof] || 0) + 1;
     return acc;

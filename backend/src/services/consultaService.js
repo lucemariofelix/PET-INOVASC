@@ -1,4 +1,13 @@
 const consultaRepository = require("../repositories/consultaRepository");
+const mensagemService = require("./mensagemService");
+const { TIPOS_MENSAGEM } = require("./mensageriaService");
+const { AppError } = require("../errors/AppError");
+
+const ERROS_CANCELAMENTO = {
+  CONSULTATION_NOT_FOUND: [404, "Consulta não encontrada."],
+  CANCELLATION_NOT_REQUESTED: [409, "Esta consulta não possui solicitação de cancelamento do paciente."],
+  CONSULTATION_NOT_CANCELLABLE: [409, "Esta consulta não pode ser cancelada no estado atual."],
+};
 
 class ConsultaService {
   async obterConsultasAtrasadas(authHeader) {
@@ -71,6 +80,50 @@ class ConsultaService {
   // Busca todas sem aplicar regra de atraso
   async obterTodasConsultas(authHeader) {
     return await consultaRepository.listarTodas(authHeader);
+  }
+
+  async efetivarCancelamentoSolicitado(consultaId, authHeader) {
+    const resultado = await consultaRepository.efetivarCancelamentoSolicitado(
+      consultaId,
+      authHeader,
+    );
+
+    if (!resultado?.sucesso) {
+      const [status, mensagem] = ERROS_CANCELAMENTO[resultado?.codigo] || [
+        500,
+        "Não foi possível cancelar a consulta.",
+      ];
+      throw new AppError(mensagem, status, resultado?.codigo || "CANCELLATION_ERROR");
+    }
+
+    const consulta = await consultaRepository.buscarPorId(consultaId, authHeader);
+    let notificacao = { enviada: false, aviso: null };
+
+    if (!resultado.ja_cancelada) {
+      try {
+        const envio = await mensagemService.dispararMensagem(
+          {
+            paciente_id: consulta.pacientes.id,
+            consulta_id: consulta.id,
+            telefone: consulta.pacientes.telefone,
+            nome: consulta.pacientes.nome_completo,
+            consentimento_msg: consulta.pacientes.consentimento_msg,
+            profissional: consulta.tipo_profissional,
+            data_referencia: consulta.data_proxima_consulta,
+            tipo: TIPOS_MENSAGEM.CANCELAMENTO_CONSULTA,
+          },
+          authHeader,
+        );
+        notificacao = { enviada: true, aviso: envio.aviso || null };
+      } catch (_error) {
+        notificacao = {
+          enviada: false,
+          aviso: "Consulta cancelada, mas não foi possível avisar o paciente pelo WhatsApp.",
+        };
+      }
+    }
+
+    return { consulta, notificacao, ja_cancelada: resultado.ja_cancelada === true };
   }
 }
 

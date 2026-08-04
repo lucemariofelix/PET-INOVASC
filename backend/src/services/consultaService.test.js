@@ -2,9 +2,11 @@
 // MOCK do repositório — hoisted pelo Vitest antes de qualquer import
 // =============================================================================
 vi.mock("../repositories/consultaRepository");
+vi.mock("./mensagemService");
 
 const consultaRepository = require("../repositories/consultaRepository");
 const consultaService = require("./consultaService");
+const mensagemService = require("./mensagemService");
 
 // =============================================================================
 // SUÍTE PRINCIPAL
@@ -194,6 +196,101 @@ describe("ConsultaService", () => {
         "Bearer token",
       );
       expect(resultado).toEqual(todasConsultas);
+    });
+  });
+
+  describe("efetivarCancelamentoSolicitado", () => {
+    const consultaCancelada = {
+      id: "11111111-1111-4111-8111-111111111111",
+      paciente_id: "22222222-2222-4222-8222-222222222222",
+      status_consulta: "CANCELADA",
+      tipo_profissional: "Médico",
+      data_proxima_consulta: "2026-09-10",
+      pacientes: {
+        id: "22222222-2222-4222-8222-222222222222",
+        nome_completo: "Maria Silva",
+        telefone: "84999998888",
+        consentimento_msg: true,
+      },
+    };
+
+    it("cancela e envia a confirmação ao paciente", async () => {
+      consultaRepository.efetivarCancelamentoSolicitado = vi
+        .fn()
+        .mockResolvedValue({ sucesso: true, ja_cancelada: false });
+      consultaRepository.buscarPorId = vi
+        .fn()
+        .mockResolvedValue(consultaCancelada);
+      mensagemService.dispararMensagem = vi
+        .fn()
+        .mockResolvedValue({ mensagem: { id: "msg-1" } });
+
+      const resultado = await consultaService.efetivarCancelamentoSolicitado(
+        consultaCancelada.id,
+        "Bearer token",
+      );
+
+      expect(resultado.consulta).toEqual(consultaCancelada);
+      expect(resultado.notificacao).toEqual({ enviada: true, aviso: null });
+      expect(mensagemService.dispararMensagem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          consulta_id: consultaCancelada.id,
+          tipo: "CANCELAMENTO_CONSULTA",
+        }),
+        "Bearer token",
+      );
+    });
+
+    it("mantém a consulta cancelada quando o WhatsApp falha", async () => {
+      consultaRepository.efetivarCancelamentoSolicitado = vi
+        .fn()
+        .mockResolvedValue({ sucesso: true, ja_cancelada: false });
+      consultaRepository.buscarPorId = vi
+        .fn()
+        .mockResolvedValue(consultaCancelada);
+      mensagemService.dispararMensagem = vi
+        .fn()
+        .mockRejectedValue(new Error("provedor indisponível"));
+
+      const resultado = await consultaService.efetivarCancelamentoSolicitado(
+        consultaCancelada.id,
+        "Bearer token",
+      );
+
+      expect(resultado.consulta.status_consulta).toBe("CANCELADA");
+      expect(resultado.notificacao.enviada).toBe(false);
+      expect(resultado.notificacao.aviso).toContain("não foi possível avisar");
+    });
+
+    it.each([
+      ["CONSULTATION_NOT_FOUND", 404],
+      ["CANCELLATION_NOT_REQUESTED", 409],
+      ["CONSULTATION_NOT_CANCELLABLE", 409],
+    ])("mapeia %s para HTTP %s", async (codigo, statusCode) => {
+      consultaRepository.efetivarCancelamentoSolicitado = vi
+        .fn()
+        .mockResolvedValue({ sucesso: false, codigo });
+
+      await expect(
+        consultaService.efetivarCancelamentoSolicitado("consulta-1", "Bearer token"),
+      ).rejects.toMatchObject({ code: codigo, statusCode });
+    });
+
+    it("não reenvia notificação em repetição idempotente", async () => {
+      consultaRepository.efetivarCancelamentoSolicitado = vi
+        .fn()
+        .mockResolvedValue({ sucesso: true, ja_cancelada: true });
+      consultaRepository.buscarPorId = vi
+        .fn()
+        .mockResolvedValue(consultaCancelada);
+
+      const resultado = await consultaService.efetivarCancelamentoSolicitado(
+        consultaCancelada.id,
+        "Bearer token",
+      );
+
+      expect(resultado.ja_cancelada).toBe(true);
+      expect(mensagemService.dispararMensagem).not.toHaveBeenCalled();
     });
   });
 });

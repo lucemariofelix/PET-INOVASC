@@ -2,12 +2,12 @@
 
 **Atualizado em:** 03/08/2026
 
-**Status:** fluxo de mensageria, webhook, confirmação textual e bloqueio de reenvios implementados e validados.
+**Status:** fluxo de mensageria, webhook, confirmação textual, bloqueio de reenvios e efetivação manual do cancelamento implementados e validados.
 
 ## Estado verificado
 
-- Backend: 20 arquivos de teste e 234 testes aprovados.
-- Frontend: 4 arquivos de teste executados pelo `node:test`.
+- Backend: 22 arquivos de teste e 253 testes aprovados.
+- Frontend: 6 arquivos de teste executados pelo `node:test`.
 - Frontend: lint e build de produção aprovados.
 - Branch de trabalho: `main`.
 - Integração real validada com Evolution API v2.3.x, incluindo envio, entrega, leitura e resposta textual.
@@ -80,6 +80,15 @@ Authorization: Bearer <token>
 
 Aceita até 20 IDs e retorna a mensagem mais recente de cada consulta com `confirmacao_efetiva`.
 
+### Efetivar cancelamento solicitado
+
+```http
+PATCH /consultas/<uuid>/cancelamento
+Authorization: Bearer <token>
+```
+
+ADMIN, RECEPCAO e ACS podem executar. A operação exige uma resposta do paciente classificada como `CANCELAMENTO_SOLICITADO`, grava `CANCELADA`, `cancelada_em` e `cancelada_por` e é idempotente. Falha no aviso final pelo WhatsApp não reverte a consulta.
+
 ### Webhook
 
 ```http
@@ -107,6 +116,7 @@ Quando há exatamente uma confirmação pendente e chega texto fora das intenç�
 - O status de entrega só avança: `ENVIADO → ENTREGUE → LIDO`.
 - `LIDO` não significa presença confirmada.
 - `2` solicita cancelamento; não cancela a consulta.
+- Após a solicitação, qualquer perfil autenticado pode efetivar o cancelamento; a consulta passa a `CANCELADA` e não pode ser reativada por este fluxo.
 - Uma resposta terminal prevalece sobre lembretes posteriores.
 - O status de transporte é independente da confirmação: `ENTREGUE` e `LIDO` devem aparecer mesmo enquanto a resposta estiver `PENDENTE`.
 - No máximo uma pendência pode existir por `consulta_id`.
@@ -124,6 +134,7 @@ Migrations centrais da entrega:
 2. `20260725000100_confirmacao_textual_consultas.sql` — prazo e resposta textual.
 3. `20260725000200_bloqueio_reenvio_confirmacao.sql` — reconciliação, índice único e RPCs de reserva.
 4. `20260803000100_orientacao_resposta_invalida.sql` — reserva atômica da orientação única para texto inválido.
+5. `20260804000100_efetivacao_cancelamento_consulta.sql` — cancelamento transacional, responsável e horário.
 
 Estados de confirmação: `PENDENTE`, `CONFIRMADO`, `CANCELAMENTO_SOLICITADO`, `EXPIRADO` e `SUBSTITUIDO`.
 

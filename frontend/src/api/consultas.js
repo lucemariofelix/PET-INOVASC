@@ -1,4 +1,4 @@
-import { fetchComAutenticacao, lerErro } from "./client";
+import { fetchComAutenticacao, lerErro } from "./client.js";
 
 const consultasApi = {
   getConsultasAtrasadas: async () => {
@@ -24,6 +24,17 @@ const consultasApi = {
     });
     if (!res.ok) {
       throw new Error(await lerErro(res, "Erro ao agendar consulta"));
+    }
+    return res.json();
+  },
+
+  efetivarCancelamento: async (consultaId) => {
+    const res = await fetchComAutenticacao(
+      `/consultas/${encodeURIComponent(consultaId)}/cancelamento`,
+      { method: "PATCH" },
+    );
+    if (!res.ok) {
+      throw new Error(await lerErro(res, "Erro ao cancelar consulta"));
     }
     return res.json();
   },

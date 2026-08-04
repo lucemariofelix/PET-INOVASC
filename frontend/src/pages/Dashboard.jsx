@@ -9,6 +9,7 @@ import {
   obterEstadoConfirmacao,
   selecionarConfirmacaoEfetiva,
   selecionarUltimaMensagem,
+  podeEfetivarCancelamento,
 } from "../utils/mensagemStatus";
 import ModalConfirmacao from "../components/ModalConfirmacao";
 import ModalAlerta from "../components/ModalAlerta";
@@ -34,6 +35,11 @@ export default function Dashboard() {
     isOpen: false,
     consulta: null,
   });
+  const [modalCancelamento, setModalCancelamento] = useState({
+    isOpen: false,
+    consulta: null,
+  });
+  const [cancelandoId, setCancelandoId] = useState(null);
   const [alerta, setAlerta] = useState({
     isOpen: false,
     tipo: "",
@@ -275,6 +281,9 @@ export default function Dashboard() {
     consulta.confirmacao_whatsapp ||
     selecionarConfirmacaoEfetiva(consulta.historico_mensagens || []);
 
+  const consultaEstaCancelada = (consulta) =>
+    ["CANCELADA", "CANCELADO"].includes(consulta.status_consulta);
+
   const obterBloqueioDisparo = (consulta) => {
     const estado = obterEstadoConfirmacao(obterConfirmacaoEfetiva(consulta));
     const rotulos = {
@@ -371,6 +380,39 @@ export default function Dashboard() {
         titulo: "Falha no Disparo",
         mensagem: err.message,
       });
+    }
+  };
+
+  const confirmarCancelamento = async () => {
+    const consulta = modalCancelamento.consulta;
+    if (!consulta || cancelandoId) return;
+
+    setCancelandoId(consulta.id);
+    try {
+      const resposta = await consultasApi.efetivarCancelamento(consulta.id);
+      setConsultas((atuais) =>
+        atuais.map((item) =>
+          item.id === consulta.id ? { ...item, ...resposta.consulta } : item,
+        ),
+      );
+      setModalCancelamento({ isOpen: false, consulta: null });
+      setAlerta({
+        isOpen: true,
+        tipo: resposta.notificacao?.aviso ? "aviso" : "sucesso",
+        titulo: "Consulta cancelada",
+        mensagem:
+          resposta.notificacao?.aviso ||
+          "A consulta foi cancelada e o paciente foi avisado pelo WhatsApp.",
+      });
+    } catch (err) {
+      setAlerta({
+        isOpen: true,
+        tipo: "erro",
+        titulo: "Não foi possível cancelar",
+        mensagem: err.message,
+      });
+    } finally {
+      setCancelandoId(null);
     }
   };
 
@@ -524,6 +566,8 @@ export default function Dashboard() {
                       const confirmacaoEfetiva =
                         obterConfirmacaoEfetiva(consulta);
                       const bloqueioDisparo = obterBloqueioDisparo(consulta);
+                      const cancelamentoDisponivel =
+                        podeEfetivarCancelamento(consulta);
 
                       return (
                         <tr
@@ -591,17 +635,34 @@ export default function Dashboard() {
                             </span>
                           </td>
                           <td className="px-3 py-4 text-center xl:px-4">
-                            <button
-                              onClick={() => solicitarDisparo(consulta)}
-                              disabled={bloqueioDisparo.bloqueado}
-                              className={`mx-auto flex w-full max-w-full items-center justify-center gap-2 whitespace-normal rounded-lg px-2 py-2 text-xs font-semibold leading-tight shadow-sm transition-colors xl:px-3 ${
-                                bloqueioDisparo.bloqueado
-                                  ? "bg-slate-200 text-slate-600 cursor-not-allowed"
-                                  : "bg-slate-800 hover:bg-emerald-600 text-white cursor-pointer"
-                              }`}
-                            >
-                              {bloqueioDisparo.rotulo || "Disparar Msg"}
-                            </button>
+                            {cancelamentoDisponivel ? (
+                              <button
+                                onClick={() =>
+                                  setModalCancelamento({ isOpen: true, consulta })
+                                }
+                                className="mx-auto flex w-full items-center justify-center rounded-lg bg-rose-600 px-2 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-700"
+                              >
+                                Efetivar cancelamento
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => solicitarDisparo(consulta)}
+                                disabled={
+                                  bloqueioDisparo.bloqueado ||
+                                  consultaEstaCancelada(consulta)
+                                }
+                                className={`mx-auto flex w-full max-w-full items-center justify-center gap-2 whitespace-normal rounded-lg px-2 py-2 text-xs font-semibold leading-tight shadow-sm transition-colors xl:px-3 ${
+                                  bloqueioDisparo.bloqueado ||
+                                  consultaEstaCancelada(consulta)
+                                    ? "bg-slate-200 text-slate-600 cursor-not-allowed"
+                                    : "bg-slate-800 hover:bg-emerald-600 text-white cursor-pointer"
+                                }`}
+                              >
+                                {consultaEstaCancelada(consulta)
+                                  ? "Consulta cancelada"
+                                  : bloqueioDisparo.rotulo || "Disparar Msg"}
+                              </button>
+                            )}
                           </td>
                         </tr>
                       );
@@ -624,6 +685,8 @@ export default function Dashboard() {
                   const confirmacaoEfetiva =
                     obterConfirmacaoEfetiva(consulta);
                   const bloqueioDisparo = obterBloqueioDisparo(consulta);
+                  const cancelamentoDisponivel =
+                    podeEfetivarCancelamento(consulta);
 
                   return (
                     <div
@@ -705,17 +768,34 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => solicitarDisparo(consulta)}
-                        disabled={bloqueioDisparo.bloqueado}
-                        className={`w-full py-3 rounded-lg text-sm font-semibold shadow-sm transition-colors ${
-                          bloqueioDisparo.bloqueado
-                            ? "bg-slate-200 text-slate-600 cursor-not-allowed"
-                            : "bg-slate-800 hover:bg-emerald-600 text-white cursor-pointer"
-                        }`}
-                      >
-                        {bloqueioDisparo.rotulo || "Disparar Mensagem"}
-                      </button>
+                      {cancelamentoDisponivel ? (
+                        <button
+                          onClick={() =>
+                            setModalCancelamento({ isOpen: true, consulta })
+                          }
+                          className="w-full rounded-lg bg-rose-600 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700"
+                        >
+                          Efetivar cancelamento
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => solicitarDisparo(consulta)}
+                          disabled={
+                            bloqueioDisparo.bloqueado ||
+                            consultaEstaCancelada(consulta)
+                          }
+                          className={`w-full py-3 rounded-lg text-sm font-semibold shadow-sm transition-colors ${
+                            bloqueioDisparo.bloqueado ||
+                            consultaEstaCancelada(consulta)
+                              ? "bg-slate-200 text-slate-600 cursor-not-allowed"
+                              : "bg-slate-800 hover:bg-emerald-600 text-white cursor-pointer"
+                          }`}
+                        >
+                          {consultaEstaCancelada(consulta)
+                            ? "Consulta cancelada"
+                            : bloqueioDisparo.rotulo || "Disparar Mensagem"}
+                        </button>
+                      )}
                     </div>
                   );
                 })}
@@ -773,6 +853,20 @@ export default function Dashboard() {
         mensagem={`Deseja enviar um aviso via WhatsApp para ${modalConfirmacao.consulta?.pacientes?.nome_completo}?`}
         onCancel={() => setModalConfirmacao({ isOpen: false, consulta: null })}
         onConfirm={confirmarDisparo}
+      />
+
+      <ModalConfirmacao
+        isOpen={modalCancelamento.isOpen}
+        titulo="Efetivar cancelamento"
+        mensagem={`Confirma o cancelamento da consulta de ${modalCancelamento.consulta?.pacientes?.nome_completo || "paciente"} com ${modalCancelamento.consulta?.tipo_profissional || "a equipe"}, marcada para ${modalCancelamento.consulta?.data_proxima_consulta || "a data informada"}?`}
+        confirmLabel="Cancelar consulta"
+        cancelLabel="Voltar"
+        loading={Boolean(cancelandoId)}
+        onCancel={() =>
+          !cancelandoId &&
+          setModalCancelamento({ isOpen: false, consulta: null })
+        }
+        onConfirm={confirmarCancelamento}
       />
 
       <ModalAlerta

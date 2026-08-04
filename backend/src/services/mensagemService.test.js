@@ -335,6 +335,28 @@ describe("MensagemService", () => {
       );
     });
 
+    it("deve confirmar o cancelamento efetivado pelo WhatsApp", async () => {
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ key: { id: "MSG-CANCELAMENTO" } })),
+      });
+
+      await mensagemService.dispararMensagem(
+        { ...dadosBase, tipo: "CANCELAMENTO_CONSULTA" },
+        authHeader,
+      );
+
+      const [, options] = fetch.mock.calls[0];
+      const body = JSON.parse(options.body);
+      expect(body.text).toContain("cancelamento da sua consulta");
+      expect(body.text).toContain("foi confirmado pela unidade de saúde");
+      expect(mensagemRepository.salvarHistorico).toHaveBeenCalledWith(
+        expect.objectContaining({ tipo_mensagem: "CANCELAMENTO_CONSULTA" }),
+        authHeader,
+      );
+    });
+
     it("deve enviar botao de confirmação quando solicitado", async () => {
       const evolutionResponse = {
         key: { id: "MSG-BOTAO" },
