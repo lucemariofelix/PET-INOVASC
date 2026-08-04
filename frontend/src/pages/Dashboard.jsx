@@ -5,6 +5,7 @@ import { useStatusMensagensPolling } from "../hooks/useStatusMensagensPolling";
 import { getBadgeInfo, podeRegistrarDesfecho } from "../utils/dateHelpers";
 import { useAuth } from "../hooks/useAuth";
 import {
+  formatarDataConsulta,
   formatarTelefone,
   formatarTipoProfissional,
   normalizarTextoBusca,
@@ -603,11 +604,11 @@ export default function Dashboard() {
               <div className="hidden w-full min-w-0 overflow-x-auto lg:block lg:overflow-x-visible">
                 <table className="w-full table-fixed text-left text-sm">
                   <colgroup>
-                    <col className="w-[28%]" />
+                    <col className="w-[26%]" />
                     <col className="w-[15%]" />
                     <col className="w-[12%]" />
                     <col className="w-[12%]" />
-                    <col className="w-[8%]" />
+                    <col className="w-[10%]" />
                     <col className="w-[9%]" />
                     <col className="w-[16%]" />
                   </colgroup>
@@ -697,8 +698,18 @@ export default function Dashboard() {
                           <td className="min-w-0 whitespace-normal break-words px-3 py-4 font-medium text-slate-600 xl:px-4">
                             {formatarTipoProfissional(consulta.tipo_profissional)}
                           </td>
-                          <td className="break-words px-3 py-4 text-center font-bold leading-tight text-slate-700 xl:px-4">
-                            {badge.textoDias}
+                          <td className="px-3 py-4 text-center leading-tight xl:px-4">
+                            <span className="block break-words font-bold text-slate-700">
+                              {badge.textoDias}
+                            </span>
+                            <span className="mt-2 block text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                              Última consulta
+                            </span>
+                            <span className="mt-0.5 block whitespace-nowrap text-xs font-medium tabular-nums text-slate-600">
+                              {formatarDataConsulta(
+                                consulta.data_ultima_consulta,
+                              )}
+                            </span>
                           </td>
                           <td className="px-3 py-4 text-center xl:px-4">
                             <span
@@ -866,8 +877,14 @@ export default function Dashboard() {
                           <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
                             Tempo
                           </span>
-                          <span className="text-slate-700 font-bold">
+                          <span className="block text-slate-700 font-bold">
                             {badge.textoDias}
+                          </span>
+                          <span className="mt-1 block text-[9px] font-semibold uppercase tracking-wide text-slate-400">
+                            Última consulta
+                          </span>
+                          <span className="mt-0.5 block whitespace-nowrap text-xs font-medium tabular-nums text-slate-600">
+                            {formatarDataConsulta(consulta.data_ultima_consulta)}
                           </span>
                         </div>
                       </div>

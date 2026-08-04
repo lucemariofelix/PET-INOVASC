@@ -36,6 +36,22 @@ export const formatarTelefone = (telefone) => {
   return telefone;
 };
 
+export const formatarDataConsulta = (valor) => {
+  if (!valor) return "Sem registro";
+
+  const correspondencia = String(valor).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!correspondencia) return "Data inválida";
+
+  const [, ano, mes, dia] = correspondencia;
+  const data = new Date(Date.UTC(Number(ano), Number(mes) - 1, Number(dia)));
+  const dataValida =
+    data.getUTCFullYear() === Number(ano) &&
+    data.getUTCMonth() === Number(mes) - 1 &&
+    data.getUTCDate() === Number(dia);
+
+  return dataValida ? `${dia}/${mes}/${ano}` : "Data inválida";
+};
+
 const PROFISSIONAIS = Object.freeze({
   MEDICO: "Médico",
   ENFERMEIRO: "Enfermeiro",
