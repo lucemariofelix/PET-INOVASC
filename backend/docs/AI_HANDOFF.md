@@ -6,7 +6,7 @@
 
 ## Estado verificado
 
-- Backend: 22 arquivos de teste e 253 testes aprovados.
+- Backend: 23 arquivos de teste e 267 testes aprovados.
 - Frontend: 6 arquivos de teste executados pelo `node:test`.
 - Frontend: lint e build de produção aprovados.
 - Branch de trabalho: `main`.
@@ -89,6 +89,17 @@ Authorization: Bearer <token>
 
 ADMIN, RECEPCAO e ACS podem executar. A operação exige uma resposta do paciente classificada como `CANCELAMENTO_SOLICITADO`, grava `CANCELADA`, `cancelada_em` e `cancelada_por` e é idempotente. Falha no aviso final pelo WhatsApp não reverte a consulta.
 
+### Registrar desfecho presencial
+
+```http
+PATCH /consultas/<uuid>/desfecho
+Content-Type: application/json
+
+{ "desfecho": "REALIZADA" | "FALTOU" }
+```
+
+Somente ADMIN e RECEPCAO podem executar na data agendada ou depois. `REALIZADA` atualiza a última consulta; `FALTOU` preserva a data anterior e tenta enviar orientação para reagendamento sem reverter o desfecho em caso de falha.
+
 ### Webhook
 
 ```http
@@ -135,6 +146,7 @@ Migrations centrais da entrega:
 3. `20260725000200_bloqueio_reenvio_confirmacao.sql` — reconciliação, índice único e RPCs de reserva.
 4. `20260803000100_orientacao_resposta_invalida.sql` — reserva atômica da orientação única para texto inválido.
 5. `20260804000100_efetivacao_cancelamento_consulta.sql` — cancelamento transacional, responsável e horário.
+6. `20260805000100_desfecho_manual_consulta.sql` — realização/falta transacional e auditoria do responsável.
 
 Estados de confirmação: `PENDENTE`, `CONFIRMADO`, `CANCELAMENTO_SOLICITADO`, `EXPIRADO` e `SUBSTITUIDO`.
 

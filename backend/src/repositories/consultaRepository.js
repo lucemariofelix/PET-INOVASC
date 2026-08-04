@@ -16,6 +16,8 @@ class ConsultaRepository {
         status_consulta,
         cancelada_em,
         cancelada_por,
+        desfecho_em,
+        desfecho_por,
         historico_mensagens (
           id,
           mensagem_id,
@@ -147,13 +149,24 @@ class ConsultaRepository {
     return data;
   }
 
+  async registrarDesfecho(consultaId, desfecho, authHeader) {
+    const supabaseClient = getSupabaseUsuario(authHeader);
+    const { data, error } = await supabaseClient.rpc(
+      "registrar_desfecho_consulta",
+      { p_consulta_id: consultaId, p_desfecho: desfecho },
+    );
+
+    if (error) throw error;
+    return data;
+  }
+
   async buscarPorId(consultaId, authHeader) {
     const supabaseClient = getSupabaseUsuario(authHeader);
     const { data, error } = await supabaseClient
       .from("consultas")
       .select(`
         id, paciente_id, tipo_profissional, data_proxima_consulta,
-        status_consulta, cancelada_em, cancelada_por,
+        status_consulta, cancelada_em, cancelada_por, desfecho_em, desfecho_por,
         pacientes (id, nome_completo, telefone, consentimento_msg)
       `)
       .eq("id", consultaId)

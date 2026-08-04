@@ -26,7 +26,7 @@ export default function PainelMetricas({ consultas }) {
   
   const atrasados = consultasAtivas.filter(c => {
     const label = getBadgeInfo(c).label;
-    return label === 'URGENTE' || label === 'ALERTA';
+    return ['URGENTE', 'ALERTA', 'FALTOU', 'AGENDAMENTO VENCIDO'].includes(label);
   }).length;
 
   const noPrazo = consultasAtivas.filter(c => {

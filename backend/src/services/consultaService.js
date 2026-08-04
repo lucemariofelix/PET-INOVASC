@@ -8,6 +8,12 @@ const ERROS_CANCELAMENTO = {
   CANCELLATION_NOT_REQUESTED: [409, "Esta consulta não possui solicitação de cancelamento do paciente."],
   CONSULTATION_NOT_CANCELLABLE: [409, "Esta consulta não pode ser cancelada no estado atual."],
 };
+const ERROS_DESFECHO = {
+  CONSULTATION_NOT_FOUND: [404, "Consulta não encontrada."],
+  CONSULTATION_OUTCOME_TOO_EARLY: [409, "O desfecho não pode ser registrado antes da data da consulta."],
+  CONSULTATION_NOT_OPEN: [409, "Esta consulta já possui um desfecho e não pode ser alterada."],
+  INVALID_CONSULTATION_OUTCOME: [400, "Informe REALIZADA ou FALTOU como desfecho."],
+};
 
 class ConsultaService {
   async obterConsultasAtrasadas(authHeader) {
@@ -124,6 +130,55 @@ class ConsultaService {
     }
 
     return { consulta, notificacao, ja_cancelada: resultado.ja_cancelada === true };
+  }
+
+  async registrarDesfecho(consultaId, desfecho, authHeader) {
+    const resultado = await consultaRepository.registrarDesfecho(
+      consultaId,
+      desfecho,
+      authHeader,
+    );
+
+    if (!resultado?.sucesso) {
+      const [status, mensagem] = ERROS_DESFECHO[resultado?.codigo] || [
+        500,
+        "Não foi possível registrar o desfecho da consulta.",
+      ];
+      throw new AppError(mensagem, status, resultado?.codigo || "CONSULTATION_OUTCOME_ERROR");
+    }
+
+    const consulta = await consultaRepository.buscarPorId(consultaId, authHeader);
+    let notificacao = { enviada: false, aviso: null };
+
+    if (desfecho === "FALTOU" && !resultado.ja_registrado) {
+      try {
+        const envio = await mensagemService.dispararMensagem(
+          {
+            paciente_id: consulta.pacientes.id,
+            consulta_id: consulta.id,
+            telefone: consulta.pacientes.telefone,
+            nome: consulta.pacientes.nome_completo,
+            consentimento_msg: consulta.pacientes.consentimento_msg,
+            profissional: consulta.tipo_profissional,
+            data_referencia: consulta.data_proxima_consulta,
+            tipo: TIPOS_MENSAGEM.FALTA_CONSULTA,
+          },
+          authHeader,
+        );
+        notificacao = { enviada: true, aviso: envio.aviso || null };
+      } catch (_error) {
+        notificacao = {
+          enviada: false,
+          aviso: "Falta registrada, mas não foi possível avisar o paciente pelo WhatsApp.",
+        };
+      }
+    }
+
+    return {
+      consulta,
+      notificacao,
+      ja_registrado: resultado.ja_registrado === true,
+    };
   }
 }
 

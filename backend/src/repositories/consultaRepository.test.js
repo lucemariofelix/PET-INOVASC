@@ -37,4 +37,22 @@ describe("ConsultaRepository", () => {
       ),
     ).rejects.toThrow("falha transacional");
   });
+
+  it("registra o desfecho pela RPC autenticada", async () => {
+    const retorno = { sucesso: true, ja_registrado: false };
+    const rpc = vi.fn().mockResolvedValue({ data: retorno, error: null });
+    supabaseConfig.getSupabaseUsuario.mockReturnValue({ rpc });
+
+    const resultado = await consultaRepository.registrarDesfecho(
+      "consulta-1",
+      "REALIZADA",
+      "Bearer token",
+    );
+
+    expect(rpc).toHaveBeenCalledWith("registrar_desfecho_consulta", {
+      p_consulta_id: "consulta-1",
+      p_desfecho: "REALIZADA",
+    });
+    expect(resultado).toEqual(retorno);
+  });
 });

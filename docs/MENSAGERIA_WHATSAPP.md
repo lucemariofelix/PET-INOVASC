@@ -96,6 +96,8 @@ Resultados:
 
 Quando houver `CANCELAMENTO_SOLICITADO`, o Dashboard permite que ADMIN, RECEPCAO ou ACS efetive o cancelamento. A consulta passa a `CANCELADA`, registra responsável e horário e recebe uma mensagem do tipo `CANCELAMENTO_CONSULTA`. Falha nessa mensagem não reverte o cancelamento.
 
+A confirmação `1` registra intenção de comparecer, não atendimento realizado. Na data ou depois, ADMIN ou RECEPCAO registra manualmente `REALIZADA` após confirmação visual, ou `FALTOU`. Apenas a falta gera mensagem automática, do tipo `FALTA_CONSULTA`.
+
 Após uma resposta válida, o sistema envia uma resposta automática por `sendText` e a registra como `RESPOSTA_AUTOMATICA`. Se houver mais de uma pendência para o mesmo telefone, nenhuma consulta é alterada e o paciente é orientado a contatar a unidade.
 
 Um mesmo telefone pode pertencer a mais de um paciente da mesma família. Isso é esperado, especialmente quando familiares administram as mensagens de pacientes idosos. A associação automática só acontece quando existe exatamente uma pendência ativa para o telefone; múltiplas pendências permanecem ambíguas por segurança.

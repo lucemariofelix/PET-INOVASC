@@ -27,6 +27,12 @@ async function rotasConsultas(fastify, options) {
     controller.efetivarCancelamento,
   );
 
+  fastify.patch(
+    '/consultas/:id/desfecho',
+    adminERecepcao,
+    controller.registrarDesfecho,
+  );
+
 }
 
 module.exports = rotasConsultas;

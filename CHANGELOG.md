@@ -8,6 +8,12 @@
 - Consultas canceladas deixam as métricas ativas e não recebem novos lembretes.
 - Adicionada confirmação final pelo WhatsApp sem reversão do cancelamento em caso de falha do provedor.
 
+### Desfecho presencial
+
+- Adicionado registro manual de consulta realizada ou falta para ADMIN e RECEPCAO.
+- Agendamentos passados sem desfecho agora aparecem como vencidos, com tempo decorrido.
+- Faltas permanecem na busca ativa e geram orientação de reagendamento pelo WhatsApp.
+
 ## 2026-07-25
 
 ### Mensageria e acompanhamento

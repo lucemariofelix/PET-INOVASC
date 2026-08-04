@@ -12,6 +12,9 @@ const consultaController = {
   efetivarCancelamento: vi.fn(async (request, reply) =>
     reply.send({ consulta: { id: request.params.id, status_consulta: "CANCELADA" } }),
   ),
+  registrarDesfecho: vi.fn(async (request, reply) =>
+    reply.send({ consulta: { id: request.params.id, status_consulta: "REALIZADA" } }),
+  ),
 };
 
 const Fastify = require("fastify");
@@ -40,4 +43,39 @@ describe("rotas de consultas", () => {
       await app.close();
     },
   );
+
+  it.each(["ADMIN", "RECEPCAO"])(
+    "permite registrar desfecho para %s",
+    async (funcao) => {
+      estado.funcao = funcao;
+      const app = Fastify({ logger: false });
+      await app.register(cookie);
+      await app.register(rotasConsultas, { verificarPermissao, consultaController });
+
+      const resposta = await app.inject({
+        method: "PATCH",
+        url: "/consultas/11111111-1111-4111-8111-111111111111/desfecho",
+        cookies: { access_token: "jwt" },
+        payload: { desfecho: "REALIZADA" },
+      });
+
+      expect(resposta.statusCode).toBe(200);
+      await app.close();
+    },
+  );
+
+  it("nega registro de desfecho para ACS", async () => {
+    estado.funcao = "ACS";
+    const app = Fastify({ logger: false });
+    await app.register(cookie);
+    await app.register(rotasConsultas, { verificarPermissao, consultaController });
+    const resposta = await app.inject({
+      method: "PATCH",
+      url: "/consultas/11111111-1111-4111-8111-111111111111/desfecho",
+      cookies: { access_token: "jwt" },
+      payload: { desfecho: "FALTOU" },
+    });
+    expect(resposta.statusCode).toBe(403);
+    await app.close();
+  });
 });

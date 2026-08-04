@@ -8,6 +8,18 @@ Este contexto organiza o acompanhamento de pacientes, consultas e comunicações
 Registro de um acompanhamento de saúde vinculado a um paciente e a um profissional.
 _Evitar_: Mensagem, lembrete
 
+**Consulta realizada**:
+Atendimento cuja entrada do paciente na sala foi confirmada visualmente e registrada pela recepção ou administração. Representa cuidado efetivamente iniciado.
+_Evitar_: Presença confirmada pelo WhatsApp
+
+**Falta à consulta**:
+Desfecho registrado quando o paciente não comparece na data agendada. Não cria nem apaga uma data de atendimento anterior.
+_Evitar_: Consulta cancelada
+
+**Agendamento vencido**:
+Consulta cuja data passou e que ainda aguarda registro de realização ou falta.
+_Evitar_: Data desconhecida
+
 **Lembrete de consulta**:
 Comunicação enviada ao paciente sobre uma consulta específica, podendo solicitar uma resposta de presença.
 _Evitar_: Confirmação, disparo genérico

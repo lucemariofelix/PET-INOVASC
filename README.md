@@ -20,6 +20,7 @@ Este projeto faz parte das iniciativas do **PET-Saúde: Informação e Saúde Di
 - **Cadastro completo de pacientes:** registro de CPF/CNS, telefone, endereço, condição de saúde, ACS, grupos de acompanhamento e contato de emergência.
 - **Consentimento para WhatsApp:** controle explícito de autorização para envio de mensagens, com bloqueio de disparos quando o paciente não autorizou.
 - **Agendamento de consultas:** criação de consultas vinculadas ao paciente, com verificação de conflitos e envio opcional de mensagem de agendamento.
+- **Desfecho presencial:** ADMIN e RECEPCAO registram consulta realizada ou falta na data do atendimento, sem confundir presença física com confirmação pelo WhatsApp.
 - **Mensageria via WhatsApp:** envio validado de lembretes, mensagens de agendamento, avisos gerais e comunicações por grupo via Evolution API.
 - **Rastreio de entrega:** acompanhamento monotônico de mensagens como Enviado, Entregue e Lido, atualizado por webhook e polling autenticado.
 - **Confirmação textual:** lembretes solicitam resposta `1` para presença ou `2` para cancelamento, sem depender de botões nativos do WhatsApp.
@@ -39,6 +40,7 @@ Este projeto faz parte das iniciativas do **PET-Saúde: Informação e Saúde Di
 - **Lembretes e avisos:** pacientes com consentimento podem receber lembretes de consulta, avisos gerais ou mensagens direcionadas por grupo de acompanhamento.
 - **Confirmação pelo paciente:** respostas textuais `1` e `2` são recebidas por webhook; a opção `2` solicita revisão humana e a consulta só é cancelada após ação de um usuário autenticado.
 - **Acompanhamento da mensagem:** eventos da Evolution atualizam entrega e leitura sem confundir esses estados com a resposta do paciente.
+- **Fechamento da consulta:** após verificação visual, a recepção registra atendimento realizado; ausências permanecem em busca ativa e podem gerar orientação para reagendamento.
 - **Auditoria:** ações administrativas e eventos relevantes ficam disponíveis para acompanhamento e rastreabilidade.
 
 ## 🔐 Segurança e Privacidade

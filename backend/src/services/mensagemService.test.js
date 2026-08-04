@@ -357,6 +357,25 @@ describe("MensagemService", () => {
       );
     });
 
+    it("deve orientar reagendamento após falta", async () => {
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ key: { id: "MSG-FALTA" } })),
+      });
+      await mensagemService.dispararMensagem(
+        { ...dadosBase, tipo: "FALTA_CONSULTA" },
+        authHeader,
+      );
+      const body = JSON.parse(fetch.mock.calls[0][1].body);
+      expect(body.text).toContain("não compareceu");
+      expect(body.text).toContain("novo agendamento");
+      expect(mensagemRepository.salvarHistorico).toHaveBeenCalledWith(
+        expect.objectContaining({ tipo_mensagem: "FALTA_CONSULTA" }),
+        authHeader,
+      );
+    });
+
     it("deve enviar botao de confirmação quando solicitado", async () => {
       const evolutionResponse = {
         key: { id: "MSG-BOTAO" },

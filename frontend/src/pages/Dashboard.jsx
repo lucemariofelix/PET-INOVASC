@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { consultasApi } from "../api/consultas";
 import { mensageriaApi } from "../api/mensageria";
 import { useStatusMensagensPolling } from "../hooks/useStatusMensagensPolling";
-import { getBadgeInfo } from "../utils/dateHelpers";
+import { getBadgeInfo, podeRegistrarDesfecho } from "../utils/dateHelpers";
+import { useAuth } from "../hooks/useAuth";
 import { formatarTelefone } from "../utils/formatters";
 import {
   mesclarStatusMensagens,
@@ -26,6 +27,7 @@ import {
 } from "react-icons/fa";
 
 export default function Dashboard() {
+  const { usuario } = useAuth();
   const [consultas, setConsultas] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,6 +42,12 @@ export default function Dashboard() {
     consulta: null,
   });
   const [cancelandoId, setCancelandoId] = useState(null);
+  const [modalDesfecho, setModalDesfecho] = useState({
+    isOpen: false,
+    consulta: null,
+    desfecho: null,
+  });
+  const [registrandoDesfechoId, setRegistrandoDesfechoId] = useState(null);
   const [alerta, setAlerta] = useState({
     isOpen: false,
     tipo: "",
@@ -81,7 +89,12 @@ export default function Dashboard() {
     let passaFiltroStatus = false;
     if (filtro === "TODAS") passaFiltroStatus = true;
     else if (filtro === "ATRASADAS")
-      passaFiltroStatus = badge.label === "URGENTE" || badge.label === "ALERTA";
+      passaFiltroStatus = [
+        "URGENTE",
+        "ALERTA",
+        "FALTOU",
+        "AGENDAMENTO VENCIDO",
+      ].includes(badge.label);
     else if (filtro === "NO_PRAZO")
       passaFiltroStatus =
         badge.label === "OK" ||
@@ -281,9 +294,6 @@ export default function Dashboard() {
     consulta.confirmacao_whatsapp ||
     selecionarConfirmacaoEfetiva(consulta.historico_mensagens || []);
 
-  const consultaEstaCancelada = (consulta) =>
-    ["CANCELADA", "CANCELADO"].includes(consulta.status_consulta);
-
   const obterBloqueioDisparo = (consulta) => {
     const estado = obterEstadoConfirmacao(obterConfirmacaoEfetiva(consulta));
     const rotulos = {
@@ -301,6 +311,16 @@ export default function Dashboard() {
   // Funções de Disparo
   const solicitarDisparo = (consulta) => {
     const paciente = consulta.pacientes;
+
+    if (consulta.status_consulta !== "AGENDADA") {
+      setAlerta({
+        isOpen: true,
+        tipo: "aviso",
+        titulo: "Consulta encerrada",
+        mensagem: "Esta consulta já possui um desfecho e não aceita novos lembretes.",
+      });
+      return;
+    }
 
     const bloqueio = obterBloqueioDisparo(consulta);
     if (bloqueio.bloqueado) {
@@ -413,6 +433,45 @@ export default function Dashboard() {
       });
     } finally {
       setCancelandoId(null);
+    }
+  };
+
+  const confirmarDesfecho = async () => {
+    const { consulta, desfecho } = modalDesfecho;
+    if (!consulta || !desfecho || registrandoDesfechoId) return;
+
+    setRegistrandoDesfechoId(consulta.id);
+    try {
+      const resposta = await consultasApi.registrarDesfecho(
+        consulta.id,
+        desfecho,
+      );
+      setConsultas((atuais) =>
+        atuais.map((item) =>
+          item.id === consulta.id ? { ...item, ...resposta.consulta } : item,
+        ),
+      );
+      setModalDesfecho({ isOpen: false, consulta: null, desfecho: null });
+      setAlerta({
+        isOpen: true,
+        tipo: resposta.notificacao?.aviso ? "aviso" : "sucesso",
+        titulo:
+          desfecho === "REALIZADA" ? "Consulta realizada" : "Falta registrada",
+        mensagem:
+          resposta.notificacao?.aviso ||
+          (desfecho === "REALIZADA"
+            ? "O atendimento foi registrado como realizado."
+            : "A falta foi registrada e o paciente foi avisado pelo WhatsApp."),
+      });
+    } catch (err) {
+      setAlerta({
+        isOpen: true,
+        tipo: "erro",
+        titulo: "Não foi possível registrar",
+        mensagem: err.message,
+      });
+    } finally {
+      setRegistrandoDesfechoId(null);
     }
   };
 
@@ -568,6 +627,10 @@ export default function Dashboard() {
                       const bloqueioDisparo = obterBloqueioDisparo(consulta);
                       const cancelamentoDisponivel =
                         podeEfetivarCancelamento(consulta);
+                      const desfechoDisponivel = podeRegistrarDesfecho(
+                        consulta,
+                        usuario?.funcao,
+                      );
 
                       return (
                         <tr
@@ -644,22 +707,49 @@ export default function Dashboard() {
                               >
                                 Efetivar cancelamento
                               </button>
+                            ) : desfechoDisponivel ? (
+                              <div className="flex flex-col gap-1">
+                                <button
+                                  onClick={() =>
+                                    setModalDesfecho({
+                                      isOpen: true,
+                                      consulta,
+                                      desfecho: "REALIZADA",
+                                    })
+                                  }
+                                  className="w-full rounded-lg bg-emerald-600 px-2 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                                >
+                                  Registrar realizada
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    setModalDesfecho({
+                                      isOpen: true,
+                                      consulta,
+                                      desfecho: "FALTOU",
+                                    })
+                                  }
+                                  className="w-full rounded-lg bg-amber-600 px-2 py-2 text-xs font-semibold text-white hover:bg-amber-700"
+                                >
+                                  Paciente faltou
+                                </button>
+                              </div>
                             ) : (
                               <button
                                 onClick={() => solicitarDisparo(consulta)}
                                 disabled={
                                   bloqueioDisparo.bloqueado ||
-                                  consultaEstaCancelada(consulta)
+                                  consulta.status_consulta !== "AGENDADA"
                                 }
                                 className={`mx-auto flex w-full max-w-full items-center justify-center gap-2 whitespace-normal rounded-lg px-2 py-2 text-xs font-semibold leading-tight shadow-sm transition-colors xl:px-3 ${
                                   bloqueioDisparo.bloqueado ||
-                                  consultaEstaCancelada(consulta)
+                                  consulta.status_consulta !== "AGENDADA"
                                     ? "bg-slate-200 text-slate-600 cursor-not-allowed"
                                     : "bg-slate-800 hover:bg-emerald-600 text-white cursor-pointer"
                                 }`}
                               >
-                                {consultaEstaCancelada(consulta)
-                                  ? "Consulta cancelada"
+                                {consulta.status_consulta !== "AGENDADA"
+                                  ? getBadgeInfo(consulta).label
                                   : bloqueioDisparo.rotulo || "Disparar Msg"}
                               </button>
                             )}
@@ -687,6 +777,10 @@ export default function Dashboard() {
                   const bloqueioDisparo = obterBloqueioDisparo(consulta);
                   const cancelamentoDisponivel =
                     podeEfetivarCancelamento(consulta);
+                  const desfechoDisponivel = podeRegistrarDesfecho(
+                    consulta,
+                    usuario?.funcao,
+                  );
 
                   return (
                     <div
@@ -777,22 +871,49 @@ export default function Dashboard() {
                         >
                           Efetivar cancelamento
                         </button>
+                      ) : desfechoDisponivel ? (
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <button
+                            onClick={() =>
+                              setModalDesfecho({
+                                isOpen: true,
+                                consulta,
+                                desfecho: "REALIZADA",
+                              })
+                            }
+                            className="rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
+                          >
+                            Registrar realizada
+                          </button>
+                          <button
+                            onClick={() =>
+                              setModalDesfecho({
+                                isOpen: true,
+                                consulta,
+                                desfecho: "FALTOU",
+                              })
+                            }
+                            className="rounded-lg bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-700"
+                          >
+                            Paciente faltou
+                          </button>
+                        </div>
                       ) : (
                         <button
                           onClick={() => solicitarDisparo(consulta)}
                           disabled={
                             bloqueioDisparo.bloqueado ||
-                            consultaEstaCancelada(consulta)
+                            consulta.status_consulta !== "AGENDADA"
                           }
                           className={`w-full py-3 rounded-lg text-sm font-semibold shadow-sm transition-colors ${
                             bloqueioDisparo.bloqueado ||
-                            consultaEstaCancelada(consulta)
+                            consulta.status_consulta !== "AGENDADA"
                               ? "bg-slate-200 text-slate-600 cursor-not-allowed"
                               : "bg-slate-800 hover:bg-emerald-600 text-white cursor-pointer"
                           }`}
                         >
-                          {consultaEstaCancelada(consulta)
-                            ? "Consulta cancelada"
+                          {consulta.status_consulta !== "AGENDADA"
+                            ? getBadgeInfo(consulta).label
                             : bloqueioDisparo.rotulo || "Disparar Mensagem"}
                         </button>
                       )}
@@ -853,6 +974,32 @@ export default function Dashboard() {
         mensagem={`Deseja enviar um aviso via WhatsApp para ${modalConfirmacao.consulta?.pacientes?.nome_completo}?`}
         onCancel={() => setModalConfirmacao({ isOpen: false, consulta: null })}
         onConfirm={confirmarDisparo}
+      />
+
+      <ModalConfirmacao
+        isOpen={modalDesfecho.isOpen}
+        titulo={
+          modalDesfecho.desfecho === "REALIZADA"
+            ? "Registrar consulta realizada"
+            : "Registrar falta"
+        }
+        mensagem={
+          modalDesfecho.desfecho === "REALIZADA"
+            ? `Confirma visualmente que ${modalDesfecho.consulta?.pacientes?.nome_completo || "o paciente"} entrou na sala para atendimento?`
+            : `Confirma que ${modalDesfecho.consulta?.pacientes?.nome_completo || "o paciente"} não compareceu à consulta?`
+        }
+        confirmLabel={
+          modalDesfecho.desfecho === "REALIZADA"
+            ? "Confirmar atendimento"
+            : "Registrar falta"
+        }
+        cancelLabel="Voltar"
+        loading={Boolean(registrandoDesfechoId)}
+        onCancel={() =>
+          !registrandoDesfechoId &&
+          setModalDesfecho({ isOpen: false, consulta: null, desfecho: null })
+        }
+        onConfirm={confirmarDesfecho}
       />
 
       <ModalConfirmacao

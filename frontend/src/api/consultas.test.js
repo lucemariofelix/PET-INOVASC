@@ -21,3 +21,17 @@ test("efetiva cancelamento por PATCH sem corpo", async () => {
   assert.equal(requisicao.options.method, "PATCH");
   assert.equal(requisicao.options.body, undefined);
 });
+
+test("registra desfecho por PATCH com corpo JSON", async () => {
+  let requisicao;
+  globalThis.fetch = async (url, options) => {
+    requisicao = { url, options };
+    return { ok: true, json: async () => ({ consulta: { status_consulta: "FALTOU" } }) };
+  };
+
+  await consultasApi.registrarDesfecho("consulta-1", "FALTOU");
+
+  assert.match(requisicao.url, /consultas\/consulta-1\/desfecho$/);
+  assert.equal(requisicao.options.method, "PATCH");
+  assert.equal(requisicao.options.body, JSON.stringify({ desfecho: "FALTOU" }));
+});

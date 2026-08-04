@@ -52,6 +52,7 @@ Sem `MESSAGES_UPSERT`, respostas `1` e `2` não serão processadas. Sem `MESSAGE
    - `20260725000100_confirmacao_textual_consultas.sql`;
    - `20260725000200_bloqueio_reenvio_confirmacao.sql`.
    - `20260804000100_efetivacao_cancelamento_consulta.sql`.
+   - `20260805000100_desfecho_manual_consulta.sql`.
 3. Implantar o backend no Render.
 4. Configurar o webhook da instância Evolution.
 5. Implantar o frontend na Vercel.
@@ -70,6 +71,7 @@ A migração de bloqueio pode reclassificar dados existentes como `EXPIRADO` ou 
 7. Tentar reenviar e confirmar HTTP 409 sem nova chamada à Evolution.
 8. Desativar `EVOLUTION_DIAGNOSTICS` após o ciclo.
 9. Responder `2`, efetivar o cancelamento no Dashboard com cada perfil e confirmar `CANCELADA`, responsável, horário e mensagem final ao paciente.
+10. Com ADMIN e RECEPCAO, registrar uma consulta do dia como `REALIZADA` e outra como `FALTOU`; confirmar bloqueio para ACS e datas futuras.
 
 ## Validação local
 

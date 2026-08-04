@@ -61,6 +61,33 @@ class ConsultaController {
     });
   }
 
+  async registrarDesfecho(request, reply) {
+    const authHeader = request.headers.authorization;
+    const desfecho = String(request.body?.desfecho || "").toUpperCase();
+    return executarController(request, reply, {
+      executar: () =>
+        consultaService.registrarDesfecho(
+          request.params.id,
+          desfecho,
+          authHeader,
+        ),
+      auditoria: ({ resultado }) => ({
+        acao:
+          resultado.consulta.status_consulta === "REALIZADA"
+            ? "REGISTROU_CONSULTA_REALIZADA"
+            : "REGISTROU_FALTA_CONSULTA",
+        detalhes: `Registrou ${resultado.consulta.status_consulta} na consulta ${resultado.consulta.id} do paciente ${resultado.consulta.paciente_id}`,
+      }),
+      responder: (resultado) => reply.status(200).send({
+        mensagem:
+          resultado.consulta.status_consulta === "REALIZADA"
+            ? "Consulta registrada como realizada."
+            : "Falta registrada com sucesso.",
+        ...resultado,
+      }),
+    });
+  }
+
 }
 
 module.exports = new ConsultaController();

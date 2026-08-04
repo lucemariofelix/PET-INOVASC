@@ -293,4 +293,96 @@ describe("ConsultaService", () => {
       expect(mensagemService.dispararMensagem).not.toHaveBeenCalled();
     });
   });
+
+  describe("registrarDesfecho", () => {
+    const consulta = {
+      id: "consulta-1",
+      paciente_id: "paciente-1",
+      status_consulta: "REALIZADA",
+      tipo_profissional: "Enfermeiro",
+      data_proxima_consulta: "2026-08-04",
+      pacientes: {
+        id: "paciente-1",
+        nome_completo: "Maria Silva",
+        telefone: "84999998888",
+        consentimento_msg: true,
+      },
+    };
+
+    it("registra consulta realizada sem enviar mensagem", async () => {
+      consultaRepository.registrarDesfecho = vi.fn().mockResolvedValue({
+        sucesso: true,
+        ja_registrado: false,
+      });
+      consultaRepository.buscarPorId = vi.fn().mockResolvedValue(consulta);
+
+      const resultado = await consultaService.registrarDesfecho(
+        consulta.id,
+        "REALIZADA",
+        "Bearer token",
+      );
+
+      expect(resultado.consulta.status_consulta).toBe("REALIZADA");
+      expect(mensagemService.dispararMensagem).not.toHaveBeenCalled();
+    });
+
+    it("registra falta e envia orientação para reagendamento", async () => {
+      consultaRepository.registrarDesfecho = vi.fn().mockResolvedValue({
+        sucesso: true,
+        ja_registrado: false,
+      });
+      consultaRepository.buscarPorId = vi.fn().mockResolvedValue({
+        ...consulta,
+        status_consulta: "FALTOU",
+      });
+      mensagemService.dispararMensagem = vi.fn().mockResolvedValue({});
+
+      const resultado = await consultaService.registrarDesfecho(
+        consulta.id,
+        "FALTOU",
+        "Bearer token",
+      );
+
+      expect(resultado.notificacao.enviada).toBe(true);
+      expect(mensagemService.dispararMensagem).toHaveBeenCalledWith(
+        expect.objectContaining({ tipo: "FALTA_CONSULTA" }),
+        "Bearer token",
+      );
+    });
+
+    it("mantém a falta quando o WhatsApp falha", async () => {
+      consultaRepository.registrarDesfecho = vi.fn().mockResolvedValue({
+        sucesso: true,
+        ja_registrado: false,
+      });
+      consultaRepository.buscarPorId = vi.fn().mockResolvedValue({
+        ...consulta,
+        status_consulta: "FALTOU",
+      });
+      mensagemService.dispararMensagem = vi.fn().mockRejectedValue(new Error("offline"));
+
+      const resultado = await consultaService.registrarDesfecho(
+        consulta.id,
+        "FALTOU",
+        "Bearer token",
+      );
+
+      expect(resultado.consulta.status_consulta).toBe("FALTOU");
+      expect(resultado.notificacao.aviso).toContain("não foi possível avisar");
+    });
+
+    it.each([
+      ["CONSULTATION_NOT_FOUND", 404],
+      ["CONSULTATION_OUTCOME_TOO_EARLY", 409],
+      ["CONSULTATION_NOT_OPEN", 409],
+      ["INVALID_CONSULTATION_OUTCOME", 400],
+    ])("mapeia %s para HTTP %s", async (codigo, statusCode) => {
+      consultaRepository.registrarDesfecho = vi
+        .fn()
+        .mockResolvedValue({ sucesso: false, codigo });
+      await expect(
+        consultaService.registrarDesfecho("consulta-1", "INVALIDO", "Bearer token"),
+      ).rejects.toMatchObject({ code: codigo, statusCode });
+    });
+  });
 });

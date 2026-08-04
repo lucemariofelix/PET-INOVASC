@@ -38,6 +38,17 @@ const consultasApi = {
     }
     return res.json();
   },
+
+  registrarDesfecho: async (consultaId, desfecho) => {
+    const res = await fetchComAutenticacao(
+      `/consultas/${encodeURIComponent(consultaId)}/desfecho`,
+      { method: "PATCH", body: JSON.stringify({ desfecho }) },
+    );
+    if (!res.ok) {
+      throw new Error(await lerErro(res, "Erro ao registrar desfecho"));
+    }
+    return res.json();
+  },
 };
 
 export { consultasApi };
