@@ -25,7 +25,7 @@ test("classifica agendamento passado como vencido", () => {
       agora,
     ),
     {
-      label: "AGENDAMENTO VENCIDO",
+      label: "VENCIDO",
       color: "bg-red-100 text-red-800 border-red-200",
       textoDias: "Há 2 dias",
     },

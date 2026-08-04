@@ -376,6 +376,23 @@ describe("MensagemService", () => {
       );
     });
 
+    it("deve formalizar o identificador técnico nas mensagens", async () => {
+      fetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(JSON.stringify({ key: { id: "MSG-NUTRI" } })),
+      });
+
+      await mensagemService.dispararMensagem(
+        { ...dadosBase, profissional: "NUTRICAO" },
+        authHeader,
+      );
+
+      const body = JSON.parse(fetch.mock.calls[0][1].body);
+      expect(body.text).toContain("Nutricionista");
+      expect(body.text).not.toContain("NUTRICAO");
+    });
+
     it("deve enviar botao de confirmação quando solicitado", async () => {
       const evolutionResponse = {
         key: { id: "MSG-BOTAO" },

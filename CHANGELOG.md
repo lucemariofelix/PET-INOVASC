@@ -14,6 +14,11 @@
 - Agendamentos passados sem desfecho agora aparecem como vencidos, com tempo decorrido.
 - Faltas permanecem na busca ativa e geram orientação de reagendamento pelo WhatsApp.
 
+### Apresentação
+
+- Identificadores técnicos de profissionais passaram a ser exibidos com nomes formais e acentos na interface e no WhatsApp.
+- O status de agendamento vencido foi reduzido para um badge compacto, eliminando overflow na tabela.
+
 ## 2026-07-25
 
 ### Mensageria e acompanhamento

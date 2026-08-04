@@ -31,6 +31,8 @@ O status de transporte e a confirmação são apresentados separadamente:
 
 O botão de disparo fica desabilitado quando há pendência ou resposta terminal, mas essa proteção visual não substitui o bloqueio do backend.
 
+Agendamentos passados sem desfecho usam o badge curto `Vencido`; a coluna Tempo informa `Há X dias`. O rótulo compacto preserva a coluna Status de 9% sem overflow nos breakpoints desktop.
+
 ## Diretório de Pacientes
 
 A busca aceita nome, CPF ou CNS e funciona em conjunto com paginação e filtros. A versão desktop usa tabela; a experiência mobile mantém componentes adequados à largura reduzida.

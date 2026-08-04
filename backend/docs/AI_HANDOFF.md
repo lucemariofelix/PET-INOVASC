@@ -6,8 +6,8 @@
 
 ## Estado verificado
 
-- Backend: 23 arquivos de teste e 267 testes aprovados.
-- Frontend: 6 arquivos de teste executados pelo `node:test`.
+- Backend: 24 arquivos de teste e 275 testes aprovados.
+- Frontend: 7 arquivos de teste executados pelo `node:test`.
 - Frontend: lint e build de produção aprovados.
 - Branch de trabalho: `main`.
 - Integração real validada com Evolution API v2.3.x, incluindo envio, entrega, leitura e resposta textual.
@@ -36,6 +36,7 @@
 - O Dashboard mantém `ultima_mensagem_whatsapp` separada de `confirmacao_whatsapp`: entrega/leitura e confirmação são exibidas simultaneamente e uma pendência nunca mascara o transporte.
 - O botão de disparo é bloqueado visualmente, mas o banco é a autoridade contra concorrência.
 - O shell autenticado possui largura máxima de 1600 px; tabelas usam o espaço amplo e formulários/modais preservam limites próprios.
+- Tipos profissionais permanecem técnicos no banco (`MEDICO`, `ENFERMEIRO`, `DENTISTA`, `NUTRICAO`), mas interface e mensagens usam Médico, Enfermeiro, Dentista e Nutricionista.
 
 ## Contratos principais
 

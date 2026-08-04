@@ -76,7 +76,7 @@ export const getBadgeInfo = (consulta, agora = new Date()) => {
     if (!Number.isNaN(diffTime) && consulta.status_consulta === "AGENDADA") {
       const diasVencidos = Math.abs(diffTime);
       return {
-        label: "AGENDAMENTO VENCIDO",
+        label: "VENCIDO",
         color: "bg-red-100 text-red-800 border-red-200",
         textoDias: `Há ${diasVencidos} ${diasVencidos === 1 ? "dia" : "dias"}`,
       };

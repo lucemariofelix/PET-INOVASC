@@ -35,3 +35,30 @@ export const formatarTelefone = (telefone) => {
   // Se for um número estranho ou internacional, retorna como está
   return telefone;
 };
+
+const PROFISSIONAIS = Object.freeze({
+  MEDICO: "Médico",
+  ENFERMEIRO: "Enfermeiro",
+  DENTISTA: "Dentista",
+  NUTRICAO: "Nutricionista",
+  NUTRICIONISTA: "Nutricionista",
+});
+
+export const normalizarTextoBusca = (valor) =>
+  String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+
+export const formatarTipoProfissional = (valor) => {
+  const identificador = normalizarTextoBusca(valor)
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, "_");
+  if (!identificador) return "Não informado";
+  if (PROFISSIONAIS[identificador]) return PROFISSIONAIS[identificador];
+  return identificador
+    .toLowerCase()
+    .replaceAll("_", " ")
+    .replace(/^./, (letra) => letra.toUpperCase());
+};

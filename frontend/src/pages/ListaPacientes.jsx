@@ -12,7 +12,10 @@ import {
 import { gruposApi } from "../api/grupos";
 import { pacientesApi } from "../api/pacientes";
 import { usuariosApi } from "../api/usuarios";
-import { formatarDocumento } from "../utils/formatters";
+import {
+  formatarDocumento,
+  formatarTipoProfissional,
+} from "../utils/formatters";
 import { filtrarPacientesPorBusca } from "../utils/pacienteSearch";
 import ModalAlerta from "../components/ModalAlerta";
 import RoleGuard from "../components/RoleGuard";
@@ -413,7 +416,9 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
                                   })}
                                 </span>
                                 <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mt-0.5">
-                                  {proxima.tipo_profissional}
+                                  {formatarTipoProfissional(
+                                    proxima.tipo_profissional,
+                                  )}
                                 </span>
                               </div>
                             );

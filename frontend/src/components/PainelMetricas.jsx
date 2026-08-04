@@ -16,6 +16,7 @@ import {
   Cell
 } from 'recharts';
 import { getBadgeInfo } from '../utils/dateHelpers';
+import { formatarTipoProfissional } from '../utils/formatters';
 
 export default function PainelMetricas({ consultas }) {
   const consultasAtivas = consultas.filter(
@@ -26,7 +27,7 @@ export default function PainelMetricas({ consultas }) {
   
   const atrasados = consultasAtivas.filter(c => {
     const label = getBadgeInfo(c).label;
-    return ['URGENTE', 'ALERTA', 'FALTOU', 'AGENDAMENTO VENCIDO'].includes(label);
+    return ['URGENTE', 'ALERTA', 'FALTOU', 'VENCIDO'].includes(label);
   }).length;
 
   const noPrazo = consultasAtivas.filter(c => {
@@ -43,7 +44,7 @@ export default function PainelMetricas({ consultas }) {
   // 3. DADOS PARA O GRÁFICO DE BARRAS (Por Profissional)
   // Agrupa os pacientes pela especialidade (Enfermagem, Médico, Odonto)
   const contagemProfissional = consultasAtivas.reduce((acc, consulta) => {
-    const prof = consulta.tipo_profissional || 'Outros';
+    const prof = formatarTipoProfissional(consulta.tipo_profissional);
     acc[prof] = (acc[prof] || 0) + 1;
     return acc;
   }, {});

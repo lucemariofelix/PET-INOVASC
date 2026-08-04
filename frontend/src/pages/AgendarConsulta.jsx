@@ -3,7 +3,7 @@ import { FaCalendarPlus } from 'react-icons/fa';
 import { consultasApi } from '../api/consultas';
 import { mensageriaApi } from '../api/mensageria';
 import { pacientesApi } from '../api/pacientes';
-import { formatarDocumento } from '../utils/formatters';
+import { formatarDocumento, formatarTipoProfissional } from '../utils/formatters';
 // IMPORTAÇÃO DOS MODAIS
 import ModalConfirmacao from '../components/ModalConfirmacao'; 
 import ModalAlerta from '../components/ModalAlerta'; // <-- NOVO
@@ -107,7 +107,7 @@ export default function AgendarConsulta({ onSuccess }) {
             telefone: pacienteSelecionado.telefone,
             consentimento_msg: pacienteSelecionado.consentimento_msg,
             nome: pacienteSelecionado.nome_completo,
-            profissional: tipoProfissional,
+            profissional: formatarTipoProfissional(tipoProfissional),
             status_consulta: "AGENDADA",
             data_referencia: dataProximaConsulta,
             tipo: "AGENDAMENTO_CONSULTA",
@@ -199,9 +199,9 @@ export default function AgendarConsulta({ onSuccess }) {
           <label className="text-sm font-semibold text-slate-700">Tipo de Profissional / Especialidade *</label>
           <select required value={tipoProfissional} onChange={e => setTipoProfissional(e.target.value)}
             className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-sky-500 outline-none transition bg-white">
-            <option value="MEDICO">Médico(a)</option>
-            <option value="ENFERMEIRO">Enfermeiro(a)</option>
-            <option value="DENTISTA">Odontologia</option>
+            <option value="MEDICO">Médico</option>
+            <option value="ENFERMEIRO">Enfermeiro</option>
+            <option value="DENTISTA">Dentista</option>
             <option value="NUTRICAO">Nutricionista</option>
           </select>
         </div>

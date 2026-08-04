@@ -3,6 +3,10 @@ const notificacaoRepository = require("../repositories/notificacaoRepository");
 const webhookRepository = require("../repositories/webhookRepository");
 const { AppError, ValidationError } = require("../errors/AppError");
 const { randomUUID } = require("node:crypto");
+const {
+  formatarProfissionalComArtigo,
+  formatarTipoProfissional,
+} = require("../utils/profissional");
 
 const TIPOS_MENSAGEM = Object.freeze({
   LEMBRETE_CONSULTA: "LEMBRETE_CONSULTA",
@@ -183,12 +187,14 @@ class MensageriaService {
     const nomePaciente = nome || "Paciente";
     const primeiroNome = nomePaciente.split(" ")[0] || "Paciente";
     const dataFormatada = this.formatarData(data_referencia);
+    const profissionalFormal = formatarTipoProfissional(profissional);
+    const profissionalComArtigo = formatarProfissionalComArtigo(profissional);
 
     if (templateOverride) {
       return templateOverride
         .replaceAll("{nome}", primeiroNome)
         .replaceAll("{nome_completo}", nomePaciente)
-        .replaceAll("{profissional}", profissional || "equipe")
+        .replaceAll("{profissional}", profissionalFormal)
         .replaceAll("{data}", dataFormatada);
     }
 
@@ -197,22 +203,22 @@ class MensageriaService {
     }
 
     if (tipo === TIPOS_MENSAGEM.AGENDAMENTO_CONSULTA) {
-      return `Olá, *${nomePaciente}*! Sua consulta com o(a) profissional *${profissional}* foi agendada para *${dataFormatada}*.\n\nCaso não possa comparecer, avise a unidade de saúde com antecedência.`;
+      return `Olá, *${nomePaciente}*! Sua consulta com *${profissionalComArtigo}* foi agendada para *${dataFormatada}*.\n\nCaso não possa comparecer, avise a unidade de saúde com antecedência.`;
     }
 
     if (tipo === TIPOS_MENSAGEM.CANCELAMENTO_CONSULTA) {
-      return `Olá, *${nomePaciente}*! O cancelamento da sua consulta com o(a) profissional *${profissional || "da unidade"}*, marcada para *${dataFormatada}*, foi confirmado pela unidade de saúde.`;
+      return `Olá, *${nomePaciente}*! O cancelamento da sua consulta com *${profissionalComArtigo}*, marcada para *${dataFormatada}*, foi confirmado pela unidade de saúde.`;
     }
 
     if (tipo === TIPOS_MENSAGEM.FALTA_CONSULTA) {
-      return `Olá, *${nomePaciente}*! Identificamos que você não compareceu à consulta com o(a) profissional *${profissional || "da unidade"}*, prevista para *${dataFormatada}*. Entre em contato com a unidade de saúde para verificar um novo agendamento.`;
+      return `Olá, *${nomePaciente}*! Identificamos que você não compareceu à consulta com *${profissionalComArtigo}*, prevista para *${dataFormatada}*. Entre em contato com a unidade de saúde para verificar um novo agendamento.`;
     }
 
     let texto = `Olá, *${nomePaciente}*! Aqui é do seu Posto Potengi.\n\n`;
     if (status_consulta === "atrasado" || status_consulta === "urgente") {
-      texto += `Consta em nosso sistema que seu acompanhamento com o(a) profissional *${profissional}* está pendente desde *${dataFormatada}*.\n\nPor favor, procure o seu Agente Comunitário de Saúde (ACS) ou a recepção do posto para regularizar sua situação. Cuidar da sua saúde é fundamental!`;
+      texto += `Consta em nosso sistema que seu acompanhamento com *${profissionalComArtigo}* está pendente desde *${dataFormatada}*.\n\nPor favor, procure o seu Agente Comunitário de Saúde (ACS) ou a recepção do posto para regularizar sua situação. Cuidar da sua saúde é fundamental!`;
     } else {
-      texto += `Este é um lembrete de que você tem um acompanhamento previsto com o(a) profissional *${profissional}* para a data *${dataFormatada}*.\n\nContamos com a sua presença!`;
+      texto += `Este é um lembrete de que você tem um acompanhamento previsto com *${profissionalComArtigo}* para a data *${dataFormatada}*.\n\nContamos com a sua presença!`;
     }
 
     return texto;

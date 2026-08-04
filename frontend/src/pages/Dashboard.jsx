@@ -4,7 +4,11 @@ import { mensageriaApi } from "../api/mensageria";
 import { useStatusMensagensPolling } from "../hooks/useStatusMensagensPolling";
 import { getBadgeInfo, podeRegistrarDesfecho } from "../utils/dateHelpers";
 import { useAuth } from "../hooks/useAuth";
-import { formatarTelefone } from "../utils/formatters";
+import {
+  formatarTelefone,
+  formatarTipoProfissional,
+  normalizarTextoBusca,
+} from "../utils/formatters";
 import {
   mesclarStatusMensagens,
   obterEstadoConfirmacao,
@@ -93,7 +97,7 @@ export default function Dashboard() {
         "URGENTE",
         "ALERTA",
         "FALTOU",
-        "AGENDAMENTO VENCIDO",
+        "VENCIDO",
       ].includes(badge.label);
     else if (filtro === "NO_PRAZO")
       passaFiltroStatus =
@@ -106,7 +110,7 @@ export default function Dashboard() {
     // 2. Verifica o Filtro de Busca Universal (Nome, Doc, ACS, Condição ou Profissional)
     let passaFiltroBusca = true;
     if (termoBusca.trim() !== "") {
-      const termo = termoBusca.toLowerCase();
+      const termo = normalizarTextoBusca(termoBusca);
 
       // Coleta todas as informações e joga para minúsculo para comparar
       const nome = paciente.nome_completo?.toLowerCase() || "";
@@ -117,7 +121,12 @@ export default function Dashboard() {
         "";
       const acs = obterNomeAgente(paciente).toLowerCase();
       const condicao = paciente.condicao?.toLowerCase() || "";
-      const profissional = consulta.tipo_profissional?.toLowerCase() || "";
+      const profissionalTecnico = normalizarTextoBusca(
+        consulta.tipo_profissional,
+      );
+      const profissionalFormal = normalizarTextoBusca(
+        formatarTipoProfissional(consulta.tipo_profissional),
+      );
 
       // Se o termo digitado bater com QUALQUER UMA dessas colunas, ele exibe na tela
       passaFiltroBusca =
@@ -125,7 +134,8 @@ export default function Dashboard() {
         documento.includes(termo) ||
         acs.includes(termo) ||
         condicao.includes(termo) ||
-        profissional.includes(termo);
+        profissionalTecnico.includes(termo) ||
+        profissionalFormal.includes(termo);
     }
 
     return passaFiltroStatus && passaFiltroBusca;
@@ -685,14 +695,14 @@ export default function Dashboard() {
                             </span>
                           </td>
                           <td className="min-w-0 whitespace-normal break-words px-3 py-4 font-medium text-slate-600 xl:px-4">
-                            {consulta.tipo_profissional}
+                            {formatarTipoProfissional(consulta.tipo_profissional)}
                           </td>
                           <td className="break-words px-3 py-4 text-center font-bold leading-tight text-slate-700 xl:px-4">
                             {badge.textoDias}
                           </td>
                           <td className="px-3 py-4 text-center xl:px-4">
                             <span
-                              className={`inline-flex max-w-full justify-center whitespace-normal rounded-md border px-2 py-1 text-xs font-bold leading-tight xl:px-3 ${badge.color}`}
+                              className={`inline-flex min-w-0 max-w-full justify-center break-words whitespace-normal rounded-md border px-2 py-1 text-xs font-bold leading-tight xl:px-3 ${badge.color}`}
                             >
                               {badge.label}
                             </span>
@@ -849,7 +859,7 @@ export default function Dashboard() {
                             Profissional
                           </span>
                           <span className="text-slate-700 font-medium">
-                            {consulta.tipo_profissional}
+                            {formatarTipoProfissional(consulta.tipo_profissional)}
                           </span>
                         </div>
                         <div>
@@ -1005,7 +1015,7 @@ export default function Dashboard() {
       <ModalConfirmacao
         isOpen={modalCancelamento.isOpen}
         titulo="Efetivar cancelamento"
-        mensagem={`Confirma o cancelamento da consulta de ${modalCancelamento.consulta?.pacientes?.nome_completo || "paciente"} com ${modalCancelamento.consulta?.tipo_profissional || "a equipe"}, marcada para ${modalCancelamento.consulta?.data_proxima_consulta || "a data informada"}?`}
+        mensagem={`Confirma o cancelamento da consulta de ${modalCancelamento.consulta?.pacientes?.nome_completo || "paciente"} com ${formatarTipoProfissional(modalCancelamento.consulta?.tipo_profissional)}, marcada para ${modalCancelamento.consulta?.data_proxima_consulta || "a data informada"}?`}
         confirmLabel="Cancelar consulta"
         cancelLabel="Voltar"
         loading={Boolean(cancelandoId)}
