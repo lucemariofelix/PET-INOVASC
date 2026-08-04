@@ -727,7 +727,7 @@ export default function Dashboard() {
                                       desfecho: "REALIZADA",
                                     })
                                   }
-                                  className="w-full rounded-lg bg-emerald-600 px-2 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+                                  className="w-full rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
                                 >
                                   Registrar realizada
                                 </button>
@@ -739,7 +739,7 @@ export default function Dashboard() {
                                       desfecho: "FALTOU",
                                     })
                                   }
-                                  className="w-full rounded-lg bg-amber-600 px-2 py-2 text-xs font-semibold text-white hover:bg-amber-700"
+                                  className="w-full rounded-lg border border-amber-200 bg-amber-50 px-2 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100 hover:text-amber-800"
                                 >
                                   Paciente faltou
                                 </button>
@@ -755,7 +755,7 @@ export default function Dashboard() {
                                   bloqueioDisparo.bloqueado ||
                                   consulta.status_consulta !== "AGENDADA"
                                     ? "bg-slate-200 text-slate-600 cursor-not-allowed"
-                                    : "bg-slate-800 hover:bg-emerald-600 text-white cursor-pointer"
+                                    : "cursor-pointer border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:text-sky-800"
                                 }`}
                               >
                                 {consulta.status_consulta !== "AGENDADA"
@@ -891,7 +891,7 @@ export default function Dashboard() {
                                 desfecho: "REALIZADA",
                               })
                             }
-                            className="rounded-lg bg-emerald-600 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
+                            className="rounded-lg border border-emerald-200 bg-emerald-50 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800"
                           >
                             Registrar realizada
                           </button>
@@ -903,7 +903,7 @@ export default function Dashboard() {
                                 desfecho: "FALTOU",
                               })
                             }
-                            className="rounded-lg bg-amber-600 py-3 text-sm font-semibold text-white hover:bg-amber-700"
+                            className="rounded-lg border border-amber-200 bg-amber-50 py-3 text-sm font-semibold text-amber-700 hover:bg-amber-100 hover:text-amber-800"
                           >
                             Paciente faltou
                           </button>
@@ -919,7 +919,7 @@ export default function Dashboard() {
                             bloqueioDisparo.bloqueado ||
                             consulta.status_consulta !== "AGENDADA"
                               ? "bg-slate-200 text-slate-600 cursor-not-allowed"
-                              : "bg-slate-800 hover:bg-emerald-600 text-white cursor-pointer"
+                              : "cursor-pointer border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:text-sky-800"
                           }`}
                         >
                           {consulta.status_consulta !== "AGENDADA"
