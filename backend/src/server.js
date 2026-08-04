@@ -17,7 +17,7 @@ fastify.setErrorHandler(errorHandler);
 // ----------------------------------------------------
 fastify.register(cors, {
   origin: ["https://pet-inovasc.vercel.app", "http://localhost:5173"], // Permite que o Vercel ou localhost conversem com essa API
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   credentials: true,
 });
 
