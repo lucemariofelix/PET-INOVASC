@@ -1,7 +1,26 @@
 const usuarioService = require("../services/usuarioService");
+const avatarService = require("../services/avatarService");
 const { executarController } = require("./controllerExecutor");
 
 class UsuarioController {
+  async atualizarAvatar(request, reply) {
+    return executarController(request, reply, {
+      executar: async () => {
+        const arquivo = request.isMultipart() ? await request.file() : undefined;
+        return avatarService.atualizarAvatar({
+          arquivo,
+          usuarioId: request.user.id,
+          authHeader: request.headers.authorization,
+        });
+      },
+      auditoria: {
+        acao: "ATUALIZOU_AVATAR",
+        detalhes: "Atualizou a própria foto de perfil.",
+      },
+      responder: (url) => reply.send({ avatar_url: url }),
+    });
+  }
+
   async listar(request, reply) {
     const authHeader = request.headers.authorization;
     return executarController(request, reply, {

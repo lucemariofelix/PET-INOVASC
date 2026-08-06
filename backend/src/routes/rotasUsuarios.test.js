@@ -18,6 +18,9 @@ const usuarioController = {
   criar: vi.fn(async (_request, reply) =>
     reply.status(201).send({ operacao: "criar" }),
   ),
+  atualizarAvatar: vi.fn(async (_request, reply) =>
+    reply.send({ avatar_url: "https://cdn/avatar.webp" }),
+  ),
   atualizar: vi.fn(),
   excluir: vi.fn(),
 };
@@ -85,4 +88,23 @@ describe("rotas de usuários", () => {
     expect(criacao.json()).toEqual({ operacao: "criar" });
     await app.close();
   });
+
+  it.each(["ADMIN", "RECEPCAO", "ACS"])(
+    "permite que %s atualize o próprio avatar",
+    async (funcao) => {
+      estado.funcao = funcao;
+      const app = await criarApp();
+      const resposta = await app.inject({
+        method: "PATCH",
+        url: "/usuarios/me/avatar",
+        cookies: { access_token: "jwt" },
+      });
+
+      expect(resposta.statusCode).toBe(200);
+      expect(resposta.json()).toEqual({
+        avatar_url: "https://cdn/avatar.webp",
+      });
+      await app.close();
+    },
+  );
 });

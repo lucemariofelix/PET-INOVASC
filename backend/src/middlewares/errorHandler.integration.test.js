@@ -111,4 +111,42 @@ describe("errorHandler HTTP", () => {
     });
     await app.close();
   });
+
+  it("deve mapear limite multipart para erro público de avatar", async () => {
+    const app = Fastify({ logger: false });
+    app.setErrorHandler(errorHandler);
+    app.post("/avatar", async () => {
+      const error = new Error("arquivo excedeu o limite interno");
+      error.code = "FST_REQ_FILE_TOO_LARGE";
+      throw error;
+    });
+
+    const resposta = await app.inject({ method: "POST", url: "/avatar" });
+
+    expect(resposta.statusCode).toBe(413);
+    expect(resposta.json()).toEqual({
+      code: "AVATAR_TOO_LARGE",
+      erro: "A foto deve ter no máximo 200 KB.",
+    });
+    await app.close();
+  });
+
+  it("deve rejeitar múltiplos arquivos de avatar sem expor erro interno", async () => {
+    const app = Fastify({ logger: false });
+    app.setErrorHandler(errorHandler);
+    app.post("/avatar", async () => {
+      const error = new Error("files limit reached");
+      error.code = "FST_FILES_LIMIT";
+      throw error;
+    });
+
+    const resposta = await app.inject({ method: "POST", url: "/avatar" });
+
+    expect(resposta.statusCode).toBe(400);
+    expect(resposta.json()).toEqual({
+      code: "INVALID_AVATAR_UPLOAD",
+      erro: "Envie apenas uma foto de perfil por vez.",
+    });
+    await app.close();
+  });
 });

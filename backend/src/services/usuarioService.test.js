@@ -13,9 +13,11 @@ vi.mock("../config/supabase", () => ({
 // MOCK 2: usuarioRepository — hoisted
 // =============================================================================
 vi.mock("../repositories/usuarioRepository");
+vi.mock("../repositories/avatarRepository");
 
 const supabaseModule = require("../config/supabase");
 const usuarioRepository = require("../repositories/usuarioRepository");
+const avatarRepository = require("../repositories/avatarRepository");
 const usuarioService = require("./usuarioService");
 
 // =============================================================================
@@ -38,6 +40,7 @@ beforeEach(() => {
   supabaseModule.supabaseAdmin.auth.admin.createUser = createUserMock;
   supabaseModule.supabaseAdmin.auth.admin.deleteUser = deleteUserMock;
   supabaseModule.supabaseAdmin.auth.admin.updateUserById = updateUserByIdMock;
+  avatarRepository.removerComAdmin = vi.fn().mockResolvedValue(undefined);
 });
 
 // =============================================================================
@@ -89,6 +92,7 @@ describe("UsuarioService", () => {
       );
       expect(deleteUserMock).toHaveBeenCalledTimes(1);
       expect(deleteUserMock).toHaveBeenCalledWith("uuid-5");
+      expect(avatarRepository.removerComAdmin).toHaveBeenCalledWith("uuid-5");
       expect(resultado).toBe(true);
     });
 

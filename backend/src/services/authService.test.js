@@ -50,7 +50,11 @@ describe("AuthService", () => {
         error: null,
       });
       singleMock.mockResolvedValue({
-        data: { nome: "Administrador", funcao: "ADMIN" },
+        data: {
+          nome: "Administrador",
+          funcao: "ADMIN",
+          avatar_url: "https://cdn/avatar.webp",
+        },
         error: null,
       });
 
@@ -64,7 +68,7 @@ describe("AuthService", () => {
         password: "senha-segura",
       });
       expect(fromMock).toHaveBeenCalledWith("perfis_usuarios");
-      expect(selectMock).toHaveBeenCalledWith("nome, funcao");
+      expect(selectMock).toHaveBeenCalledWith("nome, funcao, avatar_url");
       expect(eqMock).toHaveBeenCalledWith("id", "uuid-abc-123");
       expect(singleMock).toHaveBeenCalledTimes(1);
       expect(resultado).toEqual({
@@ -74,6 +78,7 @@ describe("AuthService", () => {
           id: "uuid-abc-123",
           nome: "Administrador",
           funcao: "ADMIN",
+          avatar_url: "https://cdn/avatar.webp",
         },
       });
     });

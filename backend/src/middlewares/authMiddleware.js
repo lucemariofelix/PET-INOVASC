@@ -31,7 +31,7 @@ exports.verificarPermissao = (rolesPermitidas) => {
       // 3. Consulta a nossa tabela para ver a função E O NOME do usuário
       const { data: perfil, error: dbError } = await supabaseClient
         .from("perfis_usuarios")
-        .select("nome, funcao") // <-- CORREÇÃO: Adicionado o 'nome' aqui na busca
+        .select("nome, funcao, avatar_url")
         .eq("id", user.id)
         .single();
 
@@ -54,6 +54,7 @@ exports.verificarPermissao = (rolesPermitidas) => {
         id: user.id,
         nome: perfil.nome,
         funcao: perfil.funcao,
+        avatar_url: perfil.avatar_url,
       };
     } catch (error) {
       request.log.error("Erro no Middleware de Autenticação:", error);

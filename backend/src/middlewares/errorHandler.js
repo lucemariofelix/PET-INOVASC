@@ -14,6 +14,20 @@ function errorHandler(error, request, reply) {
     });
   }
 
+  if (error.code === "FST_REQ_FILE_TOO_LARGE") {
+    return reply.status(413).send({
+      code: "AVATAR_TOO_LARGE",
+      erro: "A foto deve ter no máximo 200 KB.",
+    });
+  }
+
+  if (error.code === "FST_FILES_LIMIT") {
+    return reply.status(400).send({
+      code: "INVALID_AVATAR_UPLOAD",
+      erro: "Envie apenas uma foto de perfil por vez.",
+    });
+  }
+
   if (error.code === "FST_ERR_CTP_EMPTY_JSON_BODY") {
     return reply.status(400).send({
       code: "VALIDATION_ERROR",

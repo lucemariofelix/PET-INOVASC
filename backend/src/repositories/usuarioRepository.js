@@ -5,7 +5,7 @@ class UsuarioRepository {
     const supabaseClient = getSupabaseUsuario(authHeader);
     const { data, error } = await supabaseClient
       .from("perfis_usuarios")
-      .select("id, nome, email, funcao, created_at")
+      .select("id, nome, email, funcao, avatar_url, created_at")
       .order("nome"); // Traz a lista em ordem alfabética
 
     if (error) throw error;
@@ -16,7 +16,7 @@ class UsuarioRepository {
     const supabaseClient = getSupabaseUsuario(authHeader);
     const { data, error } = await supabaseClient
       .from("perfis_usuarios")
-      .select("id, nome, funcao")
+      .select("id, nome, funcao, avatar_url")
       .eq("funcao", "ACS")
       .order("nome");
 
@@ -28,7 +28,7 @@ class UsuarioRepository {
     const supabaseClient = getSupabaseUsuario(authHeader);
     const { data, error } = await supabaseClient
       .from("perfis_usuarios")
-      .select("id, nome, email, funcao")
+      .select("id, nome, email, funcao, avatar_url")
       .eq("id", id)
       .maybeSingle();
 
@@ -41,7 +41,7 @@ class UsuarioRepository {
     const { data, error } = await supabaseClient
       .from("perfis_usuarios")
       .insert([dados])
-      .select("id, nome, email, funcao");
+      .select("id, nome, email, funcao, avatar_url");
 
     if (error) throw error;
     return data[0];
@@ -51,7 +51,7 @@ class UsuarioRepository {
     const { data, error } = await supabaseAdmin
       .from("perfis_usuarios")
       .insert([dados])
-      .select("id, nome, email, funcao");
+      .select("id, nome, email, funcao, avatar_url");
 
     if (error) throw error;
     return data[0];
@@ -68,7 +68,7 @@ class UsuarioRepository {
       .from("perfis_usuarios")
       .update(payloadLimpo)
       .eq("id", id)
-      .select("id, nome, email, funcao");
+      .select("id, nome, email, funcao, avatar_url");
 
     if (error) throw error;
     

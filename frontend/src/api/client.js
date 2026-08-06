@@ -7,8 +7,10 @@ const montarHeaders = (options = {}) => {
   );
   const possuiCorpo =
     options.body !== undefined && options.body !== null && options.body !== "";
+  const corpoMultipart =
+    typeof FormData !== "undefined" && options.body instanceof FormData;
 
-  if (possuiCorpo && !possuiContentType) {
+  if (possuiCorpo && !possuiContentType && !corpoMultipart) {
     headers["Content-Type"] = "application/json";
   }
 

@@ -39,6 +39,19 @@ const usuariosApi = {
     return res.json();
   },
 
+  atualizarAvatar: async (arquivo) => {
+    const formData = new FormData();
+    formData.append("avatar", arquivo);
+    const res = await fetchComAutenticacao("/usuarios/me/avatar", {
+      method: "PATCH",
+      body: formData,
+    });
+    if (!res.ok) {
+      throw new Error(await lerErro(res, "Erro ao atualizar foto de perfil"));
+    }
+    return res.json();
+  },
+
   excluirUsuario: async (id) => {
     const res = await fetchComAutenticacao(`/usuarios/${id}`, {
       method: "DELETE",

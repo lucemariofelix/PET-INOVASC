@@ -30,6 +30,7 @@ Este projeto faz parte das iniciativas do **PET-Saúde: Informação e Saúde Di
 - **Controle de território:** vínculo entre pacientes e Agentes Comunitários de Saúde para apoiar a rotina das microáreas.
 - **Auditoria e histórico:** registro de ações relevantes, mensagens enviadas, status de entrega e eventos recebidos por webhook.
 - **Perfis de acesso:** separação entre ADMIN, RECEPCAO e ACS, respeitando as responsabilidades de cada equipe.
+- **Foto de perfil:** cada usuário pode comprimir e atualizar o próprio avatar, armazenado no Supabase Storage com acesso de escrita isolado por usuário.
 - **Segurança em dados de saúde:** autenticação, cookies HttpOnly, políticas RLS no Supabase e permissões ajustadas por função.
 
 ## 🔁 Fluxos Principais do Sistema
@@ -50,6 +51,7 @@ O SGBA-UBS foi estruturado considerando a sensibilidade dos dados de saúde e a 
 - Autenticação com sessão protegida por cookies HttpOnly.
 - Controle de acesso por perfis funcionais.
 - Políticas de Row Level Security (RLS) no Supabase.
+- Upload de avatar limitado a WebP de 200 KB, com validação também no backend e escrita restrita à pasta do usuário autenticado.
 - Redução de permissões públicas em tabelas sensíveis.
 - Uso de consentimento explícito para mensagens via WhatsApp.
 - Histórico de mensagens com tipo, status de entrega, confirmação e vínculo com paciente/consulta.
@@ -102,8 +104,8 @@ Copie os arquivos `.env.example` de `backend` e `frontend`, preencha as variáve
 
 ```bash
 cd backend
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 ```bash
@@ -115,9 +117,15 @@ pnpm dev
 Validação completa:
 
 ```bash
-cd backend && npm test
+cd backend && pnpm test
 cd ../frontend && pnpm test && pnpm lint && pnpm build
 ```
+
+### Avatar do usuário
+
+O frontend comprime imagens JPEG, PNG ou WebP para WebP, com dimensão máxima de 800 px e alvo de aproximadamente 150 KB. O backend recebe o campo multipart `avatar` em `PATCH /usuarios/me/avatar`, valida novamente o arquivo e o salva no bucket público `avatars` sob `<usuario_id>/avatar.webp`.
+
+A criação do bucket, as políticas por pasta, o campo `perfis_usuarios.avatar_url` e a RPC de atualização do próprio perfil são versionados pelas migrations do Supabase.
 
 ## 🚀 Estratégia de Implantação
 

@@ -58,7 +58,11 @@ describe("authMiddleware", () => {
   it("deve validar token do cookie, reconstruir authHeader e anexar request.user", async () => {
     const supabaseClient = createSupabaseClientMock({
       user: { id: "user-1" },
-      perfil: { nome: "Admin", funcao: "ADMIN" },
+      perfil: {
+        nome: "Admin",
+        funcao: "ADMIN",
+        avatar_url: "https://cdn/avatar.webp",
+      },
     });
     supabaseConfig.getSupabaseUsuario.mockReturnValue(supabaseClient);
 
@@ -80,6 +84,7 @@ describe("authMiddleware", () => {
       id: "user-1",
       nome: "Admin",
       funcao: "ADMIN",
+      avatar_url: "https://cdn/avatar.webp",
     });
     expect(reply.status).not.toHaveBeenCalled();
   });

@@ -1,13 +1,13 @@
 # AI Handoff — Estado atual do SGBA-UBS
 
-**Atualizado em:** 03/08/2026
+**Atualizado em:** 05/08/2026
 
-**Status:** fluxo de mensageria, webhook, confirmação textual, bloqueio de reenvios e efetivação manual do cancelamento implementados e validados.
+**Status:** fluxos assistenciais anteriores e avatar do usuário via Supabase Storage implementados e validados.
 
 ## Estado verificado
 
-- Backend: 24 arquivos de teste e 275 testes aprovados.
-- Frontend: 7 arquivos de teste executados pelo `node:test`.
+- Backend: 27 arquivos de teste e 291 testes aprovados.
+- Frontend: 8 arquivos de teste executados pelo `node:test`.
 - Frontend: lint e build de produção aprovados.
 - Branch de trabalho: `main`.
 - Integração real validada com Evolution API v2.3.x, incluindo envio, entrega, leitura e resposta textual.
@@ -37,6 +37,15 @@
 - O botão de disparo é bloqueado visualmente, mas o banco é a autoridade contra concorrência.
 - O shell autenticado possui largura máxima de 1600 px; tabelas usam o espaço amplo e formulários/modais preservam limites próprios.
 - Tipos profissionais permanecem técnicos no banco (`MEDICO`, `ENFERMEIRO`, `DENTISTA`, `NUTRICAO`), mas interface e mensagens usam Médico, Enfermeiro, Dentista e Nutricionista.
+- O Header carrega `browser-image-compression` somente após a seleção de uma foto. A sessão expõe `avatar_url` e é renovada após o upload para atualizar desktop e mobile.
+
+### Avatar
+
+- O bucket público `avatars` aceita somente WebP de até 200 KB.
+- Cada usuário autenticado grava apenas `<auth.uid()>/avatar.webp`; substituições não acumulam objetos.
+- A tabela `perfis_usuarios` guarda a URL pública versionada em `avatar_url`.
+- A RPC `atualizar_avatar_proprio` altera somente o avatar do usuário autenticado, sem ampliar a policy administrativa de atualização do perfil.
+- O backend valida campo multipart, tamanho, MIME, extensão e assinatura RIFF/WEBP. A compressão do navegador não é tratada como controle de segurança.
 
 ## Contratos principais
 
@@ -100,6 +109,17 @@ Content-Type: application/json
 ```
 
 Somente ADMIN e RECEPCAO podem executar na data agendada ou depois. `REALIZADA` atualiza a última consulta; `FALTOU` preserva a data anterior e tenta enviar orientação para reagendamento sem reverter o desfecho em caso de falha.
+
+### Atualizar o próprio avatar
+
+```http
+PATCH /usuarios/me/avatar
+Content-Type: multipart/form-data
+
+avatar=<arquivo WebP de até 200 KB>
+```
+
+ADMIN, RECEPCAO e ACS podem atualizar somente a própria foto. A resposta contém `{ "avatar_url": "..." }`. Erros públicos: `AVATAR_REQUIRED`, `AVATAR_TOO_LARGE` e `UNSUPPORTED_AVATAR_TYPE`.
 
 ### Webhook
 

@@ -49,3 +49,17 @@ test("POST com corpo JSON declara Content-Type application/json", async () => {
     "application/json",
   );
 });
+
+test("PATCH com FormData deixa o navegador definir o boundary multipart", async () => {
+  const requisicao = capturarRequisicao();
+  const formData = new FormData();
+  formData.append("avatar", new Blob(["webp"], { type: "image/webp" }));
+
+  await fetchComAutenticacao("/usuarios/me/avatar", {
+    method: "PATCH",
+    body: formData,
+  });
+
+  assert.equal(requisicao().options.headers["Content-Type"], undefined);
+  assert.equal(requisicao().options.body, formData);
+});

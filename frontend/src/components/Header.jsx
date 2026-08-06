@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   FaHeartbeat,
@@ -12,6 +12,41 @@ import {
   FaBullhorn,
 } from "react-icons/fa";
 import RoleGuard from "../components/RoleGuard";
+import { usuariosApi } from "../api/usuarios";
+import { useAuth } from "../hooks/useAuth";
+import { comprimirAvatar } from "../utils/avatar";
+
+function AvatarButton({ usuario, carregando, imagemFalhou, onErro, onClick, tamanho }) {
+  const dimensao = tamanho === "mobile" ? "h-10 w-10" : "h-8 w-8";
+  const icone = tamanho === "mobile" ? "text-3xl" : "text-2xl";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={carregando}
+      className={`relative flex ${dimensao} shrink-0 items-center justify-center overflow-hidden rounded-full border border-sky-500/60 bg-sky-900/40 text-sky-200 transition hover:border-sky-200 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-wait`}
+      aria-label="Alterar foto de perfil"
+      title="Alterar foto de perfil"
+    >
+      {usuario?.avatar_url && !imagemFalhou ? (
+        <img
+          src={usuario.avatar_url}
+          alt={`Foto de perfil de ${usuario.nome}`}
+          className="h-full w-full object-cover"
+          onError={onErro}
+        />
+      ) : (
+        <FaUserCircle className={icone} aria-hidden="true" />
+      )}
+      {carregando ? (
+        <span className="absolute inset-0 flex items-center justify-center bg-sky-950/75">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+        </span>
+      ) : null}
+    </button>
+  );
+}
 
 const getActiveTab = (pathname) => {
   if (pathname.startsWith("/agenda")) return "agenda";
@@ -22,9 +57,56 @@ const getActiveTab = (pathname) => {
 
 export default function Header({ usuario, onLogout }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [enviandoAvatar, setEnviandoAvatar] = useState(false);
+  const [imagemAvatarFalhou, setImagemAvatarFalhou] = useState(false);
+  const [mensagemAvatar, setMensagemAvatar] = useState(null);
+  const inputAvatarRef = useRef(null);
+  const { refreshSession } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const activeTab = getActiveTab(location.pathname);
+
+  useEffect(() => {
+    setImagemAvatarFalhou(false);
+  }, [usuario?.avatar_url]);
+
+  useEffect(() => {
+    if (!mensagemAvatar) return undefined;
+    const timer = window.setTimeout(() => setMensagemAvatar(null), 5000);
+    return () => window.clearTimeout(timer);
+  }, [mensagemAvatar]);
+
+  const selecionarAvatar = () => {
+    if (!enviandoAvatar) inputAvatarRef.current?.click();
+  };
+
+  const atualizarAvatar = async (event) => {
+    const arquivo = event.target.files?.[0];
+    event.target.value = "";
+    if (!arquivo || enviandoAvatar) return;
+
+    setEnviandoAvatar(true);
+    setMensagemAvatar(null);
+    try {
+      const { default: imageCompression } = await import(
+        "browser-image-compression"
+      );
+      const avatarComprimido = await comprimirAvatar(
+        arquivo,
+        imageCompression,
+      );
+      await usuariosApi.atualizarAvatar(avatarComprimido);
+      await refreshSession();
+      setMensagemAvatar({ tipo: "sucesso", texto: "Foto de perfil atualizada." });
+    } catch (error) {
+      setMensagemAvatar({
+        tipo: "erro",
+        texto: error.message || "Não foi possível atualizar a foto de perfil.",
+      });
+    } finally {
+      setEnviandoAvatar(false);
+    }
+  };
 
   const handleTabClick = (tab) => {
     const rotas = {
@@ -40,6 +122,26 @@ export default function Header({ usuario, onLogout }) {
 
   return (
     <header className="bg-sky-800 shadow-md relative z-50">
+      <input
+        ref={inputAvatarRef}
+        type="file"
+        hidden
+        accept="image/jpeg,image/png,image/webp"
+        onChange={atualizarAvatar}
+      />
+      {mensagemAvatar ? (
+        <div
+          role={mensagemAvatar.tipo === "erro" ? "alert" : "status"}
+          aria-live="polite"
+          className={`absolute right-4 top-full mt-2 max-w-xs rounded-lg border px-3 py-2 text-sm font-medium shadow-lg ${
+            mensagemAvatar.tipo === "erro"
+              ? "border-red-200 bg-red-50 text-red-800"
+              : "border-emerald-200 bg-emerald-50 text-emerald-800"
+          }`}
+        >
+          {mensagemAvatar.texto}
+        </div>
+      ) : null}
       <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between px-4 py-4 sm:px-8">
         {/* 1. LOGO E TÍTULO */}
         <div className="flex items-center gap-3 shrink-0">
@@ -103,7 +205,14 @@ export default function Header({ usuario, onLogout }) {
           {usuario && (
             <div className="flex items-center gap-4 pl-4 border-l border-sky-700/50">
               <div className="flex items-center gap-2 text-right">
-                <FaUserCircle className="text-sky-200 text-2xl hidden xl:block" />
+                <AvatarButton
+                  usuario={usuario}
+                  carregando={enviandoAvatar}
+                  imagemFalhou={imagemAvatarFalhou}
+                  onErro={() => setImagemAvatarFalhou(true)}
+                  onClick={selecionarAvatar}
+                  tamanho="desktop"
+                />
                 <div className="text-right">
                   <p className="text-white text-sm font-bold leading-tight">
                     {usuario.nome}
@@ -191,7 +300,14 @@ export default function Header({ usuario, onLogout }) {
           {usuario && (
             <div className="mt-5 pt-5 border-t border-sky-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <FaUserCircle className="text-sky-200 text-3xl" />
+                <AvatarButton
+                  usuario={usuario}
+                  carregando={enviandoAvatar}
+                  imagemFalhou={imagemAvatarFalhou}
+                  onErro={() => setImagemAvatarFalhou(true)}
+                  onClick={selecionarAvatar}
+                  tamanho="mobile"
+                />
                 <div>
                   <p className="text-white text-base font-bold leading-tight">
                     {usuario.nome}

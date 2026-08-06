@@ -1,4 +1,5 @@
 const usuarioRepository = require("../repositories/usuarioRepository");
+const avatarRepository = require("../repositories/avatarRepository");
 const { supabaseAdmin } = require("../config/supabase");
 const {
   AppError,
@@ -206,6 +207,11 @@ class UsuarioService {
     if (error && !authJaAusente) throw error;
 
     await usuarioRepository.excluir(id, authHeader);
+    try {
+      await avatarRepository.removerComAdmin(id);
+    } catch (errorAvatar) {
+      console.error("Falha ao remover avatar do usuário excluído.", errorAvatar);
+    }
     return true;
   }
 }

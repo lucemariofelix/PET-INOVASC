@@ -16,7 +16,7 @@ class AuthService {
     // 2. Busca o perfil do usuário para saber a permissão (RECEPCAO, ACS, ADMIN)
     const { data: perfilData, error: perfilError } = await supabase
       .from("perfis_usuarios")
-      .select("nome, funcao")
+      .select("nome, funcao, avatar_url")
       .eq("id", authData.user.id)
       .single();
 
@@ -37,6 +37,7 @@ class AuthService {
         id: authData.user.id,
         nome: perfilData.nome,
         funcao: perfilData.funcao,
+        avatar_url: perfilData.avatar_url,
       },
     };
   }

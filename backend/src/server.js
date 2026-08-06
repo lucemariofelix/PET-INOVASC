@@ -2,6 +2,7 @@ require("dotenv").config();
 const Fastify = require("fastify");
 const cors = require("@fastify/cors"); // <- O Porteiro do CORS
 const cookie = require("@fastify/cookie");
+const multipart = require("@fastify/multipart");
 const errorHandler = require("./middlewares/errorHandler");
 
 const fastify = Fastify({
@@ -22,6 +23,12 @@ fastify.register(cors, {
 });
 
 fastify.register(cookie);
+fastify.register(multipart, {
+  limits: {
+    files: 1,
+    fileSize: 200 * 1024,
+  },
+});
 
 // 🔵 Rota principal (humana / debug)
 fastify.get("/", async (request, reply) => {

@@ -11,6 +11,11 @@ async function rotasUsuarios(fastify, options = {}) {
   };
 
   fastify.get("/usuarios/acs", todosAutenticados, controller.listarACS);
+  fastify.patch(
+    "/usuarios/me/avatar",
+    todosAutenticados,
+    controller.atualizarAvatar,
+  );
   fastify.get("/usuarios", soAdmin, controller.listar);
   fastify.post("/usuarios", soAdmin, controller.criar);
   fastify.put("/usuarios/:id", soAdmin, controller.atualizar);
