@@ -42,24 +42,26 @@ const esquemaFiltrosPacientes = {
 };
 
 async function rotasPacientes(fastify, options) {
+  const controller = options?.pacienteController || pacienteController;
+  const criarVerificacao = options?.verificarPermissao || verificarPermissao;
   const todosAutenticados = {
-    preHandler: [verificarPermissao(["ADMIN", "RECEPCAO", "ACS"])],
+    preHandler: [criarVerificacao(["ADMIN", "RECEPCAO", "ACS"])],
   };
 
   // ADMIN e RECEPCAO têm permissão para criar e editar pacientes
   const adminERecepcao = {
-    preHandler: [verificarPermissao(["ADMIN", "RECEPCAO"])],
+    preHandler: [criarVerificacao(["ADMIN", "RECEPCAO"])],
   };
 
   // Leitura aberta para todos os usuários autenticados (incluindo ACS)
-  fastify.get("/pacientes", todosAutenticados, pacienteController.listar);
+  fastify.get("/pacientes", todosAutenticados, controller.listar);
   fastify.get(
     "/pacientes/filtros",
     {
       ...todosAutenticados,
       schema: esquemaFiltrosPacientes,
     },
-    pacienteController.filtrar,
+    controller.filtrar,
   );
 
   // Escrita e atualização trancadas E validadas (Unimos tudo no 2º parâmetro)
@@ -69,7 +71,7 @@ async function rotasPacientes(fastify, options) {
       ...adminERecepcao, // Traz o preHandler de segurança
       schema: esquemaPaciente, // Traz a blindagem de dados
     },
-    pacienteController.criar,
+    controller.criar,
   );
 
   fastify.put(
@@ -78,7 +80,7 @@ async function rotasPacientes(fastify, options) {
       ...adminERecepcao, // Traz o preHandler de segurança
       schema: esquemaPaciente, // Traz a blindagem de dados
     },
-    pacienteController.atualizar,
+    controller.atualizar,
   );
 }
 

@@ -138,6 +138,7 @@ class PacienteService {
 
     if (temPropriedade(dados, "agente_id")) {
       pacienteParaAtualizar.agente_id = dados.agente_id || null;
+      pacienteParaAtualizar.acs = null;
       await this.validarAgenteSeInformado(dados.agente_id, authHeader);
     }
 

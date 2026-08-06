@@ -17,6 +17,10 @@ import {
   formatarTipoProfissional,
 } from "../utils/formatters";
 import { filtrarPacientesPorBusca } from "../utils/pacienteSearch";
+import {
+  obterNomeAgentePaciente,
+  substituirPacienteAtualizado,
+} from "../utils/paciente";
 import ModalAlerta from "../components/ModalAlerta";
 import RoleGuard from "../components/RoleGuard";
 
@@ -35,6 +39,7 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
   // Estados do Modal de Edição
   const [modalEdicaoAberto, setModalEdicaoAberto] = useState(false);
   const [pacienteEditando, setPacienteEditando] = useState(null);
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
   const [alerta, setAlerta] = useState({
     isOpen: false,
     tipo: "",
@@ -122,10 +127,6 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
     )[0];
   };
 
-  const obterNomeAgente = (paciente) => {
-    return paciente?.agente?.nome || paciente?.acs || "Não Informado";
-  };
-
   const obterGruposPaciente = (paciente) => {
     return (paciente?.pacientes_grupos || [])
       .map((vinculo) => vinculo.grupos_acompanhamento)
@@ -176,6 +177,7 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
 
   const salvarEdicao = async (e) => {
     e.preventDefault();
+    if (salvandoEdicao) return;
 
     // Limpa o documento antes de enviar
     const documentoLimpo = pacienteEditando.cpf_cns.replace(/\D/g, "");
@@ -208,18 +210,24 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
       condicao: pacienteEditando.condicao,
     };
 
+    setSalvandoEdicao(true);
     try {
-      await pacientesApi.atualizarPaciente(pacienteEditando.id, payload);
+      const resposta = await pacientesApi.atualizarPaciente(
+        pacienteEditando.id,
+        payload,
+      );
+      const pacienteAtualizado = resposta.paciente || resposta;
+      setPacientesOptions((pacientes) =>
+        substituirPacienteAtualizado(pacientes, pacienteAtualizado),
+      );
       setModalEdicaoAberto(false);
-
-      // Atualiza a lista por baixo dos panos para refletir a mudança
-      fetchPacientes();
+      setPacienteEditando(null);
 
       setAlerta({
         isOpen: true,
         tipo: "sucesso",
         titulo: "Paciente Atualizado!",
-        mensagem: "Os dados foram alterados com sucesso no banco de dados.",
+        mensagem: "Os dados confirmados pelo banco já estão atualizados na lista.",
       });
     } catch (err) {
       setAlerta({
@@ -228,6 +236,8 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
         titulo: "Erro ao Salvar",
         mensagem: err.message,
       });
+    } finally {
+      setSalvandoEdicao(false);
     }
   };
 
@@ -363,11 +373,11 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
                         </p>
                       </td>
                       <td className="px-6 py-4 text-slate-600">
-                        {obterNomeAgente(pac) !== "Não Informado" ? (
-                          obterNomeAgente(pac)
+                        {obterNomeAgentePaciente(pac) !== "Área Descoberta" ? (
+                          obterNomeAgentePaciente(pac)
                         ) : (
                           <span className="text-slate-400 italic">
-                            Não Informado
+                            Área Descoberta
                           </span>
                         )}
                       </td>
@@ -447,13 +457,15 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <button
-                          onClick={() => abrirModalEdicao(pac)}
-                          className="p-2 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-full transition-colors"
-                          title="Editar Paciente"
-                        >
-                          <FaEdit size={16} />
-                        </button>
+                        <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO"]}>
+                          <button
+                            onClick={() => abrirModalEdicao(pac)}
+                            className="p-2 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-full transition-colors"
+                            title="Editar Paciente"
+                          >
+                            <FaEdit size={16} />
+                          </button>
+                        </RoleGuard>
                       </td>
                     </tr>
                   ))}
@@ -478,12 +490,15 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
                   </div>
 
                   {/* Botão flutuante de edição no mobile */}
-                  <button
-                    onClick={() => abrirModalEdicao(pac)}
-                    className="absolute top-4 right-4 p-2 text-slate-400 hover:text-sky-600 bg-slate-50 rounded-full border border-slate-100"
-                  >
-                    <FaEdit size={14} />
-                  </button>
+                  <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO"]}>
+                    <button
+                      onClick={() => abrirModalEdicao(pac)}
+                      className="absolute top-4 right-4 p-2 text-slate-400 hover:text-sky-600 bg-slate-50 rounded-full border border-slate-100"
+                      title="Editar Paciente"
+                    >
+                      <FaEdit size={14} />
+                    </button>
+                  </RoleGuard>
 
                   <div className="grid grid-cols-2 gap-2 text-sm bg-slate-50 p-2 rounded-lg border border-slate-100">
                     <div>
@@ -491,7 +506,7 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
                         Agente / ACS
                       </span>
                       <span className="text-slate-700 line-clamp-1">
-                        {obterNomeAgente(pac)}
+                        {obterNomeAgentePaciente(pac)}
                       </span>
                     </div>
                     <div>
@@ -817,15 +832,18 @@ export default function ListaPacientes({ onNovoPaciente = () => {} }) {
                 <button
                   type="button"
                   onClick={() => setModalEdicaoAberto(false)}
+                  disabled={salvandoEdicao}
                   className="px-5 py-2.5 rounded-lg font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-lg font-semibold text-white bg-sky-600 hover:bg-sky-700 shadow-sm transition-colors flex items-center gap-2"
+                  disabled={salvandoEdicao}
+                  className="px-5 py-2.5 rounded-lg font-semibold text-white bg-sky-600 hover:bg-sky-700 shadow-sm transition-colors flex items-center gap-2 disabled:cursor-wait disabled:bg-sky-400"
                 >
-                  <FaSave /> Salvar Alterações
+                  <FaSave />
+                  {salvandoEdicao ? "Salvando..." : "Salvar Alterações"}
                 </button>
               </div>
             </form>

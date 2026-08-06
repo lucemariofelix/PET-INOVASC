@@ -335,6 +335,63 @@ describe("PacienteService", () => {
         authHeader,
       );
     });
+
+    it("deve trocar o agente canônico e limpar o ACS textual legado", async () => {
+      const agenteId = "11111111-1111-1111-1111-111111111111";
+      pacienteRepository.buscarAgenteACSPorId = vi
+        .fn()
+        .mockResolvedValue({ id: agenteId, funcao: "ACS" });
+      pacienteRepository.atualizar = vi.fn().mockResolvedValue({ id: 5 });
+
+      await pacienteService.atualizarPaciente(
+        5,
+        { agente_id: agenteId, acs: "ACS antigo" },
+        authHeader,
+      );
+
+      expect(pacienteRepository.atualizar).toHaveBeenCalledWith(
+        5,
+        { agente_id: agenteId, acs: null },
+        undefined,
+        authHeader,
+      );
+    });
+
+    it("deve registrar Área Descoberta limpando vínculo e texto legado", async () => {
+      pacienteRepository.buscarAgenteACSPorId = vi.fn();
+      pacienteRepository.atualizar = vi.fn().mockResolvedValue({ id: 5 });
+
+      await pacienteService.atualizarPaciente(
+        5,
+        { agente_id: null, acs: "ACS antigo" },
+        authHeader,
+      );
+
+      expect(pacienteRepository.buscarAgenteACSPorId).not.toHaveBeenCalled();
+      expect(pacienteRepository.atualizar).toHaveBeenCalledWith(
+        5,
+        { agente_id: null, acs: null },
+        undefined,
+        authHeader,
+      );
+    });
+
+    it("deve preservar compatibilidade quando apenas acs legado for enviado", async () => {
+      pacienteRepository.atualizar = vi.fn().mockResolvedValue({ id: 5 });
+
+      await pacienteService.atualizarPaciente(
+        5,
+        { acs: "ACS legado" },
+        authHeader,
+      );
+
+      expect(pacienteRepository.atualizar).toHaveBeenCalledWith(
+        5,
+        { acs: "ACS legado" },
+        undefined,
+        authHeader,
+      );
+    });
   });
 
   // ===========================================================================

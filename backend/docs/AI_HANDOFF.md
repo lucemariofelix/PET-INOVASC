@@ -6,8 +6,8 @@
 
 ## Estado verificado
 
-- Backend: 27 arquivos de teste e 291 testes aprovados.
-- Frontend: 8 arquivos de teste executados pelo `node:test`.
+- Backend: 30 arquivos de teste e 300 testes aprovados.
+- Frontend: 9 arquivos de teste executados pelo `node:test`.
 - Frontend: lint e build de produção aprovados.
 - Branch de trabalho: `main`.
 - Integração real validada com Evolution API v2.3.x, incluindo envio, entrega, leitura e resposta textual.
@@ -38,6 +38,7 @@
 - O shell autenticado possui largura máxima de 1600 px; tabelas usam o espaço amplo e formulários/modais preservam limites próprios.
 - Tipos profissionais permanecem técnicos no banco (`MEDICO`, `ENFERMEIRO`, `DENTISTA`, `NUTRICAO`), mas interface e mensagens usam Médico, Enfermeiro, Dentista e Nutricionista.
 - O Header carrega `browser-image-compression` somente após a seleção de uma foto. A sessão expõe `avatar_url` e é renovada após o upload para atualizar desktop e mobile.
+- `pacientes.agente_id` é o vínculo canônico com ACS. Quando esse campo participa de uma atualização, o backend limpa `pacientes.acs`; o texto legado permanece apenas como fallback para registros ainda não editados.
 
 ### Avatar
 
