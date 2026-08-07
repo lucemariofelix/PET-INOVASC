@@ -41,7 +41,7 @@ export default function Login() {
           <div className="bg-sky-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
             <FaHeartbeat className="text-3xl text-red-500" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">SGR - UBS</h1>
+          <h1 className="text-2xl font-bold text-slate-800">SGBA-UBS</h1>
           <p className="text-slate-500 text-sm mt-1">Acesso Restrito</p>
         </div>
 
