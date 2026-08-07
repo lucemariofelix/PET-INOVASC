@@ -16,7 +16,14 @@ import { usuariosApi } from "../api/usuarios";
 import { useAuth } from "../hooks/useAuth";
 import { comprimirAvatar } from "../utils/avatar";
 
-function AvatarButton({ usuario, carregando, imagemFalhou, onErro, onClick, tamanho }) {
+function AvatarButton({
+  usuario,
+  carregando,
+  imagemFalhou,
+  onErro,
+  onClick,
+  tamanho,
+}) {
   const dimensao = tamanho === "mobile" ? "h-10 w-10" : "h-8 w-8";
   const icone = tamanho === "mobile" ? "text-3xl" : "text-2xl";
 
@@ -88,16 +95,15 @@ export default function Header({ usuario, onLogout }) {
     setEnviandoAvatar(true);
     setMensagemAvatar(null);
     try {
-      const { default: imageCompression } = await import(
-        "browser-image-compression"
-      );
-      const avatarComprimido = await comprimirAvatar(
-        arquivo,
-        imageCompression,
-      );
+      const { default: imageCompression } =
+        await import("browser-image-compression");
+      const avatarComprimido = await comprimirAvatar(arquivo, imageCompression);
       await usuariosApi.atualizarAvatar(avatarComprimido);
       await refreshSession();
-      setMensagemAvatar({ tipo: "sucesso", texto: "Foto de perfil atualizada." });
+      setMensagemAvatar({
+        tipo: "sucesso",
+        texto: "Foto de perfil atualizada.",
+      });
     } catch (error) {
       setMensagemAvatar({
         tipo: "erro",
@@ -144,23 +150,25 @@ export default function Header({ usuario, onLogout }) {
       ) : null}
       <div className="mx-auto flex w-full max-w-[1600px] items-center justify-between px-4 py-4 sm:px-8">
         {/* 1. LOGO E TÍTULO */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex min-w-0 flex-1 items-center gap-3 lg:flex-none">
           <div className="w-10 h-10 bg-sky-100 rounded-full flex items-center justify-center font-bold text-xl shrink-0">
             {/* CORAÇÃO DA LOGO: Sempre Vermelho */}
             <FaHeartbeat className="text-red-500" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-white font-bold text-xl leading-tight">
-              SGR-UBS
+              SGBA-UBS
             </h1>
-            <p className="text-sky-200 text-xs">Gestão e Busca Ativa</p>
+            <p className="text-[11px] leading-tight text-sky-200 sm:text-xs">
+              Sistema de Gestão e Busca Ativa para UBS
+            </p>
           </div>
         </div>
 
         {/* 2. BOTÃO HAMBÚRGUER */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="lg:hidden text-sky-100 hover:text-white p-2 focus:outline-none transition-colors cursor-pointer"
+          className="shrink-0 p-2 text-sky-100 transition-colors hover:text-white focus:outline-none cursor-pointer lg:hidden"
           aria-label="Abrir menu"
         >
           {isMobileMenuOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
