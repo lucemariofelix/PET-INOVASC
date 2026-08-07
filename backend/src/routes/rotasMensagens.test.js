@@ -17,6 +17,9 @@ const controller = {
   checarStatusWhatsApp: vi.fn(async (_request, reply) =>
     reply.send({ status: "connected" }),
   ),
+  desconectarWhatsApp: vi.fn(async (_request, reply) =>
+    reply.send({ status: "disconnected", already_disconnected: false }),
+  ),
 };
 
 const Fastify = require("fastify");
@@ -80,6 +83,37 @@ describe("rotas de mensagens", () => {
 
     expect(resposta.statusCode).toBe(400);
     expect(controller.listarStatusMensagens).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it.each(["ADMIN", "RECEPCAO"])(
+    "permite desconectar o WhatsApp para %s",
+    async (funcao) => {
+      estado.funcao = funcao;
+      const app = await criarApp();
+      const resposta = await app.inject({
+        method: "DELETE",
+        url: "/whatsapp/conexao",
+        cookies: { access_token: "jwt" },
+      });
+
+      expect(resposta.statusCode).toBe(200);
+      expect(controller.desconectarWhatsApp).toHaveBeenCalledOnce();
+      await app.close();
+    },
+  );
+
+  it("impede ACS de desconectar o WhatsApp", async () => {
+    estado.funcao = "ACS";
+    const app = await criarApp();
+    const resposta = await app.inject({
+      method: "DELETE",
+      url: "/whatsapp/conexao",
+      cookies: { access_token: "jwt" },
+    });
+
+    expect(resposta.statusCode).toBe(403);
+    expect(controller.desconectarWhatsApp).not.toHaveBeenCalled();
     await app.close();
   });
 });

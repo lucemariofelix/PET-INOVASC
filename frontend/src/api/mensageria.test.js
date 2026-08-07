@@ -34,3 +34,28 @@ test("consulta status usando IDs codificados e sinal de cancelamento", async () 
   assert.equal(requisicao.options.signal, controller.signal);
   assert.deepEqual(resposta, { mensagens: [] });
 });
+
+test("desconecta WhatsApp com DELETE e sem corpo", async () => {
+  let requisicao;
+  globalThis.fetch = async (url, options) => {
+    requisicao = { url, options };
+    return {
+      ok: true,
+      json: async () => ({
+        status: "disconnected",
+        already_disconnected: false,
+      }),
+    };
+  };
+
+  const resposta = await mensageriaApi.desconectarWhatsApp();
+
+  assert.match(requisicao.url, /\/whatsapp\/conexao$/);
+  assert.equal(requisicao.options.method, "DELETE");
+  assert.equal(requisicao.options.body, undefined);
+  assert.equal(requisicao.options.headers["Content-Type"], undefined);
+  assert.deepEqual(resposta, {
+    status: "disconnected",
+    already_disconnected: false,
+  });
+});

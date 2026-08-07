@@ -4,6 +4,10 @@
 
 O backend integra o SGBA-UBS à Evolution API v2.3.x. Lembretes com confirmação usam texto simples, enquanto o Dashboard acompanha separadamente o transporte da mensagem e a resposta do paciente.
 
+## Controle da conexão
+
+O status está disponível aos três perfis autenticados. ADMIN e RECEPCAO também podem usar `DELETE /whatsapp/conexao` para encerrar a sessão vinculada. A operação chama o logout da instância, é idempotente e não exclui a instância, sua configuração ou o histórico. Para reconectar, a equipe deve ler o novo QR Code exibido em Configurações. Usuários ACS não têm permissão para desconectar.
+
 ```text
 Dashboard
   → POST /mensagens/enviar

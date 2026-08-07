@@ -39,6 +39,12 @@ async function rotasMensagens(fastify, options) {
     todosAutenticados,
     controller.checarStatusWhatsApp,
   );
+
+  fastify.delete(
+    "/whatsapp/conexao",
+    { preHandler: [verificar(["ADMIN", "RECEPCAO"])] },
+    controller.desconectarWhatsApp,
+  );
 }
 
 module.exports = rotasMensagens;

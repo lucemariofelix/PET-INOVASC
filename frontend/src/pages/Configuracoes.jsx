@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FaQrcode,
   FaCheckCircle,
@@ -12,13 +12,18 @@ import {
   FaTimes,
   FaSave,
   FaHistory, // <-- Ícone novo para a Auditoria
+  FaSignOutAlt,
 } from "react-icons/fa";
 import { mensageriaApi } from "../api/mensageria";
 import { sessaoApi } from "../api/sessao";
 import { usuariosApi } from "../api/usuarios";
 import ModalAlerta from "../components/ModalAlerta";
+import ModalConfirmacao from "../components/ModalConfirmacao";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Configuracoes() {
+  const { usuario } = useAuth();
+  const ehAdmin = usuario?.funcao === "ADMIN";
   // Controle de Abas Internas (WhatsApp vs Usuários vs Auditoria)
   const [abaAtiva, setAbaAtiva] = useState("whatsapp");
 
@@ -27,6 +32,10 @@ export default function Configuracoes() {
   // ==========================================
   const [statusWpp, setStatusWpp] = useState("loading");
   const [qrCodeBase64, setQrCodeBase64] = useState("");
+  const [modalDesconexaoAberto, setModalDesconexaoAberto] = useState(false);
+  const [desconectando, setDesconectando] = useState(false);
+  const desconectandoRef = useRef(false);
+  const consultaStatusIdRef = useRef(0);
 
   // ==========================================
   // ESTADOS: USUÁRIOS
@@ -61,21 +70,72 @@ export default function Configuracoes() {
   // ==========================================
   // LÓGICA: WHATSAPP
   // ==========================================
-  const checarConexao = async () => {
+  const checarConexao = useCallback(async (signal) => {
+    if (desconectandoRef.current) return;
+    const consultaId = ++consultaStatusIdRef.current;
     try {
-      const data = await mensageriaApi.getWhatsAppStatus();
+      const data = await mensageriaApi.getWhatsAppStatus({ signal });
+      if (
+        desconectandoRef.current ||
+        consultaId !== consultaStatusIdRef.current
+      ) {
+        return;
+      }
       setStatusWpp(data.status);
-      if (data.status === "qrcode") setQrCodeBase64(data.qrcode);
-    } catch {
+      setQrCodeBase64(data.status === "qrcode" ? data.qrcode : "");
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+      if (
+        desconectandoRef.current ||
+        consultaId !== consultaStatusIdRef.current
+      ) {
+        return;
+      }
       setStatusWpp("error");
     }
-  };
+  }, []);
 
   useEffect(() => {
-    checarConexao();
-    const intervalo = setInterval(() => checarConexao(), 5000);
-    return () => clearInterval(intervalo);
-  }, []);
+    const controller = new AbortController();
+    checarConexao(controller.signal);
+    const intervalo = setInterval(
+      () => checarConexao(controller.signal),
+      5000,
+    );
+    return () => {
+      controller.abort();
+      clearInterval(intervalo);
+    };
+  }, [checarConexao]);
+
+  const desconectarWhatsApp = async () => {
+    if (desconectandoRef.current) return;
+
+    const statusAnterior = statusWpp;
+    desconectandoRef.current = true;
+    consultaStatusIdRef.current += 1;
+    setDesconectando(true);
+    setStatusWpp("disconnecting");
+
+    try {
+      await mensageriaApi.desconectarWhatsApp();
+      setModalDesconexaoAberto(false);
+      setStatusWpp("disconnected");
+      desconectandoRef.current = false;
+      await checarConexao();
+    } catch (error) {
+      setStatusWpp(statusAnterior);
+      setAlerta({
+        isOpen: true,
+        tipo: "erro",
+        titulo: "Não foi possível desconectar",
+        mensagem: error.message,
+      });
+    } finally {
+      desconectandoRef.current = false;
+      setDesconectando(false);
+    }
+  };
 
   // ==========================================
   // LÓGICA: USUÁRIOS E AUDITORIA
@@ -106,9 +166,14 @@ export default function Configuracoes() {
 
   // Carrega os dados consoante a aba selecionada
   useEffect(() => {
+    if (!ehAdmin) return;
     if (abaAtiva === "usuarios") carregarUsuarios();
     if (abaAtiva === "logs") carregarLogs();
-  }, [abaAtiva]);
+  }, [abaAtiva, ehAdmin]);
+
+  useEffect(() => {
+    if (!ehAdmin && abaAtiva !== "whatsapp") setAbaAtiva("whatsapp");
+  }, [abaAtiva, ehAdmin]);
 
   const abrirModalNovo = () => {
     setIsEditando(false);
@@ -219,19 +284,23 @@ export default function Configuracoes() {
             <FaWhatsapp size={18} /> Servidor WhatsApp
           </button>
 
-          <button
-            onClick={() => setAbaAtiva("usuarios")}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap md:w-full ${abaAtiva === "usuarios" ? "bg-sky-100 text-sky-800 shadow-sm border border-sky-200" : "text-slate-600 hover:bg-slate-200"}`}
-          >
-            <FaUserShield size={18} /> Equipe e Acessos
-          </button>
+          {ehAdmin ? (
+            <>
+              <button
+                onClick={() => setAbaAtiva("usuarios")}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap md:w-full ${abaAtiva === "usuarios" ? "bg-sky-100 text-sky-800 shadow-sm border border-sky-200" : "text-slate-600 hover:bg-slate-200"}`}
+              >
+                <FaUserShield size={18} /> Equipe e Acessos
+              </button>
 
-          <button
-            onClick={() => setAbaAtiva("logs")}
-            className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap md:w-full ${abaAtiva === "logs" ? "bg-sky-100 text-sky-800 shadow-sm border border-sky-200" : "text-slate-600 hover:bg-slate-200"}`}
-          >
-            <FaHistory size={18} /> Auditoria
-          </button>
+              <button
+                onClick={() => setAbaAtiva("logs")}
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors whitespace-nowrap md:w-full ${abaAtiva === "logs" ? "bg-sky-100 text-sky-800 shadow-sm border border-sky-200" : "text-slate-600 hover:bg-slate-200"}`}
+              >
+                <FaHistory size={18} /> Auditoria
+              </button>
+            </>
+          ) : null}
         </div>
 
         {/* Conteúdo Principal */}
@@ -263,6 +332,50 @@ export default function Configuracoes() {
                     <p className="text-emerald-600 text-sm">
                       A sessão está ativa e o SGR está pronto para realizar os
                       disparos automáticos.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setModalDesconexaoAberto(true)}
+                      disabled={desconectando}
+                      className="mt-3 inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition-colors hover:bg-red-100 hover:text-red-800 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <FaSignOutAlt /> Desconectar WhatsApp
+                    </button>
+                  </div>
+                )}
+
+                {statusWpp === "disconnecting" && (
+                  <div className="flex flex-col items-center gap-3 text-center bg-amber-50 p-6 rounded-xl border border-amber-200 w-full max-w-md">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-amber-700" />
+                    <h4 className="font-bold text-amber-800 text-lg">
+                      Desconectando WhatsApp
+                    </h4>
+                    <p className="text-amber-700 text-sm">
+                      Aguarde enquanto a sessão é encerrada com segurança.
+                    </p>
+                  </div>
+                )}
+
+                {statusWpp === "connecting" && (
+                  <div className="flex flex-col items-center gap-3 text-center bg-sky-50 p-6 rounded-xl border border-sky-200 w-full max-w-md">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-sky-700" />
+                    <h4 className="font-bold text-sky-800 text-lg">
+                      Conectando ao WhatsApp
+                    </h4>
+                    <p className="text-sky-700 text-sm">
+                      A instância está iniciando e sincronizando a sessão.
+                    </p>
+                  </div>
+                )}
+
+                {statusWpp === "disconnected" && (
+                  <div className="flex flex-col items-center gap-3 text-center bg-amber-50 p-6 rounded-xl border border-amber-200 w-full max-w-md">
+                    <FaExclamationTriangle className="text-amber-600 text-4xl" />
+                    <h4 className="font-bold text-amber-800 text-lg">
+                      WhatsApp desconectado
+                    </h4>
+                    <p className="text-amber-700 text-sm">
+                      Aguarde a geração do QR Code para vincular o aparelho.
                     </p>
                   </div>
                 )}
@@ -299,7 +412,7 @@ export default function Configuracoes() {
           {/* ======================================================== */}
           {/* ABA 2: USUÁRIOS E ACESSOS */}
           {/* ======================================================== */}
-          {abaAtiva === "usuarios" && (
+          {ehAdmin && abaAtiva === "usuarios" && (
             <div className="animate-in fade-in">
               <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-2">
                 <h3 className="text-lg font-bold text-slate-800">
@@ -389,7 +502,7 @@ export default function Configuracoes() {
           {/* ======================================================== */}
           {/* ABA 3: AUDITORIA (LOGS) */}
           {/* ======================================================== */}
-          {abaAtiva === "logs" && (
+          {ehAdmin && abaAtiva === "logs" && (
             <div className="animate-in fade-in">
               <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-2">
                 <h3 className="text-lg font-bold text-slate-800">
@@ -598,6 +711,16 @@ export default function Configuracoes() {
         titulo={alerta.titulo}
         mensagem={alerta.mensagem}
         onClose={() => setAlerta({ ...alerta, isOpen: false })}
+      />
+
+      <ModalConfirmacao
+        isOpen={modalDesconexaoAberto}
+        titulo="Desconectar WhatsApp?"
+        mensagem="Os envios serão interrompidos e será necessário escanear um novo QR Code para reconectar. A instância e o histórico de mensagens não serão excluídos."
+        confirmLabel="Sim, desconectar"
+        onConfirm={desconectarWhatsApp}
+        onCancel={() => setModalDesconexaoAberto(false)}
+        loading={desconectando}
       />
     </div>
   );

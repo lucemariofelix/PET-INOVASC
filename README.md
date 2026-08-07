@@ -22,6 +22,7 @@ Este projeto faz parte das iniciativas do **PET-Saúde: Informação e Saúde Di
 - **Agendamento de consultas:** criação de consultas vinculadas ao paciente, com verificação de conflitos e envio opcional de mensagem de agendamento.
 - **Desfecho presencial:** ADMIN e RECEPCAO registram consulta realizada ou falta na data do atendimento, sem confundir presença física com confirmação pelo WhatsApp.
 - **Mensageria via WhatsApp:** envio validado de lembretes, mensagens de agendamento, avisos gerais e comunicações por grupo via Evolution API.
+- **Controle da conexão:** ADMIN e RECEPCAO podem encerrar a sessão do WhatsApp em Configurações; a reconexão exige a leitura de um novo QR Code.
 - **Rastreio de entrega:** acompanhamento monotônico de mensagens como Enviado, Entregue e Lido, atualizado por webhook e polling autenticado.
 - **Confirmação textual:** lembretes solicitam resposta `1` para presença ou `2` para cancelamento, sem depender de botões nativos do WhatsApp.
 - **Efetivação de cancelamento:** após o pedido do paciente, qualquer perfil autenticado pode cancelar a consulta de forma auditada e confirmar a conclusão pelo WhatsApp.

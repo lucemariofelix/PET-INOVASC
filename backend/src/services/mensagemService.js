@@ -95,6 +95,10 @@ class MensagemService {
   async statusConexaoWhatsApp() {
     return mensageriaService.statusConexaoWhatsApp();
   }
+
+  async desconectarWhatsApp() {
+    return mensageriaService.desconectarWhatsApp();
+  }
 }
 
 module.exports = new MensagemService();

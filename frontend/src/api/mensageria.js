@@ -38,10 +38,24 @@ const mensageriaApi = {
     return res.json();
   },
 
-  getWhatsAppStatus: async () => {
-    const res = await fetchComAutenticacao("/whatsapp/status");
+  getWhatsAppStatus: async (options = {}) => {
+    const res = await fetchComAutenticacao("/whatsapp/status", {
+      signal: options.signal,
+    });
     if (!res.ok) {
       throw new Error(await lerErro(res, "Erro ao verificar status do WhatsApp"));
+    }
+    return res.json();
+  },
+
+  desconectarWhatsApp: async () => {
+    const res = await fetchComAutenticacao("/whatsapp/conexao", {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      throw new Error(
+        await lerErro(res, "Erro ao desconectar o WhatsApp"),
+      );
     }
     return res.json();
   },

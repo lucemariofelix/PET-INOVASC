@@ -192,7 +192,7 @@ export default function Header({ usuario, onLogout }) {
               </button>
             </RoleGuard>
 
-            <RoleGuard rolesAllowed={["ADMIN"]}>
+            <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO"]}>
               <button
                 onClick={() => handleTabClick("configuracoes")}
                 className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors cursor-pointer ${activeTab === "configuracoes" ? "bg-white text-sky-800 shadow-sm" : "text-sky-100 hover:text-white"}`}
@@ -280,7 +280,7 @@ export default function Header({ usuario, onLogout }) {
               </button>
             </RoleGuard>
 
-            <RoleGuard rolesAllowed={["ADMIN"]}>
+            <RoleGuard rolesAllowed={["ADMIN", "RECEPCAO"]}>
               <button
                 onClick={() => handleTabClick("configuracoes")}
                 className={`flex items-center gap-3 w-full px-4 py-3 rounded-md text-base font-medium transition-colors ${activeTab === "configuracoes" ? "bg-sky-100 text-sky-900" : "text-sky-100 hover:bg-sky-700"}`}

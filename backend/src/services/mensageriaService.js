@@ -73,6 +73,13 @@ const erroProvedorWhatsApp = () =>
     "WHATSAPP_PROVIDER_ERROR",
   );
 
+const erroDesconexaoWhatsApp = () =>
+  new AppError(
+    "Não foi possível desconectar o WhatsApp. Tente novamente mais tarde.",
+    502,
+    "WHATSAPP_DISCONNECT_FAILED",
+  );
+
 const respostaIndicaDesconexao = (texto) => {
   const mensagem = String(texto || "").toLowerCase();
   return (
@@ -292,6 +299,66 @@ class MensageriaService {
         mensagem: "Servidor do WhatsApp (Evolution) offline.",
       };
     }
+  }
+
+  async desconectarWhatsApp() {
+    const { evolutionUrl, apikey, instanceName } = this.obterConfigEvolution();
+
+    if (!evolutionUrl || !apikey || !instanceName) {
+      throw new AppError(
+        "A integração com o WhatsApp não está configurada.",
+        503,
+        "EVOLUTION_NOT_CONFIGURED",
+      );
+    }
+
+    const requisitarEvolution = async (url, method) => {
+      let resposta;
+      try {
+        resposta = await fetch(url, {
+          method,
+          headers: { apikey },
+          signal: AbortSignal.timeout(10_000),
+        });
+      } catch {
+        throw erroDesconexaoWhatsApp();
+      }
+
+      let dados;
+      try {
+        dados = await resposta.json();
+      } catch {
+        throw erroDesconexaoWhatsApp();
+      }
+
+      if (!resposta.ok || dados?.error === true) {
+        throw erroDesconexaoWhatsApp();
+      }
+
+      return dados;
+    };
+
+    const nomeInstancia = encodeURIComponent(instanceName);
+    const estado = await requisitarEvolution(
+      `${evolutionUrl}/instance/connectionState/${nomeInstancia}`,
+      "GET",
+    );
+    const statusInstancia = String(
+      estado?.instance?.state || estado?.state || "",
+    ).toLowerCase();
+
+    if (!statusInstancia) throw erroDesconexaoWhatsApp();
+
+    if (["close", "closed", "disconnected"].includes(statusInstancia)) {
+      return { status: "disconnected", already_disconnected: true };
+    }
+
+    await requisitarEvolution(
+      `${evolutionUrl}/instance/logout/${nomeInstancia}`,
+      "DELETE",
+    );
+
+    return { status: "disconnected", already_disconnected: false };
   }
 
   async verificarConexaoWhatsApp() {

@@ -34,3 +34,16 @@ exports.checarStatusWhatsApp = async (request, reply) => {
     responder: (status) => reply.send(status),
   });
 };
+
+exports.desconectarWhatsApp = async (request, reply) => {
+  return executarController(request, reply, {
+    executar: () => mensagemService.desconectarWhatsApp(),
+    auditoria: ({ resultado }) => ({
+      acao: "DESCONECTOU_WHATSAPP",
+      detalhes: resultado.already_disconnected
+        ? "Sessão do WhatsApp já estava desconectada."
+        : "Sessão do WhatsApp desconectada pelo sistema.",
+    }),
+    responder: (resultado) => reply.status(200).send(resultado),
+  });
+};

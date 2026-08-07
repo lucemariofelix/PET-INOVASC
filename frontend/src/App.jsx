@@ -180,7 +180,7 @@ function AppRoutes() {
             <Route
               path="/configuracoes"
               element={
-                <RequireRole roles={["ADMIN"]}>
+                <RequireRole roles={["ADMIN", "RECEPCAO"]}>
                   <Configuracoes />
                 </RequireRole>
               }
