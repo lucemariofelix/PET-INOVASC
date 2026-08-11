@@ -176,6 +176,8 @@ Não remover históricos conflitantes: a reconciliação os classifica como `SUB
 
 ## Operação e diagnóstico
 
+A auditoria administrativa usa `GET /logs?pagina=<n>&limite=<n>`, com padrão de 5 e máximo de 50 registros por página. A resposta contém `logs` e `paginacao`; a ordenação canônica é `created_at desc, id desc`. Não reintroduzir o corte fixo dos 100 registros mais recentes.
+
 ADMIN e RECEPCAO podem encerrar a sessão vinculada por `DELETE /whatsapp/conexao`. O backend consulta o estado antes do logout para manter a operação idempotente na Evolution API v2.3.x. Essa ação nunca deve chamar a exclusão da instância: a configuração e o histórico permanecem, e a reconexão ocorre pela leitura de um novo QR Code em Configurações. ACS pode consultar o status, mas não pode desconectar.
 
 Ative `EVOLUTION_DIAGNOSTICS=true` somente durante investigação. O ciclo saudável contém:

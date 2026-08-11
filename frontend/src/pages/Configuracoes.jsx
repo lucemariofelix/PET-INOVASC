@@ -13,6 +13,8 @@ import {
   FaSave,
   FaHistory, // <-- Ícone novo para a Auditoria
   FaSignOutAlt,
+  FaChevronLeft,
+  FaChevronRight,
 } from "react-icons/fa";
 import { mensageriaApi } from "../api/mensageria";
 import { sessaoApi } from "../api/sessao";
@@ -20,6 +22,8 @@ import { usuariosApi } from "../api/usuarios";
 import ModalAlerta from "../components/ModalAlerta";
 import ModalConfirmacao from "../components/ModalConfirmacao";
 import { useAuth } from "../hooks/useAuth";
+
+const ITENS_LOGS_POR_PAGINA = 5;
 
 export default function Configuracoes() {
   const { usuario } = useAuth();
@@ -59,6 +63,13 @@ export default function Configuracoes() {
   // ==========================================
   const [logs, setLogs] = useState([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+  const [paginaLogs, setPaginaLogs] = useState(1);
+  const [paginacaoLogs, setPaginacaoLogs] = useState({
+    pagina: 1,
+    limite: ITENS_LOGS_POR_PAGINA,
+    total: 0,
+    total_paginas: 0,
+  });
 
   const [alerta, setAlerta] = useState({
     isOpen: false,
@@ -152,24 +163,41 @@ export default function Configuracoes() {
     }
   };
 
-  const carregarLogs = async () => {
+  const carregarLogs = useCallback(async (pagina) => {
     setLoadingLogs(true);
     try {
-      const data = await sessaoApi.getLogs();
-      setLogs(data);
+      const data = await sessaoApi.getLogs({
+        pagina,
+        limite: ITENS_LOGS_POR_PAGINA,
+      });
+      setLogs(data.logs || []);
+      setPaginacaoLogs(data.paginacao);
+
+      if (
+        data.paginacao.total_paginas > 0 &&
+        pagina > data.paginacao.total_paginas
+      ) {
+        setPaginaLogs(data.paginacao.total_paginas);
+      }
     } catch (error) {
       console.error("Erro ao carregar logs:", error);
+      setAlerta({
+        isOpen: true,
+        tipo: "erro",
+        titulo: "Erro ao carregar auditoria",
+        mensagem: error.message,
+      });
     } finally {
       setLoadingLogs(false);
     }
-  };
+  }, []);
 
   // Carrega os dados consoante a aba selecionada
   useEffect(() => {
     if (!ehAdmin) return;
     if (abaAtiva === "usuarios") carregarUsuarios();
-    if (abaAtiva === "logs") carregarLogs();
-  }, [abaAtiva, ehAdmin]);
+    if (abaAtiva === "logs") carregarLogs(paginaLogs);
+  }, [abaAtiva, carregarLogs, ehAdmin, paginaLogs]);
 
   useEffect(() => {
     if (!ehAdmin && abaAtiva !== "whatsapp") setAbaAtiva("whatsapp");
@@ -515,17 +543,18 @@ export default function Configuracoes() {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-700"></div>
                 </div>
               ) : (
-                <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                  <table className="w-full text-left text-sm whitespace-nowrap">
-                    <thead className="bg-slate-50 text-slate-500 uppercase font-semibold text-xs border-b border-slate-200">
+                <div className="overflow-hidden border border-slate-200 rounded-lg">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm whitespace-nowrap">
+                      <thead className="bg-slate-50 text-slate-500 uppercase font-semibold text-xs border-b border-slate-200">
                       <tr>
                         <th className="px-6 py-4">Data / Hora</th>
                         <th className="px-6 py-4">Usuário</th>
                         <th className="px-6 py-4">Ação</th>
                         <th className="px-6 py-4">Detalhes</th>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
                       {logs.length === 0 ? (
                         <tr>
                           <td
@@ -559,8 +588,65 @@ export default function Configuracoes() {
                           </tr>
                         ))
                       )}
-                    </tbody>
-                  </table>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {paginacaoLogs.total > 0 ? (
+                    <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-200 bg-slate-50 p-4 sm:flex-row">
+                      <span className="text-center text-sm text-slate-600 sm:text-left">
+                        Mostrando{" "}
+                        <span className="font-semibold text-slate-800">
+                          {(paginaLogs - 1) * ITENS_LOGS_POR_PAGINA + 1}
+                        </span>{" "}
+                        a{" "}
+                        <span className="font-semibold text-slate-800">
+                          {Math.min(
+                            paginaLogs * ITENS_LOGS_POR_PAGINA,
+                            paginacaoLogs.total,
+                          )}
+                        </span>{" "}
+                        de{" "}
+                        <span className="font-semibold text-slate-800">
+                          {paginacaoLogs.total}
+                        </span>{" "}
+                        registros
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPaginaLogs((atual) => Math.max(1, atual - 1))
+                          }
+                          disabled={loadingLogs || paginaLogs === 1}
+                          className="rounded-md border border-slate-300 bg-white p-2 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label="Página anterior dos logs"
+                        >
+                          <FaChevronLeft className="text-sm" />
+                        </button>
+                        <span className="px-2 text-sm font-medium text-slate-700">
+                          Página {paginaLogs} de {paginacaoLogs.total_paginas}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPaginaLogs((atual) =>
+                              Math.min(paginacaoLogs.total_paginas, atual + 1),
+                            )
+                          }
+                          disabled={
+                            loadingLogs ||
+                            paginaLogs === paginacaoLogs.total_paginas
+                          }
+                          className="rounded-md border border-slate-300 bg-white p-2 text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          aria-label="Próxima página dos logs"
+                        >
+                          <FaChevronRight className="text-sm" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>

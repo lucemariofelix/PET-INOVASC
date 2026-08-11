@@ -29,7 +29,7 @@ Este projeto faz parte das iniciativas do **PET-Saúde: Informação e Saúde Di
 - **Bloqueio de reenvios:** uma reserva transacional por consulta impede disparos duplicados quando existe pendência ou resposta registrada.
 - **Grupos de acompanhamento:** organização de pacientes por linhas de cuidado, condições, campanhas ou ações territoriais.
 - **Controle de território:** vínculo entre pacientes e Agentes Comunitários de Saúde para apoiar a rotina das microáreas.
-- **Auditoria e histórico:** registro de ações relevantes, mensagens enviadas, status de entrega e eventos recebidos por webhook.
+- **Auditoria e histórico:** registro de ações relevantes com consulta paginada, mensagens enviadas, status de entrega e eventos recebidos por webhook.
 - **Perfis de acesso:** separação entre ADMIN, RECEPCAO e ACS, respeitando as responsabilidades de cada equipe.
 - **Foto de perfil:** cada usuário pode comprimir e atualizar o próprio avatar, armazenado no Supabase Storage com acesso de escrita isolado por usuário.
 - **Segurança em dados de saúde:** autenticação, cookies HttpOnly, políticas RLS no Supabase e permissões ajustadas por função.
